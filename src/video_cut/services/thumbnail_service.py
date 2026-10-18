@@ -101,6 +101,7 @@ class ThumbnailService:
         dt = self._calculate_dt(dur)
         if count == 1:
             max_diff = max(1.5, dur)
+            step = dur
         else:
             step = dur / float(count - 1)
             # While in progress, use strict tolerance so unreached positions show placeholders
@@ -109,7 +110,7 @@ class ThumbnailService:
         for t in target_times:
             closest_ts, closest_path = min(items, key=lambda x: abs(x[0] - t))
             # If completed, allow generous tolerance so finished segments have no blank slots
-            allowed_diff = max(max_diff, step * 1.5, dt * 2.0) if is_completed else max_diff
+            allowed_diff = max(max_diff, step * 1.5, dt * 2.0, 15.0 if count == 1 else 0.0) if is_completed else max_diff
             if abs(closest_ts - t) <= allowed_diff and closest_path.exists():
                 results.append(closest_path)
             else:

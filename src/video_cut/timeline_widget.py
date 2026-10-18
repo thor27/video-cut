@@ -443,7 +443,10 @@ class TimelineWidget(Gtk.Box):
                 card.set_card_width(w)
 
                 # Dynamically update thumbnail count based on card width
-                target_thumbs = max(1, int(round(w / 75.0)))
+                # Enforce a minimum thumbnail width (80px) so small segments show only 1 thumb
+                # and thumbnails are never squeezed into tiny, illegible vertical slivers
+                filmstrip_w = max(1, w - 14)
+                target_thumbs = max(1, filmstrip_w // 80)
                 try:
                     if self.get_segment_thumbnails:
                         thumbs = self.get_segment_thumbnails(seg, target_thumbs)

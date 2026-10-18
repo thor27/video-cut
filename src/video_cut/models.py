@@ -54,13 +54,14 @@ class Segment:
 
     def clone(self, new_start: Optional[float] = None, new_end: Optional[float] = None) -> Segment:
         """Create a new segment copy with a new ID."""
+        is_trimmed = (new_start is not None) or (new_end is not None)
         return Segment(
             source_path=self.source_path,
             source_duration=self.source_duration,
             start_time=self.start_time if new_start is None else new_start,
             end_time=self.end_time if new_end is None else new_end,
             id=generate_id(),
-            thumbnails=list(self.thumbnails),
+            thumbnails=[] if is_trimmed else list(self.thumbnails),
             display_name=self.display_name,
             crop=self.crop,
             rotation=self.rotation,
@@ -225,6 +226,7 @@ class ProjectTimeline:
 
         right_seg = seg.clone(new_start=source_ts, new_end=seg.end_time)
         seg.end_time = source_ts
+        seg.thumbnails = []
 
         self.segments.insert(idx + 1, right_seg)
         self.selected_segment_id = right_seg.id

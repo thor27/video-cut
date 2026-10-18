@@ -304,3 +304,47 @@ def test_thumbnail_sync_on_split_and_placeholders():
     app.connect("activate", run_test)
     app.run([])
 
+
+def test_small_segment_minimum_thumb_size():
+    """Verify that narrow segments display only 1 thumbnail to prevent tiny illegible slivers."""
+    from gi.repository import Gio
+    app = Adw.Application(application_id="io.github.thomaz.videocut.test_min_thumb_size", flags=Gio.ApplicationFlags.NON_UNIQUE)
+
+    def run_test(app):
+        win = None
+        try:
+            win = MainWindow(application=app)
+            win.set_default_size(1000, 700)
+
+            # Load video
+            win.load_video(Path("/tmp/test_video.mp4"))
+            # Split video into a very small 0.5s segment and a remaining 4.5s segment
+            win.current_global_time = 0.5
+            win.split_at_cursor()
+            assert len(win.timeline.segments) == 2
+
+            small_seg = win.timeline.segments[0]
+            card_small = win.timeline_widget._cards[small_seg.id]
+
+            # The small segment width is clamped to min_card_width (50px)
+            w = card_small.get_size_request()[0]
+            assert w <= 100
+
+            # Count child widgets in filmstrip
+            children = []
+            c = card_small.filmstrip_box.get_first_child()
+            while c:
+                children.append(c)
+                c = c.get_next_sibling()
+
+            # Must have only 1 thumbnail widget, not multiple squeezed slivers!
+            assert len(children) == 1
+        finally:
+            if win:
+                win.close()
+            app.quit()
+
+    app.connect("activate", run_test)
+    app.run([])
+
+
