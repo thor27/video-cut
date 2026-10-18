@@ -1,0 +1,48 @@
+name: video-cut
+base: core24
+version: '0.1.0'
+summary: Simple, fast, and modern video cutting tool
+description: |
+  Video Cut is a lightweight, responsive video editor inspired by macOS QuickTime
+  and Preview. It offers proportional filmstrip timelines, interactive crop and
+  rotation, dynamic FFmpeg capability detection, multi-format export, and zero hover obstructions.
+
+grade: stable
+confinement: strict
+license: GPL-3.0-or-later
+
+apps:
+  video-cut:
+    command: bin/video-cut
+    extensions: [gnome]
+    common-id: io.github.thomaz.videocut
+    plugs:
+      - home
+      - removable-media
+      - desktop
+      - desktop-legacy
+      - wayland
+      - x11
+      - audio-playback
+      - gsettings
+      - opengl
+
+parts:
+  video-cut:
+    plugin: python
+    source: .
+    stage-packages:
+      - ffmpeg
+    override-build: |
+      craftctl default
+      # Install desktop file and icons into standard snap paths
+      install -D -m 644 src/video_cut/resources/io.github.thomaz.videocut.desktop \
+        ${CRAFT_PART_INSTALL}/usr/share/applications/io.github.thomaz.videocut.desktop
+      install -D -m 644 src/video_cut/resources/io.github.thomaz.videocut.svg \
+        ${CRAFT_PART_INSTALL}/usr/share/icons/hicolor/scalable/apps/io.github.thomaz.videocut.svg
+      for size in 16 24 32 48 64 128 256 512; do
+        if [ -f "src/video_cut/resources/icon_${size}.png" ]; then
+          install -D -m 644 src/video_cut/resources/icon_${size}.png \
+            ${CRAFT_PART_INSTALL}/usr/share/icons/hicolor/${size}x${size}/apps/io.github.thomaz.videocut.png
+        fi
+      done

@@ -1,0 +1,42 @@
+#!/bin/bash
+set -e
+
+# Resolve APPDIR if not set by runtime
+if [ -z "$APPDIR" ]; then
+    APPDIR="$(dirname "$(readlink -f "$0")")"
+fi
+
+export APPDIR
+export PATH="${APPDIR}/usr/bin:${PATH}"
+export LD_LIBRARY_PATH="${APPDIR}/usr/lib:${APPDIR}/usr/lib/x86_64-linux-gnu:${LD_LIBRARY_PATH}"
+export XDG_DATA_DIRS="${APPDIR}/usr/share:${XDG_DATA_DIRS:-/usr/local/share:/usr/share}"
+
+# Python environment
+for py_dir in "${APPDIR}"/usr/lib/python3* /usr/lib/python3*; do
+    if [ -d "${py_dir}/dist-packages" ]; then
+        PYTHONPATH="${py_dir}/dist-packages:${PYTHONPATH}"
+    fi
+    if [ -d "${py_dir}/site-packages" ]; then
+        PYTHONPATH="${py_dir}/site-packages:${PYTHONPATH}"
+    fi
+done
+export PYTHONPATH
+
+# GObject Introspection & GStreamer
+if [ -d "${APPDIR}/usr/lib/x86_64-linux-gnu/girepository-1.0" ]; then
+    export GI_TYPELIB_PATH="${APPDIR}/usr/lib/x86_64-linux-gnu/girepository-1.0:${GI_TYPELIB_PATH}"
+fi
+if [ -d "${APPDIR}/usr/lib/girepository-1.0" ]; then
+    export GI_TYPELIB_PATH="${APPDIR}/usr/lib/girepository-1.0:${GI_TYPELIB_PATH}"
+fi
+
+if [ -d "${APPDIR}/usr/lib/x86_64-linux-gnu/gstreamer-1.0" ]; then
+    export GST_PLUGIN_SYSTEM_PATH_1_0="${APPDIR}/usr/lib/x86_64-linux-gnu/gstreamer-1.0:${GST_PLUGIN_SYSTEM_PATH_1_0:-/usr/lib/x86_64-linux-gnu/gstreamer-1.0}"
+fi
+
+# Execute Video Cut
+if [ -x "${APPDIR}/usr/bin/video-cut" ]; then
+    exec "${APPDIR}/usr/bin/video-cut" "$@"
+else
+    exec python3 -m video_cut "$@"
+fi

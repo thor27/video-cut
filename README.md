@@ -85,6 +85,25 @@ source .venv/bin/activate
 pip install -e .
 ```
 
+## Packaging & Distribution
+
+You can build distribution packages directly using the provided build scripts in `scripts/`:
+
+```bash
+# Build both DEB and AppImage (and validate Snapcraft)
+./scripts/build_packages.sh
+
+# Or build individually:
+./scripts/build_deb.sh        # Builds dist/video-cut_*.deb
+./scripts/build_appimage.sh   # Builds dist/VideoCut-*.AppImage
+./scripts/build_snap.sh       # Builds dist/video-cut_*.snap (requires snapcraft)
+```
+
+Generated packages will be placed in the `dist/` folder:
+- **Debian Package (`.deb`)**: Install via `sudo apt install ./dist/video-cut_*.deb`
+- **AppImage (`.AppImage`)**: Run standalone via `./dist/VideoCut-*.AppImage`
+- **Snap Package (`.snap`)**: Install locally via `sudo snap install --dangerous ./dist/video-cut_*.snap`
+
 ## Usage
 
 Launch the application:
