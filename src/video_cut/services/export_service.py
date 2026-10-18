@@ -71,13 +71,42 @@ class ExportService:
             v_label = f"v{j}"
             a_label = f"a{j}"
 
-            v_filter = (
-                f"[{in_idx}:v]trim=start={seg.start_time:.3f}:end={seg.end_time:.3f},"
-                f"setpts=PTS-STARTPTS,"
-                f"scale={target_width}:{target_height}:force_original_aspect_ratio=decrease,"
-                f"pad={target_width}:{target_height}:(ow-iw)/2:(oh-ih)/2,"
-                f"setsar=1[{v_label}]"
-            )
+            v_chain: List[str] = [
+                f"trim=start={seg.start_time:.3f}:end={seg.end_time:.3f}",
+                "setpts=PTS-STARTPTS",
+            ]
+
+            rot = seg.rotation % 360
+            if rot == 90:
+                v_chain.append("transpose=1")
+            elif rot == 180:
+                v_chain.append("transpose=1,transpose=1")
+            elif rot == 270:
+                v_chain.append("transpose=2")
+
+            if seg.hflip:
+                v_chain.append("hflip")
+            if seg.vflip:
+                v_chain.append("vflip")
+
+            if seg.crop is not None:
+                cx, cy, cw, ch = seg.crop
+                if not (abs(cx) < 1e-4 and abs(cy) < 1e-4 and abs(cw - 1.0) < 1e-4 and abs(ch - 1.0) < 1e-4):
+                    cw = max(0.01, min(1.0, cw))
+                    ch = max(0.01, min(1.0, ch))
+                    cx = max(0.0, min(1.0 - cw, cx))
+                    cy = max(0.0, min(1.0 - ch, cy))
+                    v_chain.append(
+                        f"crop=w='floor(iw*{cw:.5f}/2)*2':h='floor(ih*{ch:.5f}/2)*2':x='floor(iw*{cx:.5f}/2)*2':y='floor(ih*{cy:.5f}/2)*2'"
+                    )
+
+            v_chain.extend([
+                f"scale={target_width}:{target_height}:force_original_aspect_ratio=decrease",
+                f"pad={target_width}:{target_height}:(ow-iw)/2:(oh-ih)/2",
+                "setsar=1",
+            ])
+
+            v_filter = f"[{in_idx}:v]{','.join(v_chain)}[{v_label}]"
             a_filter = (
                 f"[{in_idx}:a]atrim=start={seg.start_time:.3f}:end={seg.end_time:.3f},"
                 f"asetpts=PTS-STARTPTS,"

@@ -18,6 +18,7 @@ from .services.thumbnail_service import ThumbnailService
 from .services.export_service import ExportService
 from .services.image_service import ImageService
 from .image_import_dialog import ImageImportDialog
+from .crop_rotate_dialog import CropRotateDialog
 from .utils import format_time, clamp
 
 
@@ -163,12 +164,15 @@ class MainWindow(Adw.ApplicationWindow):
             on_copy_selection_requested=self.copy_selected_segment,
             on_paste_selection_requested=self.paste_segment,
             on_delete_selection_requested=self.delete_selected_segment,
+            on_crop_rotate_requested=self.open_crop_rotate_dialog,
+            on_crop_rotate_selection_requested=self.open_crop_rotate_selected_segment,
         )
         self.btn_undo = self.timeline_widget.btn_undo
         self.btn_redo = self.timeline_widget.btn_redo
         self.btn_cut = self.timeline_widget.btn_cut
         self.btn_copy = self.timeline_widget.btn_copy
         self.btn_paste = self.timeline_widget.btn_paste
+        self.btn_crop_rotate = self.timeline_widget.btn_crop_rotate
         self.btn_delete = self.timeline_widget.btn_delete
         main_box.append(self.timeline_widget)
 
@@ -295,6 +299,11 @@ class MainWindow(Adw.ApplicationWindow):
             self.split_at_cursor()
             return True
 
+        # Crop & Rotate: C
+        if keyval in (Gdk.KEY_c, Gdk.KEY_C) and not ctrl and not alt:
+            self.open_crop_rotate_selected_segment()
+            return True
+
         # Delete: Delete or BackSpace
         if keyval in (Gdk.KEY_Delete, Gdk.KEY_BackSpace):
             self.delete_selected_segment()
@@ -391,6 +400,7 @@ class MainWindow(Adw.ApplicationWindow):
         self.btn_cut.set_sensitive(can_cut)
         self.btn_copy.set_sensitive(can_copy)
         self.btn_paste.set_sensitive(can_paste)
+        self.btn_crop_rotate.set_sensitive(has_selection)
         self.btn_delete.set_sensitive(can_delete)
         self.timeline_widget.set_can_paste(can_paste)
 
@@ -665,6 +675,43 @@ class MainWindow(Adw.ApplicationWindow):
         self.player.sync_timeline_change(self.current_global_time)
         self.timeline_widget.rebuild_filmstrip()
         self._update_ui_state()
+
+    def open_crop_rotate_selected_segment(self) -> None:
+        """Open Crop & Rotate modal dialog for the selected segment."""
+        if not self.timeline.selected_segment_id:
+            return
+        self.open_crop_rotate_dialog(self.timeline.selected_segment_id)
+
+    def open_crop_rotate_dialog(self, segment_id: Optional[str] = None) -> None:
+        """Open Crop & Rotate modal dialog for the given segment ID or selected segment."""
+        target_id = segment_id or self.timeline.selected_segment_id
+        if not target_id:
+            return
+
+        seg = self.timeline.get_segment(target_id)
+        if not seg:
+            return
+
+        if self.player.is_playing:
+            self.player.pause()
+
+        def on_apply(crop, rotation, hflip, vflip) -> None:
+            self.timeline.save_state(self.current_global_time)
+            seg.crop = crop
+            seg.rotation = rotation
+            seg.hflip = hflip
+            seg.vflip = vflip
+            self.timeline_widget.rebuild_filmstrip()
+            self._update_ui_state()
+            self._show_toast(f"Crop & Rotate applied to {seg.source_name}")
+
+        dialog = CropRotateDialog(
+            parent=self,
+            segment=seg,
+            on_apply=on_apply,
+            current_time=self.current_global_time,
+        )
+        dialog.present()
 
     def _on_timeline_structure_changed(self) -> None:
         self.player.sync_timeline_change(self.current_global_time)

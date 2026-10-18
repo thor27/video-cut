@@ -18,6 +18,10 @@ class Segment:
     id: str = field(default_factory=generate_id)
     thumbnails: List[Path] = field(default_factory=list)
     display_name: Optional[str] = None
+    crop: Optional[Tuple[float, float, float, float]] = None
+    rotation: int = 0
+    hflip: bool = False
+    vflip: bool = False
 
     def __post_init__(self) -> None:
         self.source_path = Path(self.source_path)
@@ -25,6 +29,7 @@ class Segment:
             self.end_time = self.source_duration
         self.start_time = clamp(self.start_time, 0.0, self.source_duration)
         self.end_time = clamp(self.end_time, self.start_time, self.source_duration)
+        self.rotation = int(self.rotation) % 360
 
     @property
     def duration(self) -> float:
@@ -38,6 +43,15 @@ class Segment:
             return self.display_name
         return self.source_path.name
 
+    @property
+    def has_transform(self) -> bool:
+        """Return True if any crop, rotation, or flip transform is active."""
+        has_crop = self.crop is not None and not (
+            abs(self.crop[0]) < 1e-4 and abs(self.crop[1]) < 1e-4 and
+            abs(self.crop[2] - 1.0) < 1e-4 and abs(self.crop[3] - 1.0) < 1e-4
+        )
+        return has_crop or (self.rotation % 360 != 0) or self.hflip or self.vflip
+
     def clone(self, new_start: Optional[float] = None, new_end: Optional[float] = None) -> Segment:
         """Create a new segment copy with a new ID."""
         return Segment(
@@ -48,6 +62,10 @@ class Segment:
             id=generate_id(),
             thumbnails=list(self.thumbnails),
             display_name=self.display_name,
+            crop=self.crop,
+            rotation=self.rotation,
+            hflip=self.hflip,
+            vflip=self.vflip,
         )
 
     def copy(self) -> Segment:
@@ -60,6 +78,10 @@ class Segment:
             id=self.id,
             thumbnails=list(self.thumbnails),
             display_name=self.display_name,
+            crop=self.crop,
+            rotation=self.rotation,
+            hflip=self.hflip,
+            vflip=self.vflip,
         )
 
 

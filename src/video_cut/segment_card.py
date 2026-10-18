@@ -7,7 +7,8 @@ import gi
 gi.require_version("Gtk", "4.0")
 gi.require_version("Gdk", "4.0")
 gi.require_version("Adw", "1")
-from gi.repository import Gtk, Gdk, Adw, GObject, GLib
+gi.require_version("GdkPixbuf", "2.0")
+from gi.repository import Gtk, Gdk, Adw, GObject, GLib, GdkPixbuf
 
 from .models import Segment
 from .utils import format_time, clamp
@@ -32,6 +33,7 @@ class SegmentCard(Gtk.Box):
         on_copy: Optional[Callable[[str], None]] = None,
         on_cut: Optional[Callable[[str], None]] = None,
         on_paste: Optional[Callable[[str], None]] = None,
+        on_crop_rotate: Optional[Callable[[str], None]] = None,
         on_drop_reorder: Callable[[str, str], None] = lambda _a, _b: None,
         can_delete: bool = True,
         can_paste: bool = False,
@@ -63,6 +65,7 @@ class SegmentCard(Gtk.Box):
         self.on_copy = on_copy
         self.on_cut = on_cut
         self.on_paste = on_paste
+        self.on_crop_rotate = on_crop_rotate
         self.on_drop_reorder = on_drop_reorder
         self._popover_close_timer: Optional[int] = None
         self._is_drag_scrubbing: bool = False
@@ -275,6 +278,9 @@ class SegmentCard(Gtk.Box):
         self.menu_paste = make_menu_item("edit-paste-symbolic", "Paste", "Ctrl+V", self._menu_action_paste)
         box.append(self.menu_paste)
 
+        self.menu_crop_rotate = make_menu_item("crop-symbolic", "Crop & Rotate...", "C", self._menu_action_crop_rotate)
+        box.append(self.menu_crop_rotate)
+
         sep1 = Gtk.Separator(orientation=Gtk.Orientation.HORIZONTAL)
         box.append(sep1)
 
@@ -311,6 +317,10 @@ class SegmentCard(Gtk.Box):
     def _menu_action_paste(self) -> None:
         if self.can_paste and self.on_paste:
             self.on_paste(self.segment.id)
+
+    def _menu_action_crop_rotate(self) -> None:
+        if self.on_crop_rotate:
+            self.on_crop_rotate(self.segment.id)
 
     def _menu_action_move_left(self) -> None:
         if self.can_move_left and self.on_move_left:
@@ -562,7 +572,39 @@ class SegmentCard(Gtk.Box):
             return
 
         for thumb_path in valid_thumbs:
-            pic = Gtk.Picture.new_for_filename(str(thumb_path))
+            if self.segment.has_transform:
+                try:
+                    pb = GdkPixbuf.Pixbuf.new_from_file(str(thumb_path))
+                    rot = self.segment.rotation % 360
+                    if rot == 90:
+                        pb = pb.rotate_simple(GdkPixbuf.PixbufRotation.CLOCKWISE)
+                    elif rot == 180:
+                        pb = pb.rotate_simple(GdkPixbuf.PixbufRotation.UPSIDEDOWN)
+                    elif rot == 270:
+                        pb = pb.rotate_simple(GdkPixbuf.PixbufRotation.COUNTERCLOCKWISE)
+
+                    if self.segment.hflip:
+                        pb = pb.flip(True)
+                    if self.segment.vflip:
+                        pb = pb.flip(False)
+
+                    if self.segment.crop is not None:
+                        cx, cy, cw, ch = self.segment.crop
+                        pw = pb.get_width()
+                        ph = pb.get_height()
+                        sx = max(0, min(pw - 1, int(round(cx * pw))))
+                        sy = max(0, min(ph - 1, int(round(cy * ph))))
+                        sw = max(1, min(pw - sx, int(round(cw * pw))))
+                        sh = max(1, min(ph - sy, int(round(ch * ph))))
+                        pb = pb.new_subpixbuf(sx, sy, sw, sh)
+
+                    texture = Gdk.Texture.new_for_pixbuf(pb)
+                    pic = Gtk.Picture.new_for_paintable(texture)
+                except Exception:
+                    pic = Gtk.Picture.new_for_filename(str(thumb_path))
+            else:
+                pic = Gtk.Picture.new_for_filename(str(thumb_path))
+
             pic.set_can_shrink(True)
             pic.set_hexpand(True)
             pic.set_content_fit(Gtk.ContentFit.COVER)
