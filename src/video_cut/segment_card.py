@@ -237,6 +237,7 @@ class SegmentCard(Gtk.Box):
         self.context_menu.set_halign(Gtk.Align.START)
         self.context_menu.set_position(Gtk.PositionType.BOTTOM)
         self.context_menu.add_css_class("menu")
+        self.context_menu.add_css_class("square-menu")
 
         box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
         box.set_margin_top(4)

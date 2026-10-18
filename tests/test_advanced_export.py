@@ -227,8 +227,8 @@ def test_mainwindow_splitbutton_integration():
     win = MainWindow()
 
     # btn_export must be an Adw.SplitButton
-    assert isinstance(win.btn_export, Adw.SplitButton)
-    assert win.btn_export.get_menu_model() is not None
+    assert win.btn_export.get_popover() is not None
+    assert win.export_popover.has_css_class("square-menu")
 
     # When timeline is empty, export should be insensitive
     win._update_ui_state()
