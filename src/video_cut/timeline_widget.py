@@ -1,5 +1,6 @@
 """Storyboard timeline widget managing the filmstrip and playhead needles."""
 
+from pathlib import Path
 from typing import Callable, Dict, Optional
 import gi
 
