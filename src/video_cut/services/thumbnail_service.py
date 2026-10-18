@@ -109,12 +109,18 @@ class ThumbnailService:
 
         for t in target_times:
             closest_ts, closest_path = min(items, key=lambda x: abs(x[0] - t))
-            # If completed, allow generous tolerance so finished segments have no blank slots
-            allowed_diff = max(max_diff, step * 1.5, dt * 2.0, 15.0 if count == 1 else 0.0) if is_completed else max_diff
-            if abs(closest_ts - t) <= allowed_diff and closest_path.exists():
-                results.append(closest_path)
+            if is_completed:
+                # If extraction is completed, every slot must resolve to the closest frame
+                if closest_path.exists():
+                    results.append(closest_path)
+                else:
+                    results.append(None)
             else:
-                results.append(None)
+                # While extraction is in progress, only show frames close enough to target time
+                if abs(closest_ts - t) <= max_diff and closest_path.exists():
+                    results.append(closest_path)
+                else:
+                    results.append(None)
 
         return results
 
@@ -197,7 +203,7 @@ class ThumbnailService:
             try:
                 data = json.loads(index_file.read_text(encoding="utf-8"))
                 loaded = [(float(ts), Path(p)) for ts, p in data if Path(p).exists()]
-                if len(loaded) >= 2 or (duration <= 1.0 and len(loaded) >= 1):
+                if len(loaded) >= 1:
                     with self._cache_lock:
                         self._cache[key] = loaded
                         self._completed_keys.add(key)
@@ -207,12 +213,11 @@ class ThumbnailService:
                 pass
 
         # 3. Determine target sample timestamps
-        if duration <= 1.0:
+        if duration <= 0.6:
             times = [0.0]
-        elif duration <= 4.0:
-            times = [0.0, max(0.0, duration - 0.04)]
         else:
-            num_samples = max(8, min(24, int(round(duration / 7.0)) + 1))
+            dt = self._calculate_dt(duration)
+            num_samples = max(6, min(24, int(round(duration / dt)) + 1))
             step = duration / float(num_samples - 1)
             raw_times = [i * step for i in range(num_samples)]
             raw_times[-1] = max(0.0, duration - 0.05)

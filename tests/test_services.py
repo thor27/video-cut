@@ -132,3 +132,48 @@ def test_thumbnail_service_progress_and_cache(tmp_path):
     assert len(service2._cache[key]) == last_total
 
 
+def test_image_thumbnail_large_timeline_slots(tmp_path):
+    """Ensure imported image videos with large timeline representation resolve all slots."""
+    service = ThumbnailService(cache_dir=tmp_path)
+    video_path = Path("/tmp/imported_image_video.mp4")
+    image_path = tmp_path / "sample_image.png"
+    image_path.write_bytes(b"dummy_png_data")
+
+    # Register 3.0s image video
+    service.register_image_thumbnail(video_path, image_path, duration=3.0)
+
+    # Request 11 slots (typical for a wide timeline)
+    thumbs = service.get_thumbnails_for_segment(video_path, 0.0, 3.0, max_thumbs=11)
+    assert len(thumbs) == 11
+    # None of the slots should be None (no stuck spinners)
+    for i, t in enumerate(thumbs):
+        assert t is not None, f"Slot {i} unexpectedly returned None"
+        assert t == image_path
+
+
+def test_short_video_timeline_slots_and_sampling(tmp_path):
+    """Ensure short videos sample across duration and all timeline slots resolve when complete."""
+    service = ThumbnailService(cache_dir=tmp_path)
+    p = Path("/tmp/test_video.mp4")
+
+    # Check sample times for short video (3.0s)
+    # Generate thumbnails asynchronously
+    received = []
+    service.generate_thumbnails_async(p, 3.0, on_done=lambda path, items: received.append(items))
+    service.executor.shutdown(wait=True)
+    service.wait_idle()
+
+    # Verify at least 6 samples were extracted across the 3.0s duration
+    key = service._file_key(p)
+    cached_items = service._cache[key]
+    assert len(cached_items) >= 6
+
+    # Verify all 11 slots on a wide timeline representation resolve to valid thumbnails
+    thumbs = service.get_thumbnails_for_segment(p, 0.0, 3.0, max_thumbs=11)
+    assert len(thumbs) == 11
+    for i, t in enumerate(thumbs):
+        assert t is not None, f"Slot {i} unexpectedly returned None"
+        assert t.exists()
+
+
+
