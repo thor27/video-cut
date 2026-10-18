@@ -27,7 +27,7 @@ class AdvancedExportDialog(Adw.Window):
     ) -> None:
         super().__init__(transient_for=parent, modal=True)
         self.set_title(_("Advanced Export"))
-        self.set_default_size(500, 680)
+        self.set_default_size(480, 600)
         self.on_export = on_export
 
         self.source_width = source_width
@@ -65,23 +65,32 @@ class AdvancedExportDialog(Adw.Window):
 
         toolbar_view.add_top_bar(header_bar)
 
-        page = Adw.PreferencesPage()
-        toolbar_view.set_content(page)
+        scrolled = Gtk.ScrolledWindow()
+        scrolled.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
+        scrolled.set_propagate_natural_height(True)
+        scrolled.set_propagate_natural_width(True)
+        toolbar_view.set_content(scrolled)
 
-        # 1. Container & Format Group
-        grp_container = Adw.PreferencesGroup(title=_("Format and Container"))
-        page.add(grp_container)
+        clamp = Adw.Clamp(maximum_size=460)
+        scrolled.set_child(clamp)
+
+        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10)
+        box.set_margin_start(16)
+        box.set_margin_end(16)
+        box.set_margin_top(8)
+        box.set_margin_bottom(12)
+        clamp.set_child(box)
+
+        # 1. Video Group (Container format and video properties)
+        grp_video = Adw.PreferencesGroup(title=_("Video"))
+        box.append(grp_video)
 
         self.row_container = Adw.ComboRow(title=_("Container Format"))
         container_labels = [c[1] for c in self.containers]
         self.row_container.set_model(Gtk.StringList.new(container_labels))
         self.row_container.set_selected(0)
         self.row_container.connect("notify::selected", lambda *_: self._update_codecs_for_container())
-        grp_container.add(self.row_container)
-
-        # 2. Video Group
-        grp_video = Adw.PreferencesGroup(title=_("Video"))
-        page.add(grp_video)
+        grp_video.add(self.row_container)
 
         # Resolution
         self.row_resolution = Adw.ComboRow(title=_("Resolution"))
@@ -148,9 +157,9 @@ class AdvancedExportDialog(Adw.Window):
         self.row_preset.set_selected(0)
         grp_video.add(self.row_preset)
 
-        # 3. Audio Group
+        # 2. Audio Group
         grp_audio = Adw.PreferencesGroup(title=_("Audio"))
-        page.add(grp_audio)
+        box.append(grp_audio)
 
         # Audio Codec
         self.row_audio_codec = Adw.ComboRow(title=_("Audio Codec"))
