@@ -65,11 +65,11 @@ class CropRotateDialog(Adw.Window):
         # Frame pixbufs and surfaces
         self.base_pixbuf: Optional[GdkPixbuf.Pixbuf] = None
         self._transformed_pixbuf: Optional[GdkPixbuf.Pixbuf] = None
-        self._cairo_surface: Optional[cairo.ImageSurface] = None
+        self._cairo_frame_surface: Optional[cairo.ImageSurface] = None
         self._load_reference_frame()
 
         # Canvas geometry caches
-        self._img_rect: Tuple[int, int, int, int] = (0, 0, 1, 1)  # (x, y, w, h) in drawing area
+        self._img_rect: Tuple[int, int, int, int] = (0, 0, 1, 1)  # (x, y, w, h) in preview coordinates
         self._drag_mode: str = "NONE"
         self._drag_start_x: float = 0.0
         self._drag_start_y: float = 0.0
@@ -146,7 +146,7 @@ class CropRotateDialog(Adw.Window):
             self.base_pixbuf.fill(0x333333FF)
 
     def _update_transformed_pixbuf(self) -> None:
-        """Apply current rotation and flips to base_pixbuf."""
+        """Apply current rotation and flips to base_pixbuf and update the rendered frame surface."""
         if not self.base_pixbuf:
             return
 
@@ -168,13 +168,14 @@ class CropRotateDialog(Adw.Window):
         try:
             ok, data = pb.save_to_bufferv("png", [], [])
             if ok:
-                self._cairo_surface = cairo.ImageSurface.create_from_png(io.BytesIO(data))
+                self._cairo_frame_surface = cairo.ImageSurface.create_from_png(io.BytesIO(data))
             else:
-                self._cairo_surface = None
+                self._cairo_frame_surface = None
         except Exception:
-            self._cairo_surface = None
+            self._cairo_frame_surface = None
 
         self._update_readout_label()
+        self._render_preview()
 
     def _build_ui(self) -> None:
         toolbar_view = Adw.ToolbarView()
@@ -204,16 +205,20 @@ class CropRotateDialog(Adw.Window):
         main_box.set_margin_bottom(16)
         toolbar_view.set_content(main_box)
 
-        # Interactive DrawingArea preview
-        self.drawing_area = Gtk.DrawingArea()
-        self.drawing_area.set_vexpand(True)
-        self.drawing_area.set_hexpand(True)
-        self.drawing_area.set_content_height(340)
-        self.drawing_area.set_draw_func(self._on_draw)
+        # Interactive Picture preview (avoids PyGObject cairo.Context foreign converter bug)
+        self.preview_picture = Gtk.Picture()
+        self.preview_picture.set_vexpand(True)
+        self.preview_picture.set_hexpand(True)
+        self.preview_picture.set_can_shrink(True)
+        self.preview_picture.set_content_fit(Gtk.ContentFit.CONTAIN)
 
-        # Gestures on drawing area
-        self._setup_drawing_area_gestures()
-        main_box.append(self.drawing_area)
+        # Gestures on preview picture
+        self._setup_preview_gestures()
+        main_box.append(self.preview_picture)
+
+        # Re-render when widget size changes
+        self.preview_picture.connect("notify::width", lambda *a: self._render_preview())
+        self.preview_picture.connect("notify::height", lambda *a: self._render_preview())
 
         # Controls container
         controls_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
@@ -312,19 +317,161 @@ class CropRotateDialog(Adw.Window):
 
         self.lbl_readout.set_label(f"Crop: {crop_w} × {crop_h} px ({self.selected_preset}){rot_str}{flip_str}")
 
-    def _setup_drawing_area_gestures(self) -> None:
+    def _render_preview(self) -> None:
+        """Render the composite preview image (transformed frame + shroud + crop box + handles)."""
+        if not self._cairo_frame_surface:
+            return
+
+        w = self.preview_picture.get_width()
+        h = self.preview_picture.get_height()
+        if w <= 50 or h <= 50:
+            w = 740
+            h = 440
+
+        surf = cairo.ImageSurface(cairo.FORMAT_ARGB32, w, h)
+        cr = cairo.Context(surf)
+
+        # 1. Dark canvas background
+        cr.set_source_rgb(0.12, 0.12, 0.14)
+        cr.paint()
+
+        img_w = self._cairo_frame_surface.get_width()
+        img_h = self._cairo_frame_surface.get_height()
+        if img_w <= 0 or img_h <= 0:
+            return
+
+        # 2. Fit transformed video frame with 24px margins
+        pad = 24.0
+        avail_w = max(10.0, w - 2.0 * pad)
+        avail_h = max(10.0, h - 2.0 * pad)
+        scale = min(avail_w / float(img_w), avail_h / float(img_h))
+
+        dest_w = int(round(img_w * scale))
+        dest_h = int(round(img_h * scale))
+        dest_x = int(round((w - dest_w) / 2.0))
+        dest_y = int(round((h - dest_h) / 2.0))
+        self._img_rect = (dest_x, dest_y, dest_w, dest_h)
+
+        # Draw frame
+        cr.save()
+        cr.translate(dest_x, dest_y)
+        cr.scale(scale, scale)
+        cr.set_source_surface(self._cairo_frame_surface, 0, 0)
+        cr.paint()
+        cr.restore()
+
+        # 3. Crop Box geometry in pixels
+        cx, cy, cw, ch = self.crop
+        bx = dest_x + cx * dest_w
+        by = dest_y + cy * dest_h
+        bw = cw * dest_w
+        bh = ch * dest_h
+
+        # 4. Draw darkened shroud outside crop rectangle
+        cr.set_source_rgba(0.0, 0.0, 0.0, 0.6)
+        if by > dest_y:
+            cr.rectangle(dest_x, dest_y, dest_w, by - dest_y)
+            cr.fill()
+        if by + bh < dest_y + dest_h:
+            cr.rectangle(dest_x, by + bh, dest_w, (dest_y + dest_h) - (by + bh))
+            cr.fill()
+        if bx > dest_x:
+            cr.rectangle(dest_x, by, bx - dest_x, bh)
+            cr.fill()
+        if bx + bw < dest_x + dest_w:
+            cr.rectangle(bx + bw, by, (dest_x + dest_w) - (bx + bw), bh)
+            cr.fill()
+
+        # 5. Rule of thirds grid lines
+        cr.save()
+        cr.set_source_rgba(1.0, 1.0, 1.0, 0.35)
+        cr.set_line_width(1.0)
+        cr.set_dash([4.0, 4.0])
+        cr.move_to(bx + bw / 3.0, by)
+        cr.line_to(bx + bw / 3.0, by + bh)
+        cr.move_to(bx + 2.0 * bw / 3.0, by)
+        cr.line_to(bx + 2.0 * bw / 3.0, by + bh)
+        cr.move_to(bx, by + bh / 3.0)
+        cr.line_to(bx + bw, by + bh / 3.0)
+        cr.move_to(bx, by + 2.0 * bh / 3.0)
+        cr.line_to(bx + bw, by + 2.0 * bh / 3.0)
+        cr.stroke()
+        cr.restore()
+
+        # 6. Main crop box border
+        cr.set_source_rgba(0.0, 0.0, 0.0, 0.5)
+        cr.set_line_width(3.0)
+        cr.rectangle(bx, by, bw, bh)
+        cr.stroke()
+
+        cr.set_source_rgba(1.0, 1.0, 1.0, 0.95)
+        cr.set_line_width(1.5)
+        cr.rectangle(bx, by, bw, bh)
+        cr.stroke()
+
+        # 7. Handles: 4 corner brackets and 4 edge midpoint bars
+        cr.set_source_rgba(1.0, 1.0, 1.0, 1.0)
+        cr.set_line_width(3.0)
+        handle_len = 16.0
+
+        # Corner NW
+        cr.move_to(bx, by + handle_len)
+        cr.line_to(bx, by)
+        cr.line_to(bx + handle_len, by)
+        # Corner NE
+        cr.move_to(bx + bw - handle_len, by)
+        cr.line_to(bx + bw, by)
+        cr.line_to(bx + bw, by + handle_len)
+        # Corner SW
+        cr.move_to(bx, by + bh - handle_len)
+        cr.line_to(bx, by + bh)
+        cr.line_to(bx + handle_len, by + bh)
+        # Corner SE
+        cr.move_to(bx + bw - handle_len, by + bh)
+        cr.line_to(bx + bw, by + bh)
+        cr.line_to(bx + bw, by + bh - handle_len)
+        cr.stroke()
+
+        # Edge handles (midpoints)
+        mid_bar = 8.0
+        # N edge
+        cr.move_to(bx + bw / 2.0 - mid_bar, by)
+        cr.line_to(bx + bw / 2.0 + mid_bar, by)
+        # S edge
+        cr.move_to(bx + bw / 2.0 - mid_bar, by + bh)
+        cr.line_to(bx + bw / 2.0 + mid_bar, by + bh)
+        # W edge
+        cr.move_to(bx, by + bh / 2.0 - mid_bar)
+        cr.line_to(bx, by + bh / 2.0 + mid_bar)
+        # E edge
+        cr.move_to(bx + bw, by + bh / 2.0 - mid_bar)
+        cr.line_to(bx + bw, by + bh / 2.0 + mid_bar)
+        cr.stroke()
+
+        # 8. Convert to Gdk.Texture and set on Gtk.Picture
+        try:
+            bio = io.BytesIO()
+            surf.write_to_png(bio)
+            bio.seek(0)
+            glib_bytes = GLib.Bytes.new(bio.read())
+            texture = Gdk.Texture.new_from_bytes(glib_bytes)
+            self.preview_picture.set_paintable(texture)
+        except Exception as e:
+            pass
+
+    def _setup_preview_gestures(self) -> None:
         # 1. Motion controller for cursor updates
         motion = Gtk.EventControllerMotion.new()
         motion.connect("motion", self._on_mouse_motion)
         motion.connect("leave", self._on_mouse_leave)
-        self.drawing_area.add_controller(motion)
+        self.preview_picture.add_controller(motion)
 
         # 2. Drag gesture for crop adjustment
         drag = Gtk.GestureDrag.new()
         drag.connect("drag-begin", self._on_drag_begin)
         drag.connect("drag-update", self._on_drag_update)
         drag.connect("drag-end", self._on_drag_end)
-        self.drawing_area.add_controller(drag)
+        self.preview_picture.add_controller(drag)
 
     def _hit_test(self, mx: float, my: float) -> str:
         """Return the handle or region under cursor (mx, my)."""
@@ -383,11 +530,11 @@ class CropRotateDialog(Adw.Window):
         elif hit == "MOVE":
             cursor_name = "move"
 
-        self.drawing_area.set_cursor_from_name(cursor_name)
+        self.preview_picture.set_cursor_from_name(cursor_name)
 
     def _on_mouse_leave(self, _c: Gtk.EventControllerMotion) -> None:
         if self._drag_mode == "NONE":
-            self.drawing_area.set_cursor_from_name("default")
+            self.preview_picture.set_cursor_from_name("default")
 
     def _on_drag_begin(self, gesture: Gtk.GestureDrag, start_x: float, start_y: float) -> None:
         self._drag_mode = self._hit_test(start_x, start_y)
@@ -467,11 +614,11 @@ class CropRotateDialog(Adw.Window):
             self.crop = (nx, ny, nw, nh)
 
         self._update_readout_label()
-        self.drawing_area.queue_draw()
+        self._render_preview()
 
     def _on_drag_end(self, gesture: Gtk.GestureDrag, offset_x: float, offset_y: float) -> None:
         self._drag_mode = "NONE"
-        self.drawing_area.set_cursor_from_name("default")
+        self.preview_picture.set_cursor_from_name("default")
 
     def _get_current_aspect_ratio(self) -> Optional[float]:
         """Return the numerical aspect ratio for the selected preset or None."""
@@ -513,7 +660,7 @@ class CropRotateDialog(Adw.Window):
             pass
 
         self._update_readout_label()
-        self.drawing_area.queue_draw()
+        self._render_preview()
 
     def _rotate_cw(self) -> None:
         """Rotate 90 degrees clockwise."""
@@ -526,7 +673,6 @@ class CropRotateDialog(Adw.Window):
         nh = ow
         self.crop = (clamp(nx, 0.0, 1.0), clamp(ny, 0.0, 1.0), clamp(nw, 0.01, 1.0), clamp(nh, 0.01, 1.0))
         self._update_transformed_pixbuf()
-        self.drawing_area.queue_draw()
 
     def _rotate_ccw(self) -> None:
         """Rotate 90 degrees counter-clockwise."""
@@ -539,7 +685,6 @@ class CropRotateDialog(Adw.Window):
         nh = ow
         self.crop = (clamp(nx, 0.0, 1.0), clamp(ny, 0.0, 1.0), clamp(nw, 0.01, 1.0), clamp(nh, 0.01, 1.0))
         self._update_transformed_pixbuf()
-        self.drawing_area.queue_draw()
 
     def _toggle_hflip(self) -> None:
         """Toggle horizontal flip."""
@@ -548,7 +693,6 @@ class CropRotateDialog(Adw.Window):
         nx = 1.0 - (ox + ow)
         self.crop = (clamp(nx, 0.0, 1.0), oy, ow, oh)
         self._update_transformed_pixbuf()
-        self.drawing_area.queue_draw()
 
     def _toggle_vflip(self) -> None:
         """Toggle vertical flip."""
@@ -557,7 +701,6 @@ class CropRotateDialog(Adw.Window):
         ny = 1.0 - (oy + oh)
         self.crop = (ox, clamp(ny, 0.0, 1.0), ow, oh)
         self._update_transformed_pixbuf()
-        self.drawing_area.queue_draw()
 
     def _reset_transforms(self) -> None:
         """Reset all transformations and crop to full frame."""
@@ -569,138 +712,6 @@ class CropRotateDialog(Adw.Window):
         for name, btn in self._preset_buttons.items():
             btn.set_active(name == "Free")
         self._update_transformed_pixbuf()
-        self.drawing_area.queue_draw()
-
-    def _on_draw(self, area: Gtk.DrawingArea, cr: cairo.Context, width: int, height: int) -> None:
-        """Render the transformed preview, dark crop shroud, border, grid, and handles."""
-        # 1. Fill dark neutral background
-        cr.set_source_rgb(0.12, 0.12, 0.14)
-        cr.paint()
-
-        surf = self._cairo_surface
-        if not surf:
-            return
-
-        img_w = surf.get_width()
-        img_h = surf.get_height()
-        if img_w <= 0 or img_h <= 0:
-            return
-
-        # 2. Scale and center image with 24px margins
-        pad = 24.0
-        avail_w = max(10.0, width - 2.0 * pad)
-        avail_h = max(10.0, height - 2.0 * pad)
-        scale = min(avail_w / float(img_w), avail_h / float(img_h))
-
-        dest_w = int(round(img_w * scale))
-        dest_h = int(round(img_h * scale))
-        dest_x = int(round((width - dest_w) / 2.0))
-        dest_y = int(round((height - dest_h) / 2.0))
-        self._img_rect = (dest_x, dest_y, dest_w, dest_h)
-
-        # 3. Draw transformed image
-        cr.save()
-        cr.translate(dest_x, dest_y)
-        cr.scale(scale, scale)
-        cr.set_source_surface(surf, 0, 0)
-        cr.paint()
-        cr.restore()
-
-        # 4. Crop Box geometry in drawing area pixels
-        cx, cy, cw, ch = self.crop
-        bx = dest_x + cx * dest_w
-        by = dest_y + cy * dest_h
-        bw = cw * dest_w
-        bh = ch * dest_h
-
-        # 5. Draw dark shroud outside the crop box
-        cr.set_source_rgba(0.0, 0.0, 0.0, 0.6)
-        # Top
-        if by > dest_y:
-            cr.rectangle(dest_x, dest_y, dest_w, by - dest_y)
-            cr.fill()
-        # Bottom
-        if by + bh < dest_y + dest_h:
-            cr.rectangle(dest_x, by + bh, dest_w, (dest_y + dest_h) - (by + bh))
-            cr.fill()
-        # Left
-        if bx > dest_x:
-            cr.rectangle(dest_x, by, bx - dest_x, bh)
-            cr.fill()
-        # Right
-        if bx + bw < dest_x + dest_w:
-            cr.rectangle(bx + bw, by, (dest_x + dest_w) - (bx + bw), bh)
-            cr.fill()
-
-        # 6. Rule of thirds grid lines
-        cr.save()
-        cr.set_source_rgba(1.0, 1.0, 1.0, 0.35)
-        cr.set_line_width(1.0)
-        cr.set_dash([4.0, 4.0])
-        # Vertical grid
-        cr.move_to(bx + bw / 3.0, by)
-        cr.line_to(bx + bw / 3.0, by + bh)
-        cr.move_to(bx + 2.0 * bw / 3.0, by)
-        cr.line_to(bx + 2.0 * bw / 3.0, by + bh)
-        # Horizontal grid
-        cr.move_to(bx, by + bh / 3.0)
-        cr.line_to(bx + bw, by + bh / 3.0)
-        cr.move_to(bx, by + 2.0 * bh / 3.0)
-        cr.line_to(bx + bw, by + 2.0 * bh / 3.0)
-        cr.stroke()
-        cr.restore()
-
-        # 7. Main crop box border
-        # Shadow/contrast outline
-        cr.set_source_rgba(0.0, 0.0, 0.0, 0.5)
-        cr.set_line_width(3.0)
-        cr.rectangle(bx, by, bw, bh)
-        cr.stroke()
-
-        # Crisp white border
-        cr.set_source_rgba(1.0, 1.0, 1.0, 0.95)
-        cr.set_line_width(1.5)
-        cr.rectangle(bx, by, bw, bh)
-        cr.stroke()
-
-        # 8. Interactive Corner and Edge Handles
-        cr.set_source_rgba(1.0, 1.0, 1.0, 1.0)
-        cr.set_line_width(3.0)
-        handle_len = 16.0
-
-        # Corner NW
-        cr.move_to(bx, by + handle_len)
-        cr.line_to(bx, by)
-        cr.line_to(bx + handle_len, by)
-        # Corner NE
-        cr.move_to(bx + bw - handle_len, by)
-        cr.line_to(bx + bw, by)
-        cr.line_to(bx + bw, by + handle_len)
-        # Corner SW
-        cr.move_to(bx, by + bh - handle_len)
-        cr.line_to(bx, by + bh)
-        cr.line_to(bx + handle_len, by + bh)
-        # Corner SE
-        cr.move_to(bx + bw - handle_len, by + bh)
-        cr.line_to(bx + bw, by + bh)
-        cr.line_to(bx + bw, by + bh - handle_len)
-        cr.stroke()
-
-        # Edge handles (midpoints)
-        mid_bar = 8.0
-        # N edge
-        cr.move_to(bx + bw / 2.0 - mid_bar, by)
-        cr.line_to(bx + bw / 2.0 + mid_bar, by)
-        # S edge
-        cr.move_to(bx + bw / 2.0 - mid_bar, by + bh)
-        cr.line_to(bx + bw / 2.0 + mid_bar, by + bh)
-        # W edge
-        cr.move_to(bx, by + bh / 2.0 - mid_bar)
-        cr.line_to(bx, by + bh / 2.0 + mid_bar)
-        # E edge
-        cr.move_to(bx + bw, by + bh / 2.0 - mid_bar)
-        cr.line_to(bx + bw, by + bh / 2.0 + mid_bar)
-        cr.stroke()
 
     def _on_apply_clicked(self, _btn: Gtk.Button) -> None:
         """Commit transforms and close dialog."""

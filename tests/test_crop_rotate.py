@@ -236,7 +236,6 @@ def test_crop_rotate_dialog_geometry_and_rotations():
 
 
 def test_crop_rotate_dialog_drawing_renders_without_error():
-    import cairo
     try:
         Gtk.init()
     except Exception:
@@ -246,12 +245,11 @@ def test_crop_rotate_dialog_drawing_renders_without_error():
     seg = Segment(source_path=Path("/tmp/fake.mp4"), source_duration=5.0, crop=(0.1, 0.1, 0.8, 0.8))
     dialog = CropRotateDialog(parent=parent, segment=seg, on_apply=lambda *a: None)
 
-    # Render surface
-    surf = cairo.ImageSurface(cairo.FORMAT_ARGB32, 600, 400)
-    cr = cairo.Context(surf)
-    # Must execute all drawing code without raising any exception
-    dialog._on_draw(dialog.drawing_area, cr, 600, 400)
+    # Must execute render preview and set paintable without raising any exception
+    dialog._render_preview()
+    assert dialog.preview_picture.get_paintable() is not None
 
     # Rotate and render again
     dialog._rotate_cw()
-    dialog._on_draw(dialog.drawing_area, cr, 600, 400)
+    dialog._render_preview()
+    assert dialog.preview_picture.get_paintable() is not None
