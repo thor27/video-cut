@@ -232,3 +232,75 @@ def test_all_actions_recalculate_proportions_and_no_scroll():
 
     app.connect("activate", run_test)
     app.run([])
+
+
+def test_thumbnail_sync_on_split_and_placeholders():
+    app = Adw.Application(application_id="io.github.thomaz.videocut.test_split_thumbs")
+
+    def run_test(app):
+        win = None
+        try:
+            win = MainWindow(application=app)
+            win.set_default_size(1000, 700)
+
+            # Load video
+            win.load_video(Path("/tmp/test_30s.mp4"))
+            assert len(win.timeline.segments) == 1
+            card = list(win.timeline_widget._cards.values())[0]
+
+            # Before background thumbnails finish, placeholder items exist in filmstrip
+            assert card.filmstrip_box.get_first_child() is not None
+
+            # Split at 15.0s
+            win.current_global_time = 15.0
+            win.split_at_cursor()
+            assert len(win.timeline.segments) == 2
+
+            left_seg = win.timeline.segments[0]
+            right_seg = win.timeline.segments[1]
+
+            assert abs(left_seg.start_time - 0.0) < 0.01
+            assert abs(left_seg.end_time - 15.0) < 0.01
+            assert abs(right_seg.start_time - 15.0) < 0.01
+            assert abs(right_seg.end_time - 30.0) < 0.01
+
+            # Check thumbnail querying for both sides
+            left_thumbs = win.thumbnail_service.get_thumbnails_for_segment(
+                left_seg.source_path, left_seg.start_time, left_seg.end_time, max_thumbs=3
+            )
+            right_thumbs = win.thumbnail_service.get_thumbnails_for_segment(
+                right_seg.source_path, right_seg.start_time, right_seg.end_time, max_thumbs=3
+            )
+
+            assert len(left_thumbs) == 3
+            assert len(right_thumbs) == 3
+
+            # Update cards with thumbnails / placeholders
+            left_card = win.timeline_widget._cards[left_seg.id]
+            right_card = win.timeline_widget._cards[right_seg.id]
+
+            left_card.update_thumbnails(left_thumbs)
+            right_card.update_thumbnails(right_thumbs)
+
+            # Both cards have 3 child widgets (pictures or placeholders)
+            left_children = []
+            c = left_card.filmstrip_box.get_first_child()
+            while c:
+                left_children.append(c)
+                c = c.get_next_sibling()
+            assert len(left_children) == 3
+
+            right_children = []
+            c = right_card.filmstrip_box.get_first_child()
+            while c:
+                right_children.append(c)
+                c = c.get_next_sibling()
+            assert len(right_children) == 3
+        finally:
+            if win:
+                win.close()
+            app.quit()
+
+    app.connect("activate", run_test)
+    app.run([])
+

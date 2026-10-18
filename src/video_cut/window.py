@@ -204,7 +204,7 @@ class MainWindow(Adw.ApplicationWindow):
 
         self.connect("realize", on_realize)
 
-    def _get_segment_thumbnails(self, seg: Segment, target_count: int) -> list[Path]:
+    def _get_segment_thumbnails(self, seg: Segment, target_count: int) -> list[Optional[Path]]:
         return self.thumbnail_service.get_thumbnails_for_segment(
             seg.source_path, seg.start_time, seg.end_time, max_thumbs=target_count
         )
@@ -557,9 +557,7 @@ class MainWindow(Adw.ApplicationWindow):
             seg.thumbnails = [orig_image_path]
         else:
             def on_first_thumb(path: Path, first_thumb_path: Path):
-                if seg.source_path == path and not seg.thumbnails:
-                    seg.thumbnails = [first_thumb_path]
-                    self.timeline_widget.rebuild_filmstrip()
+                self.timeline_widget.recalculate_layout(force=True)
 
             # Trigger background thumbnail generation
             self.thumbnail_service.generate_thumbnails_async(
@@ -577,12 +575,7 @@ class MainWindow(Adw.ApplicationWindow):
 
     def _on_thumbnails_ready(self, path: Path, items: list) -> None:
         """Called when full thumbnails for a video are ready in cache."""
-        for seg in self.timeline.segments:
-            if seg.source_path == path:
-                seg.thumbnails = self.thumbnail_service.get_thumbnails_for_segment(
-                    seg.source_path, seg.start_time, seg.end_time
-                )
-        self.timeline_widget.rebuild_filmstrip()
+        self.timeline_widget.recalculate_layout(force=True)
 
     def split_at_cursor(self) -> None:
         """Split the segment under the playhead cursor."""
@@ -601,11 +594,17 @@ class MainWindow(Adw.ApplicationWindow):
             return
 
         left, right = result
-        left.thumbnails = self.thumbnail_service.get_thumbnails_for_segment(
-            left.source_path, left.start_time, left.end_time
-        )
-        right.thumbnails = self.thumbnail_service.get_thumbnails_for_segment(
-            right.source_path, right.start_time, right.end_time
+
+        # Request extraction of the exact split cut frame if not yet cached
+        split_source_time = left.end_time
+
+        def on_split_thumb_ready(thumb_path: Path):
+            self.timeline_widget.recalculate_layout(force=True)
+
+        self.thumbnail_service.extract_exact_thumbnail_async(
+            left.source_path,
+            split_source_time,
+            on_ready=on_split_thumb_ready,
         )
 
         self.player.sync_timeline_change(self.current_global_time)

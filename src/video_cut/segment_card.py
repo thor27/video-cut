@@ -551,65 +551,80 @@ class SegmentCard(Gtk.Box):
     def _on_popover_split_clicked(self) -> None:
         self._on_split_pill_clicked()
 
-    def update_thumbnails(self, thumbnails: List[Path]) -> None:
-        """Populate the filmstrip box with thumbnails."""
+    def update_thumbnails(self, thumbnails: List[Optional[Path]]) -> None:
+        """Populate the filmstrip box with thumbnails or placeholders for loading slots."""
         child = self.filmstrip_box.get_first_child()
         while child:
             next_child = child.get_next_sibling()
             self.filmstrip_box.remove(child)
             child = next_child
 
-        valid_thumbs = [p for p in thumbnails if p.exists()]
-        if not valid_thumbs:
+        # Update segment's internal thumbnail paths list
+        self.segment.thumbnails = [p for p in thumbnails if p is not None and p.exists()]
+
+        if not thumbnails:
             placeholder = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
             placeholder.set_hexpand(True)
             placeholder.set_size_request(-1, 68)
             placeholder.add_css_class("thumbnail-placeholder")
             icon = Gtk.Image.new_from_icon_name("video-x-generic-symbolic")
             icon.set_pixel_size(24)
+            icon.add_css_class("dim-label")
             placeholder.append(icon)
             self.filmstrip_box.append(placeholder)
             return
 
-        for thumb_path in valid_thumbs:
-            if self.segment.has_transform:
-                try:
-                    pb = GdkPixbuf.Pixbuf.new_from_file(str(thumb_path))
-                    rot = self.segment.rotation % 360
-                    if rot == 90:
-                        pb = pb.rotate_simple(GdkPixbuf.PixbufRotation.CLOCKWISE)
-                    elif rot == 180:
-                        pb = pb.rotate_simple(GdkPixbuf.PixbufRotation.UPSIDEDOWN)
-                    elif rot == 270:
-                        pb = pb.rotate_simple(GdkPixbuf.PixbufRotation.COUNTERCLOCKWISE)
+        for thumb_path in thumbnails:
+            if thumb_path is not None and thumb_path.exists():
+                if self.segment.has_transform:
+                    try:
+                        pb = GdkPixbuf.Pixbuf.new_from_file(str(thumb_path))
+                        rot = self.segment.rotation % 360
+                        if rot == 90:
+                            pb = pb.rotate_simple(GdkPixbuf.PixbufRotation.CLOCKWISE)
+                        elif rot == 180:
+                            pb = pb.rotate_simple(GdkPixbuf.PixbufRotation.UPSIDEDOWN)
+                        elif rot == 270:
+                            pb = pb.rotate_simple(GdkPixbuf.PixbufRotation.COUNTERCLOCKWISE)
 
-                    if self.segment.hflip:
-                        pb = pb.flip(True)
-                    if self.segment.vflip:
-                        pb = pb.flip(False)
+                        if self.segment.hflip:
+                            pb = pb.flip(True)
+                        if self.segment.vflip:
+                            pb = pb.flip(False)
 
-                    if self.segment.crop is not None:
-                        cx, cy, cw, ch = self.segment.crop
-                        pw = pb.get_width()
-                        ph = pb.get_height()
-                        sx = max(0, min(pw - 1, int(round(cx * pw))))
-                        sy = max(0, min(ph - 1, int(round(cy * ph))))
-                        sw = max(1, min(pw - sx, int(round(cw * pw))))
-                        sh = max(1, min(ph - sy, int(round(ch * ph))))
-                        pb = pb.new_subpixbuf(sx, sy, sw, sh)
+                        if self.segment.crop is not None:
+                            cx, cy, cw, ch = self.segment.crop
+                            pw = pb.get_width()
+                            ph = pb.get_height()
+                            sx = max(0, min(pw - 1, int(round(cx * pw))))
+                            sy = max(0, min(ph - 1, int(round(cy * ph))))
+                            sw = max(1, min(pw - sx, int(round(cw * pw))))
+                            sh = max(1, min(ph - sy, int(round(ch * ph))))
+                            pb = pb.new_subpixbuf(sx, sy, sw, sh)
 
-                    texture = Gdk.Texture.new_for_pixbuf(pb)
-                    pic = Gtk.Picture.new_for_paintable(texture)
-                except Exception:
+                        texture = Gdk.Texture.new_for_pixbuf(pb)
+                        pic = Gtk.Picture.new_for_paintable(texture)
+                    except Exception:
+                        pic = Gtk.Picture.new_for_filename(str(thumb_path))
+                else:
                     pic = Gtk.Picture.new_for_filename(str(thumb_path))
-            else:
-                pic = Gtk.Picture.new_for_filename(str(thumb_path))
 
-            pic.set_can_shrink(True)
-            pic.set_hexpand(True)
-            pic.set_content_fit(Gtk.ContentFit.COVER)
-            pic.set_size_request(-1, 68)
-            self.filmstrip_box.append(pic)
+                pic.set_can_shrink(True)
+                pic.set_hexpand(True)
+                pic.set_content_fit(Gtk.ContentFit.COVER)
+                pic.set_size_request(-1, 68)
+                self.filmstrip_box.append(pic)
+            else:
+                # Polished placeholder for loading slot
+                slot = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
+                slot.set_hexpand(True)
+                slot.set_size_request(-1, 68)
+                slot.add_css_class("thumbnail-placeholder")
+                icon = Gtk.Image.new_from_icon_name("video-x-generic-symbolic")
+                icon.set_pixel_size(18)
+                icon.add_css_class("dim-label")
+                slot.append(icon)
+                self.filmstrip_box.append(slot)
 
     def set_needle_ratio(self, ratio: Optional[float]) -> None:
         """Move playhead needle to ratio (0.0 to 1.0) or hide it if None."""
