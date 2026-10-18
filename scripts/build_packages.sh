@@ -20,14 +20,15 @@ Usage:
   ./scripts/build_packages.sh [options]
 
 Options:
-  --all         Build all distribution packages (DEB, AppImage, Snap)
+  --all         Build all distribution packages (DEB, AppImage, Snap, Source)
   --deb         Build only Debian (.deb) package
   --appimage    Build only AppImage (.AppImage) package
   --snap        Build only Snap (.snap) package
+  --source      Build source tarball and zip archives
   --clean       Clean build/ and dist/ directories
   -h, --help    Show this help message
 
-If no option is provided, DEB and AppImage packages will be built by default,
+If no option is provided, DEB, AppImage, and Source archives will be built by default,
 and Snapcraft configuration will be validated.
 EOF
 }
@@ -35,12 +36,14 @@ EOF
 DO_DEB=0
 DO_APPIMAGE=0
 DO_SNAP=0
+DO_SOURCE=0
 DO_CLEAN=0
 
 if [ $# -eq 0 ]; then
     DO_DEB=1
     DO_APPIMAGE=1
     DO_SNAP=1
+    DO_SOURCE=1
 else
     while [ $# -gt 0 ]; do
         case "$1" in
@@ -48,6 +51,7 @@ else
                 DO_DEB=1
                 DO_APPIMAGE=1
                 DO_SNAP=1
+                DO_SOURCE=1
                 ;;
             --deb)
                 DO_DEB=1
@@ -57,6 +61,9 @@ else
                 ;;
             --snap)
                 DO_SNAP=1
+                ;;
+            --source)
+                DO_SOURCE=1
                 ;;
             --clean)
                 DO_CLEAN=1
@@ -106,6 +113,18 @@ fi
 if [ "$DO_SNAP" -eq 1 ]; then
     echo ""
     "${SCRIPTS_DIR}/build_snap.sh"
+fi
+
+# 4. Source Archives
+if [ "$DO_SOURCE" -eq 1 ]; then
+    echo ""
+    echo "==> Creating Source Code Archives for Video Cut v${VERSION}..."
+    mkdir -p "${DIST_DIR}"
+    git -C "${REPO_ROOT}" archive --format=tar.gz --prefix="video-cut-${VERSION}/" -o "${DIST_DIR}/video-cut-${VERSION}.tar.gz" HEAD
+    git -C "${REPO_ROOT}" archive --format=zip --prefix="video-cut-${VERSION}/" -o "${DIST_DIR}/video-cut-${VERSION}.zip" HEAD
+    echo "==> Successfully created source archives:"
+    echo "    ${DIST_DIR}/video-cut-${VERSION}.tar.gz"
+    echo "    ${DIST_DIR}/video-cut-${VERSION}.zip"
 fi
 
 echo ""

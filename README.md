@@ -1,10 +1,23 @@
 # Video Cut 🎬
 
+[![Latest Release](https://img.shields.io/github/v/release/thor27/video-cut?label=Latest%20Version&color=orange)](https://github.com/thor27/video-cut/releases/latest)
+[![Releases](https://img.shields.io/badge/Downloads-GitHub%20Releases-blue)](https://github.com/thor27/video-cut/releases)
+
 A simple, fast, and modern Python GTK 4 / Libadwaita tool to edit and cut videos, inspired by macOS Preview and QuickTime video editing.
 
 <p align="center">
   <img src="screenshot.png" alt="Video Cut Screenshot" width="850">
 </p>
+
+## Download Latest Version
+
+Pre-built packages are available for download on the **[Releases Page](https://github.com/thor27/video-cut/releases/latest)**:
+
+- 📦 **[AppImage (`VideoCut-0.1.0-x86_64.AppImage`)](https://github.com/thor27/video-cut/releases/latest)** — Standalone portable package (runs on any modern Linux distribution without installation).
+- 📦 **[Debian / Ubuntu Package (`video-cut_0.1.0_all.deb`)](https://github.com/thor27/video-cut/releases/latest)** — Install via `sudo apt install ./video-cut_0.1.0_all.deb`.
+- 📦 **[Source Archives (`.tar.gz` / `.zip`)](https://github.com/thor27/video-cut/releases/latest)** — Full source distribution.
+
+All version releases, assets, and changelogs are available on the **[GitHub Versions Page](https://github.com/thor27/video-cut/releases)**.
 
 ## Features
 

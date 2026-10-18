@@ -1,0 +1,44 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Build & Publish Release
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install System Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y dpkg-dev zip zstd squashfs-tools
+
+      - name: Build All Distribution Packages & Source Archives
+        run: |
+          chmod +x scripts/*.sh packaging/appimage/AppRun
+          ./scripts/build_packages.sh --all
+
+      - name: Create GitHub Release and Upload Assets
+        uses: softprops/action-gh-release@v2
+        with:
+          name: "Video Cut ${{ github.ref_name }}"
+          generate_release_notes: true
+          draft: false
+          prerelease: false
+          files: |
+            dist/*.deb
+            dist/*.AppImage
+            dist/*.tar.gz
+            dist/*.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
