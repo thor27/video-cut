@@ -858,8 +858,8 @@ class MainWindow(Adw.ApplicationWindow):
             developer_name="Thomaz",
             version="0.1.0",
             comments="A simple, fast, and modern video cutting and segment arranging tool",
-            issue_url="https://github.com/thomaz/video-cut/issues",
-            license_type=Gtk.License.MIT_X11,
+            issue_url="https://github.com/thor27/video-cut/issues",
+            license_type=Gtk.License.GPL_3_0,
         )
         about.present()
 

@@ -2,6 +2,10 @@
 
 A simple, fast, and modern Python GTK 4 / Libadwaita tool to edit and cut videos, inspired by macOS Preview and QuickTime video editing.
 
+<p align="center">
+  <img src="screenshot.png" alt="Video Cut Screenshot" width="850">
+</p>
+
 ## Features
 
 - **Large Video Player**: Full preview canvas with zero hover obstructions, hardware-accelerated via GStreamer and GTK 4.
@@ -90,3 +94,7 @@ video-cut /path/to/my_video.mp4
 ```bash
 pytest tests/
 ```
+
+## License
+
+This project is licensed under the GNU General Public License v3.0 - see the [LICENSE](LICENSE) file for details.

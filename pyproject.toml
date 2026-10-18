@@ -7,6 +7,7 @@ name = "video-cut"
 version = "0.1.0"
 description = "A simple, fast, and modern video cutting and segment arranging tool using GTK 4 and FFmpeg"
 readme = "README.md"
+license = { text = "GPL-3.0-or-later" }
 requires-python = ">=3.10"
 dependencies = [
     "PyGObject>=3.42.0",
