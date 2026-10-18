@@ -22,6 +22,7 @@ from .crop_rotate_dialog import CropRotateDialog
 from .advanced_export_dialog import AdvancedExportDialog
 from .utils import format_time, clamp
 from .i18n import _
+from . import __version__
 
 
 class MainWindow(Adw.ApplicationWindow):
@@ -1027,7 +1028,7 @@ class MainWindow(Adw.ApplicationWindow):
             application_name=_("Video Cut"),
             application_icon="io.github.thomaz.videocut",
             developer_name="Thomaz",
-            version="0.1.0",
+            version=__version__,
             comments=_("A simple, fast, and modern video cutting and segment arranging tool"),
             issue_url="https://github.com/thor27/video-cut/issues",
             license_type=Gtk.License.GPL_3_0,
