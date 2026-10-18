@@ -1,0 +1,63 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128">
+  <defs>
+    <!-- Background squircle diagonal gradient -->
+    <linearGradient id="bgGrad" x1="12%" y1="12%" x2="88%" y2="88%">
+      <stop offset="0%" stop-color="#df4e26"/>
+      <stop offset="28%" stop-color="#d64531"/>
+      <stop offset="65%" stop-color="#9a2b6d"/>
+      <stop offset="100%" stop-color="#55184b"/>
+    </linearGradient>
+
+    <!-- Standard SVG 1.1 drop shadow (100% compatible with Inkscape, librsvg, browsers, and Qt) -->
+    <filter id="squircleShadow" x="-12%" y="-10%" width="124%" height="125%">
+      <feGaussianBlur in="SourceAlpha" stdDeviation="3" result="blur"/>
+      <feOffset in="blur" dx="0" dy="3.5" result="offset"/>
+      <feFlood flood-color="#22051a" flood-opacity="0.32" result="color"/>
+      <feComposite in="color" in2="offset" operator="in" result="shadow"/>
+      <feMerge>
+        <feMergeNode in="shadow"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <!-- Squircle Base (112x112, centered on 128x128 canvas, rx=28) -->
+  <rect x="8" y="8" width="112" height="112" rx="28" fill="url(#bgGrad)" filter="url(#squircleShadow)"/>
+
+  <!-- Filmstrip Body with 5 sprocket holes (clean evenodd cutouts) -->
+  <path fill="#ffffff" fill-rule="evenodd" d="
+    M 33.5,24.5
+    L 64,24.5
+    L 64,103.5
+    L 33.5,103.5
+    A 9 9 0 0 1 24.5,94.5
+    L 24.5,33.5
+    A 9 9 0 0 1 33.5,24.5 Z
+
+    M 30.5,31 A 1.5 1.5 0 0 0 29,32.5 L 29,36.5 A 1.5 1.5 0 0 0 30.5,38 L 34.5,38 A 1.5 1.5 0 0 0 36,36.5 L 36,32.5 A 1.5 1.5 0 0 0 34.5,31 Z
+    M 30.5,46 A 1.5 1.5 0 0 0 29,47.5 L 29,51.5 A 1.5 1.5 0 0 0 30.5,53 L 34.5,53 A 1.5 1.5 0 0 0 36,51.5 L 36,47.5 A 1.5 1.5 0 0 0 34.5,46 Z
+    M 30.5,61 A 1.5 1.5 0 0 0 29,62.5 L 29,66.5 A 1.5 1.5 0 0 0 30.5,68 L 34.5,68 A 1.5 1.5 0 0 0 36,66.5 L 36,62.5 A 1.5 1.5 0 0 0 34.5,61 Z
+    M 30.5,76 A 1.5 1.5 0 0 0 29,77.5 L 29,81.5 A 1.5 1.5 0 0 0 30.5,83 L 34.5,83 A 1.5 1.5 0 0 0 36,81.5 L 36,77.5 A 1.5 1.5 0 0 0 34.5,76 Z
+    M 30.5,91 A 1.5 1.5 0 0 0 29,92.5 L 29,96.5 A 1.5 1.5 0 0 0 30.5,98 L 34.5,98 A 1.5 1.5 0 0 0 36,96.5 L 36,92.5 A 1.5 1.5 0 0 0 34.5,91 Z
+  "/>
+
+  <!-- Upper Scissor Blade -->
+  <line x1="66" y1="64" x2="101" y2="29" stroke="#ffffff" stroke-width="8.5" stroke-linecap="round"/>
+
+  <!-- Lower Scissor Shank -->
+  <line x1="66" y1="64" x2="84" y2="82" stroke="#ffffff" stroke-width="8.5" stroke-linecap="butt"/>
+
+  <!-- Scissor Loop (Ring Handle) -->
+  <circle cx="91" cy="91" r="10" fill="none" stroke="#ffffff" stroke-width="8"/>
+
+  <!-- Pivot Joint Connection with Rivet Hole -->
+  <path fill="#ffffff" fill-rule="evenodd" d="
+    M 64,57.5
+    A 6.5 6.5 0 1 1 64,70.5
+    A 6.5 6.5 0 1 1 64,57.5 Z
+
+    M 64,61.2
+    A 2.8 2.8 0 1 0 64,66.8
+    A 2.8 2.8 0 1 0 64,61.2 Z
+  "/>
+</svg>

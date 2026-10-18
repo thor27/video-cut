@@ -1,0 +1,20 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "video-cut"
+version = "0.1.0"
+description = "A simple, fast, and modern video cutting and segment arranging tool using GTK 4 and FFmpeg"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "PyGObject>=3.42.0",
+]
+
+[project.scripts]
+video-cut = "video_cut.__main__:main"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]

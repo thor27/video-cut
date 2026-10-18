@@ -1,0 +1,206 @@
+/* Video Cut Modern Styling */
+
+.video-container {
+    background-color: #0d0d0d;
+}
+
+.timeline-container {
+    background-color: alpha(@window_bg_color, 0.95);
+    border-top: 1px solid alpha(currentColor, 0.12);
+    padding: 8px 16px 12px 16px;
+}
+
+.time-bar {
+    margin-bottom: 4px;
+}
+
+.time-badge {
+    font-family: monospace;
+    font-size: 13px;
+    font-weight: 700;
+    background-color: alpha(currentColor, 0.1);
+    padding: 3px 10px;
+    border-radius: 6px;
+}
+
+.filmstrip-scroll {
+    padding: 2px 0 6px 0;
+}
+
+.cards-box {
+    padding: 2px 0;
+}
+
+.segment-card {
+    background-color: alpha(currentColor, 0.05);
+    border: 2px solid alpha(currentColor, 0.15);
+    border-radius: 10px;
+    padding: 4px;
+    transition: all 150ms ease-in-out;
+}
+
+.segment-card:hover {
+    background-color: alpha(currentColor, 0.08);
+    border-color: alpha(currentColor, 0.25);
+}
+
+.segment-selected {
+    border-color: @accent_color;
+    box-shadow: 0 0 0 2px alpha(@accent_color, 0.35);
+    background-color: alpha(@accent_color, 0.06);
+}
+
+.segment-dragging {
+    opacity: 0.35;
+}
+
+.drop-target-hover {
+    border-color: @accent_color;
+    box-shadow: 0 0 0 3px alpha(@accent_color, 0.65);
+    background-color: alpha(@accent_color, 0.12);
+}
+
+.segment-header {
+    padding: 2px 4px 4px 4px;
+    min-height: 34px;
+}
+
+.segment-index-badge {
+    font-weight: 700;
+    font-size: 11px;
+    background-color: alpha(currentColor, 0.12);
+    border-radius: 4px;
+    padding: 2px 6px;
+}
+
+.segment-duration-badge {
+    font-size: 11px;
+    font-weight: 500;
+    color: alpha(currentColor, 0.7);
+    margin-left: 2px;
+}
+
+.segment-filmstrip {
+    border-radius: 6px;
+    background-color: #000000;
+}
+
+.thumbnail-placeholder {
+    background-color: alpha(currentColor, 0.08);
+    border-radius: 6px;
+    min-width: 20px;
+    min-height: 68px;
+}
+
+.playhead-needle-container {
+    min-width: 14px;
+}
+
+.playhead-needle-knob {
+    background: radial-gradient(circle at 35% 35%, #ff8533, #ff5500);
+    min-width: 14px;
+    min-height: 14px;
+    border-radius: 50%;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.6), 0 0 2px rgba(255, 85, 0, 0.8);
+    margin: 0;
+}
+
+.playhead-needle-knob:hover {
+    box-shadow: 0 1px 6px rgba(0, 0, 0, 0.7), 0 0 5px rgba(255, 119, 34, 0.9);
+}
+
+.playhead-needle-bar {
+    background-color: #ff5500;
+    min-width: 2px;
+    border-radius: 1px;
+    box-shadow: 0 0 4px rgba(255, 85, 0, 0.8);
+    margin: 0;
+}
+
+popover.playhead-split-popover {
+    background: transparent;
+    padding: 0;
+}
+
+popover.playhead-split-popover > contents {
+    background: transparent;
+    border: none;
+    box-shadow: none;
+    padding: 0;
+}
+
+.playhead-split-btn {
+    background-color: rgba(30, 30, 32, 0.94);
+    color: #ffffff;
+    border: 1px solid rgba(255, 255, 255, 0.20);
+    border-radius: 9999px;
+    padding: 1px 6px;
+    margin: 0;
+    min-height: 20px;
+    min-width: 0;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+    transition: background-color 120ms ease-in-out, border-color 120ms ease-in-out;
+}
+
+.playhead-split-btn:hover {
+    background-color: #ff5500;
+    border-color: #ff7722;
+    box-shadow: 0 4px 14px rgba(255, 85, 0, 0.5);
+}
+
+.split-pill-icon {
+    color: #ff8533;
+    transition: color 120ms ease-in-out;
+}
+
+.playhead-split-btn:hover .split-pill-icon {
+    color: #ffffff;
+}
+
+.split-pill-text {
+    font-size: 10px;
+    font-weight: 600;
+    color: #ffffff;
+}
+
+.add-segment-button {
+    min-width: 85px;
+    min-height: 85px;
+    border: 2px dashed alpha(currentColor, 0.2);
+    border-radius: 10px;
+}
+
+.add-segment-button:hover {
+    border-color: @accent_color;
+    background-color: alpha(@accent_color, 0.06);
+}
+
+.transport-box {
+    background-color: alpha(currentColor, 0.06);
+    border-radius: 20px;
+    padding: 3px 6px;
+}
+
+.transport-box button {
+    min-width: 28px;
+    min-height: 28px;
+    padding: 3px;
+    margin: 0 1px;
+}
+
+.transport-box button.suggested-action {
+    background-color: @accent_color;
+    color: @accent_fg_color;
+}
+
+/* Image Import Dialog Styling */
+.image-import-preview-frame {
+    background-color: alpha(currentColor, 0.04);
+    border: 1px solid alpha(currentColor, 0.12);
+    border-radius: 12px;
+}
+
+.image-preview-pic {
+    border-radius: 8px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+}
