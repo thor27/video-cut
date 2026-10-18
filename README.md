@@ -21,9 +21,11 @@ A simple, fast, and modern Python GTK 4 / Libadwaita tool to edit and cut videos
   - Intelligent single-thumbnail fallback for short segments.
   - Centralized orange playhead needle showing the exact cut position directly over frames.
 - **High-Performance Thumbnail Engine**:
-  - Parallel multi-threaded demuxer seek extraction (< 2.5s for 4-minute 1080p HEVC video).
+  - Batched multi-input FFmpeg extraction (`-ss ... -i ... -map ...`), generating batches of thumbnails per single FFmpeg process to minimize demuxer and process overhead.
+  - Multi-threaded parallel seeks (< 2.5s for 4-minute 1080p HEVC video).
   - Instant first-frame extraction (< 50ms) and persistent disk index caching for instantaneous project reloads.
-  - Smooth animated spinner loading feedback while thumbnails are being generated.
+  - Non-intrusive floating toast overlay notification displaying live background thumbnail generation progress (`Generating thumbnails... (X/Y)`).
+  - Smooth animated spinner loading feedback on individual filmstrip slots while thumbnails are being generated.
 - **Image Import with Duration & Soundtrack Attachment**:
   - Import photos and graphics (PNG, JPG, JPEG, WEBP, BMP, GIF, etc.) into the timeline as video clips.
   - Customizable clip duration (0.5s to 300s) with quick presets (1s, 3s, 5s, 10s).
@@ -46,15 +48,17 @@ A simple, fast, and modern Python GTK 4 / Libadwaita tool to edit and cut videos
   - Previous / next single frame (<kbd>,</kbd> / <kbd>.</kbd>)
   - Step backward / forward 1 second (<kbd>Left</kbd> / <kbd>Right</kbd>)
   - Play / Pause (<kbd>Space</kbd>)
-- **Quick Export & Export Options**:
-  - One-click quick export (<kbd>Ctrl+E</kbd>) rendering standard MP4 with optimal settings.
-  - Dropdown menu on the export button with an **Export options...** modal dynamically querying installed FFmpeg capabilities:
-    - **Containers**: MP4 (`.mp4`), Matroska (`.mkv`), WebM (`.webm`), QuickTime (`.mov`).
-    - **Video Codecs**: H.264 / AVC, H.265 / HEVC, VP9, AV1 (SVT-AV1 / libaom), Apple ProRes (`prores_ks`).
+- **Quick Export & Advanced Export Options**:
+  - Integrated `Adw.SplitButton` in the header bar for seamless exporting.
+  - Primary button: one-click quick export (<kbd>Ctrl+E</kbd>) rendering standard MP4 with optimal presets.
+  - Dropdown chevron: opens an **Export options...** modal that dynamically detects installed FFmpeg capabilities:
+    - **Containers**: MP4 (`.mp4`), Matroska (`.mkv`), WebM (`.webm`), QuickTime (`.mov`) filtered by available system muxers.
+    - **Video Codecs**: H.264 / AVC, H.265 / HEVC, VP9, AV1 (SVT-AV1 / libaom), Apple ProRes (`prores_ks`) dynamically matched to container compatibility.
     - **Resolutions**: Match Source, 4K UHD, 2K QHD, 1080p FHD, 720p HD, 480p SD.
     - **Quality & Speed**: CRF presets (Balanced 21, High Quality 18, Smaller Size 26) and encoding speed presets (Ultrafast to Slow).
     - **Frame Rates**: Match Source, 60 fps, 30 fps, 24 fps.
     - **Audio Codecs & Bitrates**: AAC, Opus, MP3, FLAC (Lossless) with bitrates from 128 kbps to 320 kbps.
+    - **Reactive Controls**: Automatically disables CRF/speed for Apple ProRes and bitrate for FLAC lossless; dynamically updates codec selections on container change.
   - Real-time export progress modal with percentage and duration indicators.
 - **Custom Application Icon**: Beautiful vector icon combining a film frame and scissors.
 
@@ -118,14 +122,14 @@ video-cut /path/to/my_video.mp4
 - `src/video_cut/models.py`: Core domain models (`Segment`, `ProjectTimeline`, `TransformState`) and snapshot-based undo/redo.
 - `src/video_cut/services/`:
   - `probe_service.py`: `ffprobe` metadata extraction (duration, resolution, framerate, codecs).
-  - `thumbnail_service.py`: Multi-threaded parallel demuxer seek thumbnail extraction engine with persistent disk caching.
+  - `thumbnail_service.py`: Batched multi-input parallel thumbnail extraction engine with persistent disk index caching.
   - `image_service.py`: Image-to-video synthesis with customizable duration, aspect-ratio scaling, and optional audio track muxing.
-  - `export_service.py`: FFmpeg `filter_complex` concatenation and rendering engine handling crops, rotations, flips, and audio synchronization.
+  - `export_service.py`: FFmpeg `filter_complex` concatenation and rendering engine handling crops, rotations, flips, and audio synchronization; includes `FFmpegCapabilities` for dynamic detection of system encoders and muxers.
 - `src/video_cut/i18n.py` & `src/video_cut/locale/`: Gettext runtime with automatic system locale detection and translation catalog files (`.po` / `.mo`) for `en_US`, `es`, `pt_BR`, and `fr`.
 - Dialogs:
   - `crop_rotate_dialog.py`: Interactive crop canvas with drag handles, rotation (90° CW/CCW), flip (H/V), and aspect ratio presets.
   - `image_import_dialog.py`: Modal for image import duration selection, background soundtrack attachment, and audio preview.
-  - `advanced_export_dialog.py`: Advanced export modal configuring container formats, codecs, CRF quality, encoding speed, and resolutions.
+  - `advanced_export_dialog.py`: Advanced export modal configuring container formats, codecs, CRF quality, encoding speed, audio bitrates, and resolutions.
 - `src/video_cut/player.py`: Hardware-accelerated playback pipeline supporting seamless multi-segment sequencing and live transformations.
 - `src/video_cut/timeline_widget.py` & `segment_card.py`: Proportional timeline layout, dynamic thumbnail sizing (80px minimum), centralized orange playhead needle, and drag-and-drop sequencing.
 - `src/video_cut/window.py`: Libadwaita main application window with HeaderBar actions, edit toolbar, keyboard shortcuts, and state coordination.
