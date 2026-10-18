@@ -64,6 +64,16 @@ class ThumbnailService:
             self._cache[key] = [(0.0, image_path), (duration, image_path)]
             self._completed_keys.add(key)
 
+    def is_cached(self, source_path: Path) -> bool:
+        """Check if thumbnails for source_path are already fully cached."""
+        path = Path(source_path)
+        key = self._file_key(path)
+        with self._cache_lock:
+            if key in self._completed_keys and key in self._cache:
+                return True
+        index_file = self.cache_dir / key / "index.json"
+        return index_file.exists()
+
     def get_thumbnails_for_segment(
         self,
         source_path: Path,

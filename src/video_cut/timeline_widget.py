@@ -284,20 +284,14 @@ class TimelineWidget(Gtk.Box):
 
         time_bar.set_center_widget(transport_box)
 
-        # 3. Right (End): Current time / Total time badge & thumbnail progress indicator
+        # 3. Right (End): Current time / Total time badge
         end_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
         end_box.set_halign(Gtk.Align.END)
         end_box.set_valign(Gtk.Align.CENTER)
 
         self.thumb_progress_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
-        self.thumb_progress_box.add_css_class("thumbnail-progress-badge")
         self.thumb_spinner = Gtk.Spinner()
-        self.thumb_spinner.set_size_request(14, 14)
-        self.thumb_progress_box.append(self.thumb_spinner)
         self.lbl_thumb_progress = Gtk.Label(label=_("Generating thumbnails..."))
-        self.thumb_progress_box.append(self.lbl_thumb_progress)
-        self.thumb_progress_box.set_visible(False)
-        end_box.append(self.thumb_progress_box)
 
         self.lbl_time_display = Gtk.Label(label="00:00.00 / 00:00.00")
         self.lbl_time_display.add_css_class("time-badge")
@@ -310,18 +304,12 @@ class TimelineWidget(Gtk.Box):
         self.append(time_bar)
 
     def show_thumbnail_progress(self, completed: int, total: int) -> None:
-        """Show and update progress indicator for thumbnail generation."""
-        self.thumb_spinner.set_spinning(True)
-        if total > 0:
-            self.lbl_thumb_progress.set_text(_("Generating thumbnails ({completed}/{total})...").format(completed=completed, total=total))
-        else:
-            self.lbl_thumb_progress.set_text(_("Generating thumbnails..."))
-        self.thumb_progress_box.set_visible(True)
+        """Deprecated: Progress is now shown via floating toast notification in MainWindow."""
+        pass
 
     def hide_thumbnail_progress(self) -> None:
-        """Hide progress indicator when thumbnail generation completes."""
-        self.thumb_spinner.set_spinning(False)
-        self.thumb_progress_box.set_visible(False)
+        """Deprecated: Progress is now shown via floating toast notification in MainWindow."""
+        pass
 
     def set_playing_icon(self, is_playing: bool) -> None:
         """Update play/pause icon in transport bar."""

@@ -221,3 +221,52 @@ def test_export_opens_in_default_player(tmp_path):
     app.connect("activate", run_test)
     app.run(["test"])
 
+
+def test_thumbnail_progress_toast():
+    app = Adw.Application(application_id="io.github.thomaz.videocut.test_toast")
+
+    def run_test(app):
+        win = MainWindow(application=app)
+        try:
+            # Initially no toast
+            assert win._thumb_toast is None
+
+            # Show initial progress
+            win.show_thumbnail_progress(0, 0)
+            assert win._thumb_toast is not None
+            assert win._thumb_toast.get_timeout() == 0
+
+            # Verify circular close button is hidden
+            circular_btns = []
+            child = win.toast_overlay.get_first_child()
+            while child:
+                if child.get_css_name() == "toast" and getattr(child.props, "toast", None) == win._thumb_toast:
+                    sub = child.get_first_child()
+                    while sub:
+                        if isinstance(sub, Gtk.Button) and "circular" in sub.get_css_classes():
+                            circular_btns.append(sub)
+                        sub = sub.get_next_sibling()
+                child = child.get_next_sibling()
+
+            assert len(circular_btns) == 1
+            assert circular_btns[0].get_visible() is False
+
+            # Update progress
+            win.show_thumbnail_progress(4, 16)
+            assert "4/16" in win._thumb_toast_label.get_text()
+            assert circular_btns[0].get_visible() is False
+
+            # Hide progress
+            win.hide_thumbnail_progress()
+            assert win._thumb_toast is None
+
+            # Redundant hide is safe
+            win.hide_thumbnail_progress()
+        finally:
+            win.close()
+            app.quit()
+
+    app.connect("activate", run_test)
+    app.run(["test"])
+
+
