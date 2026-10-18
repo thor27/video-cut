@@ -11,6 +11,7 @@ from gi.repository import Gtk, Gdk, Adw, GLib
 from .models import ProjectTimeline, Segment
 from .segment_card import SegmentCard
 from .utils import format_time, clamp
+from .i18n import _
 
 
 def compute_segment_widths(
@@ -146,7 +147,7 @@ class TimelineWidget(Gtk.Box):
         undo_box.add_css_class("linked")
 
         self.btn_undo = Gtk.Button.new_from_icon_name("edit-undo-symbolic")
-        self.btn_undo.set_tooltip_text("Undo (Ctrl+Z)")
+        self.btn_undo.set_tooltip_text(_("Undo (Ctrl+Z)"))
         self.btn_undo.set_focusable(False)
         self.btn_undo.set_sensitive(False)
         if self.on_undo_requested:
@@ -154,7 +155,7 @@ class TimelineWidget(Gtk.Box):
         undo_box.append(self.btn_undo)
 
         self.btn_redo = Gtk.Button.new_from_icon_name("edit-redo-symbolic")
-        self.btn_redo.set_tooltip_text("Redo (Ctrl+Shift+Z or Ctrl+Y)")
+        self.btn_redo.set_tooltip_text(_("Redo (Ctrl+Shift+Z or Ctrl+Y)"))
         self.btn_redo.set_focusable(False)
         self.btn_redo.set_sensitive(False)
         if self.on_redo_requested:
@@ -168,7 +169,7 @@ class TimelineWidget(Gtk.Box):
         clipboard_box.add_css_class("linked")
 
         self.btn_cut = Gtk.Button.new_from_icon_name("edit-cut-symbolic")
-        self.btn_cut.set_tooltip_text("Cut clip (Ctrl+X)")
+        self.btn_cut.set_tooltip_text(_("Cut clip (Ctrl+X)"))
         self.btn_cut.set_focusable(False)
         self.btn_cut.set_sensitive(False)
         if self.on_cut_selection_requested:
@@ -176,7 +177,7 @@ class TimelineWidget(Gtk.Box):
         clipboard_box.append(self.btn_cut)
 
         self.btn_copy = Gtk.Button.new_from_icon_name("edit-copy-symbolic")
-        self.btn_copy.set_tooltip_text("Copy clip (Ctrl+C)")
+        self.btn_copy.set_tooltip_text(_("Copy clip (Ctrl+C)"))
         self.btn_copy.set_focusable(False)
         self.btn_copy.set_sensitive(False)
         if self.on_copy_selection_requested:
@@ -184,7 +185,7 @@ class TimelineWidget(Gtk.Box):
         clipboard_box.append(self.btn_copy)
 
         self.btn_paste = Gtk.Button.new_from_icon_name("edit-paste-symbolic")
-        self.btn_paste.set_tooltip_text("Paste clip (Ctrl+V)")
+        self.btn_paste.set_tooltip_text(_("Paste clip (Ctrl+V)"))
         self.btn_paste.set_focusable(False)
         self.btn_paste.set_sensitive(False)
         if self.on_paste_selection_requested:
@@ -192,7 +193,7 @@ class TimelineWidget(Gtk.Box):
         clipboard_box.append(self.btn_paste)
 
         self.btn_crop_rotate = Gtk.Button.new_from_icon_name("crop-symbolic")
-        self.btn_crop_rotate.set_tooltip_text("Crop & Rotate (C)")
+        self.btn_crop_rotate.set_tooltip_text(_("Crop & Rotate (C)"))
         self.btn_crop_rotate.set_focusable(False)
         self.btn_crop_rotate.set_sensitive(False)
         if self.on_crop_rotate_selection_requested:
@@ -200,7 +201,7 @@ class TimelineWidget(Gtk.Box):
         clipboard_box.append(self.btn_crop_rotate)
 
         self.btn_delete = Gtk.Button.new_from_icon_name("user-trash-symbolic")
-        self.btn_delete.set_tooltip_text("Delete clip (Delete)")
+        self.btn_delete.set_tooltip_text(_("Delete clip (Delete)"))
         self.btn_delete.set_focusable(False)
         self.btn_delete.set_sensitive(False)
         self.btn_delete.add_css_class("destructive-action")
@@ -220,7 +221,7 @@ class TimelineWidget(Gtk.Box):
 
         # 1. Skip to prev segment
         btn_prev_seg = Gtk.Button.new_from_icon_name("media-skip-backward-symbolic")
-        btn_prev_seg.set_tooltip_text("Previous segment (Home)")
+        btn_prev_seg.set_tooltip_text(_("Previous segment (Home)"))
         btn_prev_seg.set_focusable(False)
         btn_prev_seg.add_css_class("flat")
         btn_prev_seg.add_css_class("circular")
@@ -229,7 +230,7 @@ class TimelineWidget(Gtk.Box):
 
         # 2. Step back 1s (double arrow)
         btn_back_1s = Gtk.Button.new_from_icon_name("media-seek-backward-symbolic")
-        btn_back_1s.set_tooltip_text("Step back 1s (Left Arrow)")
+        btn_back_1s.set_tooltip_text(_("Step back 1s (Left Arrow)"))
         btn_back_1s.set_focusable(False)
         btn_back_1s.add_css_class("flat")
         btn_back_1s.add_css_class("circular")
@@ -238,7 +239,7 @@ class TimelineWidget(Gtk.Box):
 
         # 3. Previous single frame (single arrow)
         btn_prev_frame = Gtk.Button.new_from_icon_name("go-previous-symbolic")
-        btn_prev_frame.set_tooltip_text("Previous frame (,)")
+        btn_prev_frame.set_tooltip_text(_("Previous frame (,)"))
         btn_prev_frame.set_focusable(False)
         btn_prev_frame.add_css_class("flat")
         btn_prev_frame.add_css_class("circular")
@@ -247,7 +248,7 @@ class TimelineWidget(Gtk.Box):
 
         # 4. Play / Pause
         self.btn_play_pause = Gtk.Button.new_from_icon_name("media-playback-start-symbolic")
-        self.btn_play_pause.set_tooltip_text("Play / Pause (Space)")
+        self.btn_play_pause.set_tooltip_text(_("Play / Pause (Space)"))
         self.btn_play_pause.set_focusable(False)
         self.btn_play_pause.add_css_class("circular")
         self.btn_play_pause.add_css_class("suggested-action")
@@ -256,7 +257,7 @@ class TimelineWidget(Gtk.Box):
 
         # 5. Next single frame (single arrow)
         btn_next_frame = Gtk.Button.new_from_icon_name("go-next-symbolic")
-        btn_next_frame.set_tooltip_text("Next frame (.)")
+        btn_next_frame.set_tooltip_text(_("Next frame (.)"))
         btn_next_frame.set_focusable(False)
         btn_next_frame.add_css_class("flat")
         btn_next_frame.add_css_class("circular")
@@ -265,7 +266,7 @@ class TimelineWidget(Gtk.Box):
 
         # 6. Step forward 1s (double arrow)
         btn_fwd_1s = Gtk.Button.new_from_icon_name("media-seek-forward-symbolic")
-        btn_fwd_1s.set_tooltip_text("Step forward 1s (Right Arrow)")
+        btn_fwd_1s.set_tooltip_text(_("Step forward 1s (Right Arrow)"))
         btn_fwd_1s.set_focusable(False)
         btn_fwd_1s.add_css_class("flat")
         btn_fwd_1s.add_css_class("circular")
@@ -274,7 +275,7 @@ class TimelineWidget(Gtk.Box):
 
         # 7. Skip to next segment
         btn_next_seg = Gtk.Button.new_from_icon_name("media-skip-forward-symbolic")
-        btn_next_seg.set_tooltip_text("Next segment (End)")
+        btn_next_seg.set_tooltip_text(_("Next segment (End)"))
         btn_next_seg.set_focusable(False)
         btn_next_seg.add_css_class("flat")
         btn_next_seg.add_css_class("circular")
@@ -293,7 +294,7 @@ class TimelineWidget(Gtk.Box):
         self.thumb_spinner = Gtk.Spinner()
         self.thumb_spinner.set_size_request(14, 14)
         self.thumb_progress_box.append(self.thumb_spinner)
-        self.lbl_thumb_progress = Gtk.Label(label="Generating thumbnails...")
+        self.lbl_thumb_progress = Gtk.Label(label=_("Generating thumbnails..."))
         self.thumb_progress_box.append(self.lbl_thumb_progress)
         self.thumb_progress_box.set_visible(False)
         end_box.append(self.thumb_progress_box)
@@ -312,9 +313,9 @@ class TimelineWidget(Gtk.Box):
         """Show and update progress indicator for thumbnail generation."""
         self.thumb_spinner.set_spinning(True)
         if total > 0:
-            self.lbl_thumb_progress.set_text(f"Generating thumbnails ({completed}/{total})...")
+            self.lbl_thumb_progress.set_text(_("Generating thumbnails ({completed}/{total})...").format(completed=completed, total=total))
         else:
-            self.lbl_thumb_progress.set_text("Generating thumbnails...")
+            self.lbl_thumb_progress.set_text(_("Generating thumbnails..."))
         self.thumb_progress_box.set_visible(True)
 
     def hide_thumbnail_progress(self) -> None:
@@ -362,7 +363,7 @@ class TimelineWidget(Gtk.Box):
         self.split_pill = Gtk.Button()
         self.split_pill.add_css_class("playhead-split-btn")
         self.split_pill.set_cursor_from_name("pointer")
-        self.split_pill.set_tooltip_text("Split clip at cursor")
+        self.split_pill.set_tooltip_text(_("Split clip at cursor"))
         self.split_pill.set_focusable(False)
         self.split_pill.set_visible(False)
         self.split_pill.set_halign(Gtk.Align.START)
@@ -373,7 +374,7 @@ class TimelineWidget(Gtk.Box):
         split_icon = Gtk.Image.new_from_icon_name("video-split-symbolic")
         split_icon.set_pixel_size(12)
         split_icon.add_css_class("split-pill-icon")
-        split_lbl = Gtk.Label(label="Split")
+        split_lbl = Gtk.Label(label=_("Split"))
         split_lbl.add_css_class("split-pill-text")
         pill_box.append(split_icon)
         pill_box.append(split_lbl)
@@ -507,7 +508,7 @@ class TimelineWidget(Gtk.Box):
 
         # Append "+ Add Video or Image" / "Open Video or Image" button card at the end (or as main button when empty)
         self.btn_add = Gtk.Button()
-        self.btn_add.set_tooltip_text("Add video or image to timeline" if not self.timeline.is_empty else "Open a video or image file")
+        self.btn_add.set_tooltip_text(_("Add Video or Image as Segment") if not self.timeline.is_empty else _("Open Video or Image"))
         self.btn_add.set_focusable(False)
         self.btn_add.add_css_class("card")
         self.btn_add.add_css_class("add-segment-button")
@@ -518,7 +519,7 @@ class TimelineWidget(Gtk.Box):
         btn_box.set_halign(Gtk.Align.CENTER)
         icon = Gtk.Image.new_from_icon_name("list-add-symbolic")
         icon.set_pixel_size(24)
-        lbl = Gtk.Label(label="Add Video\nor Image" if not self.timeline.is_empty else "Open Video\nor Image")
+        lbl = Gtk.Label(label=_("Add Video\nor Image") if not self.timeline.is_empty else _("Open Video\nor Image"))
         lbl.set_justify(Gtk.Justification.CENTER)
         lbl.add_css_class("caption")
         btn_box.append(icon)

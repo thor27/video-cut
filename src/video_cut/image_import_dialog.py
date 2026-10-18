@@ -18,6 +18,7 @@ except Exception:
 
 from .services.probe_service import ProbeService
 from .utils import format_time, clamp
+from .i18n import _
 
 
 class AudioPreviewPlayer:
@@ -107,7 +108,7 @@ class ImageImportDialog(Adw.Window):
         self._preview_timer_id: Optional[int] = None
         self._is_previewing: bool = False
 
-        self.set_title("Open Image" if is_replace else "Import Image as Segment")
+        self.set_title(_("Open Image") if is_replace else _("Import Image as Segment"))
         self.connect("close-request", self._on_close_request)
 
         self._build_ui()
@@ -130,18 +131,18 @@ class ImageImportDialog(Adw.Window):
         header.set_show_end_title_buttons(False)
         header.set_show_start_title_buttons(False)
 
-        btn_cancel = Gtk.Button(label="Cancel")
+        btn_cancel = Gtk.Button(label=_("Cancel"))
         btn_cancel.connect("clicked", lambda _: self.close())
         header.pack_start(btn_cancel)
 
-        confirm_label = "Open Image" if self.is_replace else "Add Segment"
+        confirm_label = _("Open Image") if self.is_replace else _("Add Segment")
         self.btn_confirm = Gtk.Button(label=confirm_label)
         self.btn_confirm.add_css_class("suggested-action")
         self.btn_confirm.connect("clicked", self._on_confirm_clicked)
         header.pack_end(self.btn_confirm)
 
         window_title = Adw.WindowTitle(
-            title="Import Image Segment",
+            title=_("Import Image Segment"),
             subtitle=self.image_path.name,
         )
         header.set_title_widget(window_title)
@@ -205,13 +206,13 @@ class ImageImportDialog(Adw.Window):
 
     def _build_duration_section(self, container: Gtk.Box) -> None:
         group = Adw.PreferencesGroup()
-        group.set_title("Segment Duration")
-        group.set_description("Specify how long the image appears in the timeline")
+        group.set_title(_("Segment Duration"))
+        group.set_description(_("Specify how long the image appears in the timeline"))
 
         # Row 1: Duration input & formatted time badge
         self.row_duration = Adw.ActionRow()
-        self.row_duration.set_title("Duration")
-        self.row_duration.set_subtitle("Time in seconds (0.5s – 300.0s)")
+        self.row_duration.set_title(_("Duration"))
+        self.row_duration.set_subtitle(_("Time in seconds (0.5s – 300.0s)"))
 
         icon = Gtk.Image.new_from_icon_name("preferences-system-time-symbolic")
         self.row_duration.add_prefix(icon)
@@ -234,8 +235,8 @@ class ImageImportDialog(Adw.Window):
 
         # Row 2: Quick duration preset buttons
         self.row_presets = Adw.ActionRow()
-        self.row_presets.set_title("Quick Presets")
-        self.row_presets.set_subtitle("Select a standard duration")
+        self.row_presets.set_title(_("Quick Presets"))
+        self.row_presets.set_subtitle(_("Select a standard duration"))
 
         icon_presets = Gtk.Image.new_from_icon_name("starred-symbolic")
         self.row_presets.add_prefix(icon_presets)
@@ -254,19 +255,19 @@ class ImageImportDialog(Adw.Window):
 
     def _build_soundtrack_section(self, container: Gtk.Box) -> None:
         self.soundtrack_group = Adw.PreferencesGroup()
-        self.soundtrack_group.set_title("Soundtrack (Optional)")
+        self.soundtrack_group.set_title(_("Soundtrack (Optional)"))
         self.soundtrack_group.set_description(
-            "Attach music or voiceover. If selected, you can slice the exact segment to play."
+            _("Attach music or voiceover. If selected, you can slice the exact segment to play.")
         )
 
         # Row 1: When no audio selected
         self.row_no_audio = Adw.ActionRow()
-        self.row_no_audio.set_title("No Soundtrack Selected")
-        self.row_no_audio.set_subtitle("Video will be generated with silent audio")
+        self.row_no_audio.set_title(_("No Soundtrack Selected"))
+        self.row_no_audio.set_subtitle(_("Video will be generated with silent audio"))
         icon_music = Gtk.Image.new_from_icon_name("audio-x-generic-symbolic")
         self.row_no_audio.add_prefix(icon_music)
 
-        btn_choose = Gtk.Button(label="Choose Audio...")
+        btn_choose = Gtk.Button(label=_("Choose Audio..."))
         btn_choose.set_valign(Gtk.Align.CENTER)
         btn_choose.connect("clicked", lambda _: self._open_audio_chooser())
         self.row_no_audio.add_suffix(btn_choose)
@@ -280,13 +281,13 @@ class ImageImportDialog(Adw.Window):
         audio_suffix_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
         audio_suffix_box.set_valign(Gtk.Align.CENTER)
 
-        btn_change = Gtk.Button(label="Change...")
+        btn_change = Gtk.Button(label=_("Change..."))
         btn_change.connect("clicked", lambda _: self._open_audio_chooser())
         audio_suffix_box.append(btn_change)
 
         btn_remove = Gtk.Button()
         btn_remove.set_icon_name("edit-delete-symbolic")
-        btn_remove.set_tooltip_text("Remove soundtrack")
+        btn_remove.set_tooltip_text(_("Remove soundtrack"))
         btn_remove.add_css_class("flat")
         btn_remove.connect("clicked", lambda _: self._remove_audio())
         audio_suffix_box.append(btn_remove)
@@ -305,7 +306,7 @@ class ImageImportDialog(Adw.Window):
         slice_box.set_margin_end(16)
 
         slice_header = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
-        lbl_slice_title = Gtk.Label(label="Start Offset:")
+        lbl_slice_title = Gtk.Label(label=_("Start Offset:"))
         lbl_slice_title.add_css_class("heading")
         slice_header.append(lbl_slice_title)
 
@@ -340,7 +341,7 @@ class ImageImportDialog(Adw.Window):
         preview_container.set_margin_start(16)
         preview_container.set_margin_end(16)
 
-        lbl_prev_title = Gtk.Label(label="Preview Audio Slice")
+        lbl_prev_title = Gtk.Label(label=_("Preview Audio Slice"))
         lbl_prev_title.set_halign(Gtk.Align.START)
         lbl_prev_title.add_css_class("heading")
         preview_container.append(lbl_prev_title)
@@ -373,18 +374,18 @@ class ImageImportDialog(Adw.Window):
 
     def _open_audio_chooser(self) -> None:
         dialog = Gtk.FileDialog.new()
-        dialog.set_title("Select Soundtrack Audio")
+        dialog.set_title(_("Select Soundtrack Audio"))
 
         filters = Gio.ListStore.new(Gtk.FileFilter)
         filter_audio = Gtk.FileFilter.new()
-        filter_audio.set_name("Audio Files (*.mp3, *.wav, *.aac, *.m4a, *.ogg, *.flac, *.opus)")
+        filter_audio.set_name(_("Audio Files (*.mp3, *.wav, *.aac, *.m4a, *.ogg, *.flac, *.opus)"))
         filter_audio.add_mime_type("audio/*")
         for ext in ("*.mp3", "*.wav", "*.aac", "*.m4a", "*.ogg", "*.flac", "*.opus", "*.wma"):
             filter_audio.add_pattern(ext)
         filters.append(filter_audio)
 
         filter_all = Gtk.FileFilter.new()
-        filter_all.set_name("All Files")
+        filter_all.set_name(_("All Files"))
         filter_all.add_pattern("*")
         filters.append(filter_all)
         dialog.set_filters(filters)
@@ -412,7 +413,7 @@ class ImageImportDialog(Adw.Window):
 
         # Update Audio Info Row
         self.row_audio_info.set_title(audio_path.name)
-        self.row_audio_info.set_subtitle(f"Total track duration: {format_time(dur, show_millis=False)}")
+        self.row_audio_info.set_subtitle(_("Total track duration: {duration}").format(duration=format_time(dur, show_millis=False)))
 
         # Initialize safe GStreamer audio player
         try:
@@ -463,13 +464,21 @@ class ImageImportDialog(Adw.Window):
         self.lbl_offset_badge.set_label(format_time(start, show_millis=True))
 
         if self.audio_duration < self.duration - 0.05:
-            desc = (
-                f"Plays {format_time(start)} → {format_time(self.audio_duration)} "
-                f"(padded with silence to {format_time(self.duration)})"
+            desc = _("Plays {start} → {duration} (padded with silence to {total})").format(
+                start=format_time(start),
+                duration=format_time(self.audio_duration),
+                total=format_time(self.duration),
             )
         else:
             end = start + self.duration
-            desc = f"Plays {format_time(start)} → {format_time(end)} ({self.duration:.1f}s)"
+            desc = _("Plays {start} → {end} ({duration:.1f}s)").format(
+                start=format_time(start),
+                end=format_time(end),
+                duration=self.duration,
+            )
+
+        self.lbl_slice_range.set_label(desc)
+        self.lbl_preview_time.set_label(f"00:00.00 / {format_time(self.duration)}")
 
         self.lbl_slice_range.set_label(desc)
         self.lbl_preview_time.set_label(f"00:00.00 / {format_time(self.duration)}")

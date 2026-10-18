@@ -12,6 +12,7 @@ from gi.repository import Gtk, Gdk, Adw, GObject, GLib, GdkPixbuf
 
 from .models import Segment
 from .utils import format_time, clamp
+from .i18n import _
 
 
 class SegmentCard(Gtk.Box):
@@ -138,7 +139,7 @@ class SegmentCard(Gtk.Box):
 
         # Move Left button (set_focusable(False) prevents stealing Spacebar)
         self.btn_left = Gtk.Button.new_from_icon_name("go-previous-symbolic")
-        self.btn_left.set_tooltip_text("Move clip left (Alt+Left)")
+        self.btn_left.set_tooltip_text(_("Move clip left (Alt+Left)"))
         self.btn_left.set_focusable(False)
         self.btn_left.set_cursor_from_name("default")
         self.btn_left.add_css_class("flat")
@@ -149,7 +150,7 @@ class SegmentCard(Gtk.Box):
 
         # Move Right button
         self.btn_right = Gtk.Button.new_from_icon_name("go-next-symbolic")
-        self.btn_right.set_tooltip_text("Move clip right (Alt+Right)")
+        self.btn_right.set_tooltip_text(_("Move clip right (Alt+Right)"))
         self.btn_right.set_focusable(False)
         self.btn_right.set_cursor_from_name("default")
         self.btn_right.add_css_class("flat")
@@ -162,7 +163,7 @@ class SegmentCard(Gtk.Box):
         self._standalone_split_pill = Gtk.Button()
         self._standalone_split_pill.add_css_class("playhead-split-btn")
         self._standalone_split_pill.set_cursor_from_name("pointer")
-        self._standalone_split_pill.set_tooltip_text("Split clip at cursor")
+        self._standalone_split_pill.set_tooltip_text(_("Split clip at cursor"))
         self._standalone_split_pill.set_focusable(False)
         self._standalone_split_pill.set_size_request(50, 24)
         self._standalone_split_pill.set_visible(False)
@@ -171,7 +172,7 @@ class SegmentCard(Gtk.Box):
         split_icon = Gtk.Image.new_from_icon_name("video-split-symbolic")
         split_icon.set_pixel_size(12)
         split_icon.add_css_class("split-pill-icon")
-        split_lbl = Gtk.Label(label="Split")
+        split_lbl = Gtk.Label(label=_("Split"))
         split_lbl.add_css_class("split-pill-text")
         pill_box.append(split_icon)
         pill_box.append(split_lbl)
@@ -263,37 +264,37 @@ class SegmentCard(Gtk.Box):
             btn.connect("clicked", lambda _: self._on_menu_item_clicked(callback))
             return btn
 
-        self.menu_split = make_menu_item("video-split-symbolic", "Split at Cursor", "S", self._menu_action_split)
+        self.menu_split = make_menu_item("video-split-symbolic", _("Split at Cursor"), "S", self._menu_action_split)
         box.append(self.menu_split)
 
         sep0 = Gtk.Separator(orientation=Gtk.Orientation.HORIZONTAL)
         box.append(sep0)
 
-        self.menu_cut = make_menu_item("edit-cut-symbolic", "Cut", "Ctrl+X", self._menu_action_cut)
+        self.menu_cut = make_menu_item("edit-cut-symbolic", _("Cut"), "Ctrl+X", self._menu_action_cut)
         box.append(self.menu_cut)
 
-        self.menu_copy = make_menu_item("edit-copy-symbolic", "Copy", "Ctrl+C", self._menu_action_copy)
+        self.menu_copy = make_menu_item("edit-copy-symbolic", _("Copy"), "Ctrl+C", self._menu_action_copy)
         box.append(self.menu_copy)
 
-        self.menu_paste = make_menu_item("edit-paste-symbolic", "Paste", "Ctrl+V", self._menu_action_paste)
+        self.menu_paste = make_menu_item("edit-paste-symbolic", _("Paste"), "Ctrl+V", self._menu_action_paste)
         box.append(self.menu_paste)
 
-        self.menu_crop_rotate = make_menu_item("crop-symbolic", "Crop & Rotate...", "C", self._menu_action_crop_rotate)
+        self.menu_crop_rotate = make_menu_item("crop-symbolic", _("Crop & Rotate..."), "C", self._menu_action_crop_rotate)
         box.append(self.menu_crop_rotate)
 
         sep1 = Gtk.Separator(orientation=Gtk.Orientation.HORIZONTAL)
         box.append(sep1)
 
-        self.menu_move_left = make_menu_item("go-previous-symbolic", "Move Clip Left", "Alt+←", self._menu_action_move_left)
+        self.menu_move_left = make_menu_item("go-previous-symbolic", _("Move Clip Left"), "Alt+←", self._menu_action_move_left)
         box.append(self.menu_move_left)
 
-        self.menu_move_right = make_menu_item("go-next-symbolic", "Move Clip Right", "Alt+→", self._menu_action_move_right)
+        self.menu_move_right = make_menu_item("go-next-symbolic", _("Move Clip Right"), "Alt+→", self._menu_action_move_right)
         box.append(self.menu_move_right)
 
         sep2 = Gtk.Separator(orientation=Gtk.Orientation.HORIZONTAL)
         box.append(sep2)
 
-        self.menu_delete = make_menu_item("user-trash-symbolic", "Delete", "Del", self._menu_action_delete, is_destructive=True)
+        self.menu_delete = make_menu_item("user-trash-symbolic", _("Delete"), "Del", self._menu_action_delete, is_destructive=True)
         box.append(self.menu_delete)
 
         self.context_menu.set_child(box)

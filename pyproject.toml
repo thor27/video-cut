@@ -16,6 +16,10 @@ dependencies = [
 [project.scripts]
 video-cut = "video_cut.__main__:main"
 
+[tool.setuptools.package-data]
+video_cut = ["resources/*", "locale/*/*/*"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["src"]
+

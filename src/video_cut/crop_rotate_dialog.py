@@ -19,6 +19,7 @@ import cairo
 from .models import Segment
 from .services.probe_service import ProbeService
 from .utils import clamp
+from .i18n import _
 
 
 # Aspect ratio preset dictionary: label -> ratio (width / height) or None
@@ -75,7 +76,7 @@ class CropRotateDialog(Adw.Window):
         self._drag_start_y: float = 0.0
         self._crop_at_drag_start: Tuple[float, float, float, float] = self.crop
 
-        title = f"Crop & Rotate — {segment.source_name}"
+        title = _("Crop & Rotate — {name}").format(name=segment.source_name)
         self.set_title(title)
 
         self._build_ui()
@@ -186,11 +187,11 @@ class CropRotateDialog(Adw.Window):
         header.set_show_end_title_buttons(False)
         header.set_show_start_title_buttons(False)
 
-        btn_cancel = Gtk.Button(label="Cancel")
+        btn_cancel = Gtk.Button(label=_("Cancel"))
         btn_cancel.connect("clicked", lambda _: self.close())
         header.pack_start(btn_cancel)
 
-        self.btn_apply = Gtk.Button(label="Apply")
+        self.btn_apply = Gtk.Button(label=_("Apply"))
         self.btn_apply.add_css_class("suggested-action")
         self.btn_apply.connect("clicked", self._on_apply_clicked)
         header.pack_end(self.btn_apply)
@@ -233,22 +234,22 @@ class CropRotateDialog(Adw.Window):
         tf_group.add_css_class("linked")
 
         btn_rot_ccw = Gtk.Button.new_from_icon_name("object-rotate-left-symbolic")
-        btn_rot_ccw.set_tooltip_text("Rotate 90° Counter-Clockwise")
+        btn_rot_ccw.set_tooltip_text(_("Rotate 90° Counter-Clockwise"))
         btn_rot_ccw.connect("clicked", lambda _: self._rotate_ccw())
         tf_group.append(btn_rot_ccw)
 
         btn_rot_cw = Gtk.Button.new_from_icon_name("object-rotate-right-symbolic")
-        btn_rot_cw.set_tooltip_text("Rotate 90° Clockwise")
+        btn_rot_cw.set_tooltip_text(_("Rotate 90° Clockwise"))
         btn_rot_cw.connect("clicked", lambda _: self._rotate_cw())
         tf_group.append(btn_rot_cw)
 
         btn_flip_h = Gtk.Button.new_from_icon_name("object-flip-horizontal-symbolic")
-        btn_flip_h.set_tooltip_text("Flip Horizontally")
+        btn_flip_h.set_tooltip_text(_("Flip Horizontally"))
         btn_flip_h.connect("clicked", lambda _: self._toggle_hflip())
         tf_group.append(btn_flip_h)
 
         btn_flip_v = Gtk.Button.new_from_icon_name("object-flip-vertical-symbolic")
-        btn_flip_v.set_tooltip_text("Flip Vertically")
+        btn_flip_v.set_tooltip_text(_("Flip Vertically"))
         btn_flip_v.connect("clicked", lambda _: self._toggle_vflip())
         tf_group.append(btn_flip_v)
 
@@ -258,11 +259,11 @@ class CropRotateDialog(Adw.Window):
         btn_reset = Gtk.Button()
         reset_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
         reset_icon = Gtk.Image.new_from_icon_name("view-refresh-symbolic")
-        reset_lbl = Gtk.Label(label="Reset")
+        reset_lbl = Gtk.Label(label=_("Reset"))
         reset_box.append(reset_icon)
         reset_box.append(reset_lbl)
         btn_reset.set_child(reset_box)
-        btn_reset.set_tooltip_text("Reset crop, rotation, and flip")
+        btn_reset.set_tooltip_text(_("Reset crop, rotation, and flip"))
         btn_reset.connect("clicked", lambda _: self._reset_transforms())
         row1.append(btn_reset)
 
@@ -272,7 +273,7 @@ class CropRotateDialog(Adw.Window):
         row2 = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
         row2.set_halign(Gtk.Align.CENTER)
 
-        lbl_aspect = Gtk.Label(label="Aspect Ratio:")
+        lbl_aspect = Gtk.Label(label=_("Aspect Ratio:"))
         lbl_aspect.add_css_class("dim-label")
         row2.append(lbl_aspect)
 
@@ -280,8 +281,9 @@ class CropRotateDialog(Adw.Window):
         presets_group.add_css_class("linked")
         self._preset_buttons: dict[str, Gtk.ToggleButton] = {}
 
-        for label, _ in ASPECT_PRESETS:
-            btn = Gtk.ToggleButton(label=label)
+        for label, ratio in ASPECT_PRESETS:
+            btn_label = _(label) if label in ("Free", "Original") else label
+            btn = Gtk.ToggleButton(label=btn_label)
             if label == "Free":
                 btn.set_active(True)
             btn.connect("toggled", self._on_preset_toggled, label)
@@ -309,13 +311,20 @@ class CropRotateDialog(Adw.Window):
         rot_str = f" • {self.rotation}°" if self.rotation != 0 else ""
         flip_str = ""
         if self.hflip and self.vflip:
-            flip_str = " • Flip H+V"
+            flip_str = _(" • Flip H+V")
         elif self.hflip:
-            flip_str = " • Flip H"
+            flip_str = _(" • Flip H")
         elif self.vflip:
-            flip_str = " • Flip V"
+            flip_str = _(" • Flip V")
 
-        self.lbl_readout.set_label(f"Crop: {crop_w} × {crop_h} px ({self.selected_preset}){rot_str}{flip_str}")
+        preset_display = _(self.selected_preset) if self.selected_preset in ("Free", "Original") else self.selected_preset
+        self.lbl_readout.set_label(_("Crop: {crop_w} × {crop_h} px ({preset}){rot_str}{flip_str}").format(
+            crop_w=crop_w,
+            crop_h=crop_h,
+            preset=preset_display,
+            rot_str=rot_str,
+            flip_str=flip_str,
+        ))
 
     def _render_preview(self) -> None:
         """Render the composite preview image (transformed frame + shroud + crop box + handles)."""

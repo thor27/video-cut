@@ -20,6 +20,7 @@ from .services.image_service import ImageService
 from .image_import_dialog import ImageImportDialog
 from .crop_rotate_dialog import CropRotateDialog
 from .utils import format_time, clamp
+from .i18n import _
 
 
 class MainWindow(Adw.ApplicationWindow):
@@ -68,13 +69,13 @@ class MainWindow(Adw.ApplicationWindow):
 
         # 1. HeaderBar
         self.header_bar = Adw.HeaderBar()
-        self.window_title = Adw.WindowTitle(title="Video Cut", subtitle="Video Editor")
+        self.window_title = Adw.WindowTitle(title=_("Video Cut"), subtitle=_("Video Editor"))
         self.header_bar.set_title_widget(self.window_title)
 
         # Left controls: App Icon (About) and Open
         btn_app_icon = Gtk.Button()
         btn_app_icon.add_css_class("flat")
-        btn_app_icon.set_tooltip_text("About Video Cut")
+        btn_app_icon.set_tooltip_text(_("About Video Cut"))
         btn_app_icon.set_focusable(False)
         app_icon_img = Gtk.Image.new_from_icon_name("io.github.thomaz.videocut")
         app_icon_img.set_pixel_size(24)
@@ -83,18 +84,18 @@ class MainWindow(Adw.ApplicationWindow):
         self.header_bar.pack_start(btn_app_icon)
 
         btn_open = Gtk.Button()
-        open_content = Adw.ButtonContent(icon_name="document-open-symbolic", label="Open")
+        open_content = Adw.ButtonContent(icon_name="document-open-symbolic", label=_("Open"))
         btn_open.set_child(open_content)
-        btn_open.set_tooltip_text("Open video or image (Ctrl+O)")
+        btn_open.set_tooltip_text(_("Open video or image (Ctrl+O)"))
         btn_open.set_focusable(False)
         btn_open.connect("clicked", lambda _: self._open_video_dialog())
         self.header_bar.pack_start(btn_open)
 
         # Right controls: Export
         self.btn_export = Gtk.Button()
-        export_content = Adw.ButtonContent(icon_name="document-save-symbolic", label="Export")
+        export_content = Adw.ButtonContent(icon_name="document-save-symbolic", label=_("Export"))
         self.btn_export.set_child(export_content)
-        self.btn_export.set_tooltip_text("Export combined video (Ctrl+E)")
+        self.btn_export.set_tooltip_text(_("Export combined video (Ctrl+E)"))
         self.btn_export.set_focusable(False)
         self.btn_export.add_css_class("suggested-action")
         self.btn_export.set_sensitive(False)
@@ -121,9 +122,9 @@ class MainWindow(Adw.ApplicationWindow):
         # Empty state page
         self.empty_status = Adw.StatusPage()
         self.empty_status.set_icon_name("video-x-generic-symbolic")
-        self.empty_status.set_title("No Media Loaded")
-        self.empty_status.set_description("Open a video or image file to begin cutting and arranging clips")
-        btn_open_empty = Gtk.Button(label="Open Video or Image")
+        self.empty_status.set_title(_("No Media Loaded"))
+        self.empty_status.set_description(_("Open a video or image file to begin cutting and arranging clips"))
+        btn_open_empty = Gtk.Button(label=_("Open Video or Image"))
         btn_open_empty.add_css_class("suggested-action")
         btn_open_empty.add_css_class("pill")
         btn_open_empty.set_halign(Gtk.Align.CENTER)
@@ -420,15 +421,15 @@ class MainWindow(Adw.ApplicationWindow):
         else:
             self.player_stack.set_visible_child_name("empty")
             self.player.clear()
-            self.window_title.set_title("Video Cut")
-            self.window_title.set_subtitle("Video Editor")
+            self.window_title.set_title(_("Video Cut"))
+            self.window_title.set_subtitle(_("Video Editor"))
 
     def _create_media_file_filters(self) -> Gio.ListStore:
         filters = Gio.ListStore.new(Gtk.FileFilter)
 
         # All supported media
         filter_all = Gtk.FileFilter.new()
-        filter_all.set_name("All Supported Media (Videos & Images)")
+        filter_all.set_name(_("All Supported Media (Videos & Images)"))
         filter_all.add_mime_type("video/*")
         filter_all.add_mime_type("image/*")
         for ext in ("*.mp4", "*.mkv", "*.mov", "*.webm", "*.avi", "*.png", "*.jpg", "*.jpeg", "*.webp", "*.bmp", "*.tiff", "*.gif"):
@@ -437,7 +438,7 @@ class MainWindow(Adw.ApplicationWindow):
 
         # Videos only
         filter_video = Gtk.FileFilter.new()
-        filter_video.set_name("Video Files")
+        filter_video.set_name(_("Video Files"))
         filter_video.add_mime_type("video/*")
         for ext in ("*.mp4", "*.mkv", "*.mov", "*.webm", "*.avi"):
             filter_video.add_pattern(ext)
@@ -445,7 +446,7 @@ class MainWindow(Adw.ApplicationWindow):
 
         # Images only
         filter_image = Gtk.FileFilter.new()
-        filter_image.set_name("Image Files")
+        filter_image.set_name(_("Image Files"))
         filter_image.add_mime_type("image/*")
         for ext in ("*.png", "*.jpg", "*.jpeg", "*.webp", "*.bmp", "*.tiff", "*.gif"):
             filter_image.add_pattern(ext)
@@ -455,7 +456,7 @@ class MainWindow(Adw.ApplicationWindow):
 
     def _open_video_dialog(self) -> None:
         dialog = Gtk.FileDialog.new()
-        dialog.set_title("Open Video or Image")
+        dialog.set_title(_("Open Video or Image"))
         dialog.set_filters(self._create_media_file_filters())
 
         def on_open_finish(dlg, res):
@@ -478,7 +479,7 @@ class MainWindow(Adw.ApplicationWindow):
             return
 
         dialog = Gtk.FileDialog.new()
-        dialog.set_title("Add Video or Image as Segment")
+        dialog.set_title(_("Add Video or Image as Segment"))
         dialog.set_filters(self._create_media_file_filters())
 
         def on_add_finish(dlg, res):
@@ -536,13 +537,13 @@ class MainWindow(Adw.ApplicationWindow):
                     audio_start_time=audio_start_time,
                 )
             except Exception as e:
-                self._show_toast(f"Failed to convert image: {e}")
+                self._show_toast(_("Failed to convert image: {error}").format(error=e))
                 return
             video_path = converted_video
 
         meta = ProbeService.probe(video_path)
         if not meta or meta.duration <= 0:
-            self._show_toast("Failed to load media: invalid or unsupported file")
+            self._show_toast(_("Failed to load media: invalid or unsupported file"))
             return
 
         if replace:
@@ -607,7 +608,7 @@ class MainWindow(Adw.ApplicationWindow):
             # Revert the save if split was rejected
             if self.timeline.can_undo:
                 self.timeline.undo_stack.pop()
-            self._show_toast("Cannot split too close to clip boundary")
+            self._show_toast(_("Cannot split too close to clip boundary"))
             return
 
         left, right = result
@@ -630,14 +631,14 @@ class MainWindow(Adw.ApplicationWindow):
 
     def delete_selected_segment(self) -> None:
         if len(self.timeline.segments) <= 1:
-            self._show_toast("Cannot delete the only remaining segment")
+            self._show_toast(_("Cannot delete the only remaining segment"))
             return
         if self.timeline.selected_segment_id:
             self.delete_segment(self.timeline.selected_segment_id)
 
     def delete_segment(self, segment_id: str) -> None:
         if len(self.timeline.segments) <= 1:
-            self._show_toast("Cannot delete the only remaining segment")
+            self._show_toast(_("Cannot delete the only remaining segment"))
             return
         self.timeline.save_state(self.current_global_time)
         if self.timeline.delete_segment(segment_id):
@@ -664,7 +665,7 @@ class MainWindow(Adw.ApplicationWindow):
         if not seg:
             return
         if len(self.timeline.segments) <= 1:
-            self._show_toast("Cannot cut the only remaining segment")
+            self._show_toast(_("Cannot cut the only remaining segment"))
             return
 
         self._clipboard_segment = seg.copy()
@@ -720,7 +721,7 @@ class MainWindow(Adw.ApplicationWindow):
             self.player.refresh_current_transform()
             self.timeline_widget.rebuild_filmstrip()
             self._update_ui_state()
-            self._show_toast(f"Crop & Rotate applied to {seg.source_name}")
+            self._show_toast(_("Crop & Rotate applied to {name}").format(name=seg.source_name))
 
         dialog = CropRotateDialog(
             parent=self,
@@ -739,7 +740,7 @@ class MainWindow(Adw.ApplicationWindow):
             return
 
         dialog = Gtk.FileDialog.new()
-        dialog.set_title("Export Combined Video")
+        dialog.set_title(_("Export Combined Video"))
 
         # Name based on original video name with _edited.mp4
         first_seg = self.timeline.segments[0]
@@ -747,7 +748,7 @@ class MainWindow(Adw.ApplicationWindow):
         dialog.set_initial_name(f"{stem}_edited.mp4")
 
         filter_mp4 = Gtk.FileFilter.new()
-        filter_mp4.set_name("MP4 Video")
+        filter_mp4.set_name(_("MP4 Video"))
         filter_mp4.add_pattern("*.mp4")
         filters = Gio.ListStore.new(Gtk.FileFilter)
         filters.append(filter_mp4)
@@ -769,7 +770,7 @@ class MainWindow(Adw.ApplicationWindow):
         # Build Export Dialog Modal (non-closable during export: must wait or click cancel)
         export_dialog = Adw.Window(transient_for=self, modal=True)
         export_dialog.set_default_size(420, 200)
-        export_dialog.set_title("Exporting Video")
+        export_dialog.set_title(_("Exporting Video"))
         export_dialog.set_deletable(False)
 
         can_close = False
@@ -805,7 +806,7 @@ class MainWindow(Adw.ApplicationWindow):
         spinner.start()
         status_box.append(spinner)
 
-        lbl_status = Gtk.Label(label="Initializing export pipeline...")
+        lbl_status = Gtk.Label(label=_("Initializing export pipeline..."))
         lbl_status.add_css_class("heading")
         status_box.append(lbl_status)
         box.append(status_box)
@@ -813,10 +814,10 @@ class MainWindow(Adw.ApplicationWindow):
         progress_bar = Gtk.ProgressBar()
         progress_bar.set_show_text(True)
         progress_bar.set_fraction(0.0)
-        progress_bar.set_text("Starting...")
+        progress_bar.set_text(_("Starting..."))
         box.append(progress_bar)
 
-        lbl_details = Gtk.Label(label=f"Preparing streams for {destination.name}...")
+        lbl_details = Gtk.Label(label=_("Preparing streams for {name}...").format(name=destination.name))
         lbl_details.add_css_class("caption")
         box.append(lbl_details)
 
@@ -838,7 +839,7 @@ class MainWindow(Adw.ApplicationWindow):
                 GLib.source_remove(pulse_timer_id)
                 pulse_timer_id = None
 
-        btn_cancel = Gtk.Button(label="Cancel")
+        btn_cancel = Gtk.Button(label=_("Cancel"))
         btn_cancel.set_halign(Gtk.Align.CENTER)
         btn_cancel.add_css_class("destructive-action")
         btn_cancel.set_focusable(False)
@@ -865,8 +866,11 @@ class MainWindow(Adw.ApplicationWindow):
                 progress_bar.set_fraction(fraction)
                 percent = int(fraction * 100)
                 progress_bar.set_text(f"{percent}%")
-                lbl_status.set_label(f"Rendering video ({percent}%)...")
-                lbl_details.set_label(f"Processed: {format_time(cur_s)} / {format_time(self.timeline.total_duration)}")
+                lbl_status.set_label(_("Rendering video ({percent}%)...").format(percent=percent))
+                lbl_details.set_label(_("Processed: {processed} / {total}").format(
+                    processed=format_time(cur_s),
+                    total=format_time(self.timeline.total_duration),
+                ))
 
         def on_done(success: bool, error: Optional[str]) -> None:
             nonlocal can_close
@@ -876,10 +880,10 @@ class MainWindow(Adw.ApplicationWindow):
             export_dialog.set_deletable(True)
             export_dialog.close()
             if success:
-                self._show_toast(f"Export complete: {destination.name}")
+                self._show_toast(_("Export complete: {name}").format(name=destination.name))
                 self._open_in_default_player(destination)
             else:
-                self._show_toast(f"Export failed: {error or 'Unknown error'}")
+                self._show_toast(_("Export failed: {error}").format(error=error or _("Unknown error")))
 
         self.export_service.export_async(
             segments=list(self.timeline.segments),
@@ -917,11 +921,11 @@ class MainWindow(Adw.ApplicationWindow):
         about = Adw.AboutWindow(
             transient_for=self,
             modal=True,
-            application_name="Video Cut",
+            application_name=_("Video Cut"),
             application_icon="io.github.thomaz.videocut",
             developer_name="Thomaz",
             version="0.1.0",
-            comments="A simple, fast, and modern video cutting and segment arranging tool",
+            comments=_("A simple, fast, and modern video cutting and segment arranging tool"),
             issue_url="https://github.com/thor27/video-cut/issues",
             license_type=Gtk.License.GPL_3_0,
         )

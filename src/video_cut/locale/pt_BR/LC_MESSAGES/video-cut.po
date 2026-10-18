@@ -1,0 +1,319 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: video-cut 0.1.0\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Language: pt_BR\n"
+
+msgid "Video Cut"
+msgstr "Video Cut"
+
+msgid "Video Editor"
+msgstr "Editor de Vídeo"
+
+msgid "About Video Cut"
+msgstr "Sobre o Video Cut"
+
+msgid "A simple, fast, and modern video cutting and segment arranging tool"
+msgstr "Uma ferramenta simples, rápida e moderna para cortar e organizar segmentos de vídeo"
+
+msgid "Open"
+msgstr "Abrir"
+
+msgid "Open video or image (Ctrl+O)"
+msgstr "Abrir vídeo ou imagem (Ctrl+O)"
+
+msgid "Export"
+msgstr "Exportar"
+
+msgid "Export combined video (Ctrl+E)"
+msgstr "Exportar vídeo combinado (Ctrl+E)"
+
+msgid "No Media Loaded"
+msgstr "Nenhuma mídia carregada"
+
+msgid "Open a video or image file to begin cutting and arranging clips"
+msgstr "Abra um arquivo de vídeo ou imagem para começar a cortar e organizar clipes"
+
+msgid "Open Video or Image"
+msgstr "Abrir Vídeo ou Imagem"
+
+msgid "Add Video or Image as Segment"
+msgstr "Adicionar Vídeo ou Imagem como Segmento"
+
+msgid "Add Video\nor Image"
+msgstr "Adicionar Vídeo\nou Imagem"
+
+msgid "Open Video\nor Image"
+msgstr "Abrir Vídeo\nou Imagem"
+
+msgid "All Supported Media (Videos & Images)"
+msgstr "Todas as Mídias Suportadas (Vídeos e Imagens)"
+
+msgid "Video Files"
+msgstr "Arquivos de Vídeo"
+
+msgid "Image Files"
+msgstr "Arquivos de Imagem"
+
+msgid "MP4 Video"
+msgstr "Vídeo MP4"
+
+msgid "All Files"
+msgstr "Todos os Arquivos"
+
+msgid "Audio Files (*.mp3, *.wav, *.aac, *.m4a, *.ogg, *.flac, *.opus)"
+msgstr "Arquivos de Áudio (*.mp3, *.wav, *.aac, *.m4a, *.ogg, *.flac, *.opus)"
+
+msgid "Undo (Ctrl+Z)"
+msgstr "Desfazer (Ctrl+Z)"
+
+msgid "Redo (Ctrl+Shift+Z or Ctrl+Y)"
+msgstr "Refazer (Ctrl+Shift+Z ou Ctrl+Y)"
+
+msgid "Cut clip (Ctrl+X)"
+msgstr "Recortar clipe (Ctrl+X)"
+
+msgid "Copy clip (Ctrl+C)"
+msgstr "Copiar clipe (Ctrl+C)"
+
+msgid "Paste clip (Ctrl+V)"
+msgstr "Colar clipe (Ctrl+V)"
+
+msgid "Crop & Rotate (C)"
+msgstr "Cortar e Girar (C)"
+
+msgid "Crop & Rotate..."
+msgstr "Cortar e Girar..."
+
+msgid "Delete clip (Delete)"
+msgstr "Excluir clipe (Delete)"
+
+msgid "Previous segment (Home)"
+msgstr "Segmento anterior (Home)"
+
+msgid "Step back 1s (Left Arrow)"
+msgstr "Voltar 1s (Seta Esquerda)"
+
+msgid "Previous frame (,)"
+msgstr "Quadro anterior (,)"
+
+msgid "Play / Pause (Space)"
+msgstr "Reproduzir / Pausar (Espaço)"
+
+msgid "Next frame (.)"
+msgstr "Próximo quadro (.)"
+
+msgid "Step forward 1s (Right Arrow)"
+msgstr "Avançar 1s (Seta Direita)"
+
+msgid "Next segment (End)"
+msgstr "Próximo segmento (End)"
+
+msgid "Move clip left (Alt+Left)"
+msgstr "Mover clipe para a esquerda (Alt+Esquerda)"
+
+msgid "Move clip right (Alt+Right)"
+msgstr "Mover clipe para a direita (Alt+Direita)"
+
+msgid "Move Clip Left"
+msgstr "Mover Clipe para a Esquerda"
+
+msgid "Move Clip Right"
+msgstr "Mover Clipe para a Direita"
+
+msgid "Split clip at cursor"
+msgstr "Dividir clipe no cursor"
+
+msgid "Split at Cursor"
+msgstr "Dividir no Cursor"
+
+msgid "Split"
+msgstr "Dividir"
+
+msgid "Cut"
+msgstr "Recortar"
+
+msgid "Copy"
+msgstr "Copiar"
+
+msgid "Paste"
+msgstr "Colar"
+
+msgid "Delete"
+msgstr "Excluir"
+
+msgid "Generating thumbnails..."
+msgstr "Gerando miniaturas..."
+
+msgid "Generating thumbnails ({completed}/{total})..."
+msgstr "Gerando miniaturas ({completed}/{total})..."
+
+msgid "Crop & Rotate"
+msgstr "Cortar e Girar"
+
+msgid "Crop & Rotate — {name}"
+msgstr "Cortar e Girar — {name}"
+
+msgid "Cancel"
+msgstr "Cancelar"
+
+msgid "Apply"
+msgstr "Aplicar"
+
+msgid "Rotate 90° Counter-Clockwise"
+msgstr "Girar 90° no sentido anti-horário"
+
+msgid "Rotate 90° Clockwise"
+msgstr "Girar 90° no sentido horário"
+
+msgid "Flip Horizontally"
+msgstr "Espelhar Horizontalmente"
+
+msgid "Flip Vertically"
+msgstr "Espelhar Verticalmente"
+
+msgid "Reset"
+msgstr "Redefinir"
+
+msgid "Reset crop, rotation, and flip"
+msgstr "Redefinir corte, rotação e espelhamento"
+
+msgid "Aspect Ratio:"
+msgstr "Proporção:"
+
+msgid "Free"
+msgstr "Livre"
+
+msgid "Original"
+msgstr "Original"
+
+msgid "Crop: {crop_w} × {crop_h} px ({preset}){rot_str}{flip_str}"
+msgstr "Corte: {crop_w} × {crop_h} px ({preset}){rot_str}{flip_str}"
+
+msgid " • Flip H+V"
+msgstr " • Espelhar H+V"
+
+msgid " • Flip H"
+msgstr " • Espelhar H"
+
+msgid " • Flip V"
+msgstr " • Espelhar V"
+
+msgid "Open Image"
+msgstr "Abrir Imagem"
+
+msgid "Import Image as Segment"
+msgstr "Importar Imagem como Segmento"
+
+msgid "Import Image Segment"
+msgstr "Importar Segmento de Imagem"
+
+msgid "Add Segment"
+msgstr "Adicionar Segmento"
+
+msgid "Segment Duration"
+msgstr "Duração do Segmento"
+
+msgid "Specify how long the image appears in the timeline"
+msgstr "Especifique por quanto tempo a imagem aparece na linha do tempo"
+
+msgid "Duration"
+msgstr "Duração"
+
+msgid "Time in seconds (0.5s – 300.0s)"
+msgstr "Tempo em segundos (0.5s – 300.0s)"
+
+msgid "Quick Presets"
+msgstr "Predefinições Rápidas"
+
+msgid "Select a standard duration"
+msgstr "Selecione uma duração padrão"
+
+msgid "Soundtrack (Optional)"
+msgstr "Trilha Sonora (Opcional)"
+
+msgid "Attach music or voiceover. If selected, you can slice the exact segment to play."
+msgstr "Anexe música ou locução. Se selecionado, você pode cortar o segmento exato para tocar."
+
+msgid "No Soundtrack Selected"
+msgstr "Nenhuma Trilha Sonora Selecionada"
+
+msgid "Video will be generated with silent audio"
+msgstr "O vídeo será gerado com áudio silencioso"
+
+msgid "Choose Audio..."
+msgstr "Escolher Áudio..."
+
+msgid "Change..."
+msgstr "Alterar..."
+
+msgid "Remove soundtrack"
+msgstr "Remover trilha sonora"
+
+msgid "Start Offset:"
+msgstr "Deslocamento Inicial:"
+
+msgid "Preview Audio Slice"
+msgstr "Pré-visualizar Trecho de Áudio"
+
+msgid "Select Soundtrack Audio"
+msgstr "Selecionar Áudio da Trilha Sonora"
+
+msgid "Total track duration: {duration}"
+msgstr "Duração total da faixa: {duration}"
+
+msgid "Plays {start} → {end} ({duration:.1f}s)"
+msgstr "Toca {start} → {end} ({duration:.1f}s)"
+
+msgid "Plays {start} → {duration} (padded with silence to {total})"
+msgstr "Toca {start} → {duration} (preenchido com silêncio até {total})"
+
+msgid "Export Combined Video"
+msgstr "Exportar Vídeo Combinado"
+
+msgid "Exporting Video"
+msgstr "Exportando Vídeo"
+
+msgid "Initializing export pipeline..."
+msgstr "Inicializando processo de exportação..."
+
+msgid "Starting..."
+msgstr "Iniciando..."
+
+msgid "Preparing streams for {name}..."
+msgstr "Preparando fluxos para {name}..."
+
+msgid "Rendering video ({percent}%)..."
+msgstr "Renderizando vídeo ({percent}%)..."
+
+msgid "Processed: {processed} / {total}"
+msgstr "Processado: {processed} / {total}"
+
+msgid "Export complete: {name}"
+msgstr "Exportação concluída: {name}"
+
+msgid "Export failed: {error}"
+msgstr "Falha na exportação: {error}"
+
+msgid "Unknown error"
+msgstr "Erro desconhecido"
+
+msgid "Failed to convert image: {error}"
+msgstr "Falha ao converter imagem: {error}"
+
+msgid "Failed to load media: invalid or unsupported file"
+msgstr "Falha ao carregar mídia: arquivo inválido ou não suportado"
+
+msgid "Cannot split too close to clip boundary"
+msgstr "Não é possível dividir muito próximo ao limite do clipe"
+
+msgid "Cannot delete the only remaining segment"
+msgstr "Não é possível excluir o único segmento restante"
+
+msgid "Cannot cut the only remaining segment"
+msgstr "Não é possível recortar o único segmento restante"
+
+msgid "Crop & Rotate applied to {name}"
+msgstr "Cortar e Girar aplicado a {name}"

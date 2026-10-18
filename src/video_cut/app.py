@@ -11,6 +11,7 @@ gi.require_version("Adw", "1")
 from gi.repository import Adw, Gio, GLib, Gtk, Gdk
 
 from .window import MainWindow
+from .i18n import _
 
 
 class VideoCutApplication(Adw.Application):
@@ -20,7 +21,7 @@ class VideoCutApplication(Adw.Application):
         if not GLib.get_prgname():
             GLib.set_prgname("io.github.thomaz.videocut")
         if not GLib.get_application_name():
-            GLib.set_application_name("Video Cut")
+            GLib.set_application_name(_("Video Cut"))
         super().__init__(
             application_id="io.github.thomaz.videocut",
             flags=Gio.ApplicationFlags.HANDLES_OPEN | Gio.ApplicationFlags.NON_UNIQUE,
