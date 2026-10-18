@@ -204,6 +204,13 @@ class MainWindow(Adw.ApplicationWindow):
 
         self.connect("realize", on_realize)
 
+        def on_window_close_request(*_):
+            if hasattr(self, "player") and self.player:
+                self.player.clear()
+            return False
+
+        self.connect("close-request", on_window_close_request)
+
     def _get_segment_thumbnails(self, seg: Segment, target_count: int) -> list[Optional[Path]]:
         return self.thumbnail_service.get_thumbnails_for_segment(
             seg.source_path, seg.start_time, seg.end_time, max_thumbs=target_count

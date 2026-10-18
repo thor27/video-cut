@@ -206,10 +206,14 @@ def test_export_opens_in_default_player(tmp_path):
             assert len(opened_files) == 1
             assert opened_files[0] == target_out
 
-            # Test real _open_in_default_player method runs safely
+            # Test real _open_in_default_player method runs safely without spawning external app
             win._open_in_default_player = orig_open_player
-            # Call with a real path - should not raise
-            win._open_in_default_player(Path("/tmp/test_video.mp4"))
+            import unittest.mock
+            with unittest.mock.patch.object(Gtk.FileLauncher, "launch") as mock_launch, \
+                 unittest.mock.patch.object(Gio.AppInfo, "launch_default_for_uri") as mock_gio, \
+                 unittest.mock.patch("subprocess.Popen") as mock_popen:
+                win._open_in_default_player(Path("/tmp/test_video.mp4"))
+                assert mock_launch.called or mock_gio.called or mock_popen.called
         finally:
             win.close()
             app.quit()

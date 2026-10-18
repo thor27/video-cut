@@ -108,8 +108,9 @@ def test_thumbnail_service_progress_and_cache(tmp_path):
     # Dispatch queued GLib idle_add events
     from gi.repository import GLib
     ctx = GLib.MainContext.default()
-    while ctx.pending():
-        ctx.iteration(False)
+    for _ in range(100):
+        if not ctx.iteration(False):
+            break
 
     # Progress ticks should have fired
     assert len(progress_ticks) > 0

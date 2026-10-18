@@ -53,6 +53,8 @@ def test_playback_after_split():
             assert win.player.is_playing is False
         finally:
             if win:
+                if hasattr(win, "player") and win.player:
+                    win.player.clear()
                 win.close()
             app.quit()
 
