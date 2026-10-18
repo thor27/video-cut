@@ -176,4 +176,80 @@ def test_short_video_timeline_slots_and_sampling(tmp_path):
         assert t.exists()
 
 
+def test_video_larger_than_one_minute_samples_first_frame_at_10s(tmp_path):
+    """Ensure videos larger than 1 minute sample the first frame from the 10s mark."""
+    import subprocess
+    video_path = tmp_path / "long_movie.mp4"
+    subprocess.run([
+        "ffmpeg", "-y", "-f", "lavfi", "-i", "testsrc=duration=70:size=160x90:rate=10",
+        "-c:v", "libx264", str(video_path)
+    ], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+    service = ThumbnailService(cache_dir=tmp_path / "cache")
+
+    # Generate thumbnails for a 70s video (> 1 minute)
+    received = []
+    first_thumb_captured = []
+
+    def on_first(path, thumb_path):
+        first_thumb_captured.append(thumb_path)
+
+    service.generate_thumbnails_async(
+        video_path,
+        duration=70.0,
+        on_done=lambda path, items: received.append(items),
+        on_first_thumb=on_first,
+    )
+    service.executor.shutdown(wait=True)
+    service.wait_idle()
+
+    # Dispatch queued GLib idle_add events
+    from gi.repository import GLib
+    ctx = GLib.MainContext.default()
+    for _ in range(50):
+        if not ctx.iteration(False):
+            break
+
+    key = service._file_key(video_path)
+    cached_items = service._cache[key]
+    assert len(cached_items) >= 6
+
+    # Verify first sampled frame is at 10.0s (not 0.0s)
+    first_ts, first_path = cached_items[0]
+    assert abs(first_ts - 10.0) < 0.01
+    assert "thumb_000_10000" in first_path.name
+    assert first_path.exists()
+
+    # If on_first_thumb fired, it should be the 10s thumbnail
+    if first_thumb_captured:
+        assert "thumb_000_10000" in first_thumb_captured[0].name
+
+    # Check segment thumbnails: slot 0 for segment spanning (0.0, 70.0) should map to the 10s frame
+    thumbs = service.get_thumbnails_for_segment(video_path, 0.0, 70.0, max_thumbs=8)
+    assert len(thumbs) == 8
+    assert thumbs[0] == first_path
+
+
+def test_video_one_minute_or_less_samples_first_frame_at_zero(tmp_path):
+    """Ensure videos 1 minute or less sample the first frame at 0.0s."""
+    service = ThumbnailService(cache_dir=tmp_path)
+    video_path = Path("/tmp/test_video.mp4")
+
+    received = []
+    service.generate_thumbnails_async(
+        video_path,
+        duration=60.0,
+        on_done=lambda path, items: received.append(items),
+    )
+    service.executor.shutdown(wait=True)
+    service.wait_idle()
+
+    key = service._file_key(video_path)
+    cached_items = service._cache[key]
+    first_ts, first_path = cached_items[0]
+    assert abs(first_ts - 0.0) < 0.01
+    assert "thumb_000_0" in first_path.name
+
+
+
 

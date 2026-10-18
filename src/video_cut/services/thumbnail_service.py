@@ -97,9 +97,13 @@ class ThumbnailService:
             target_times = [start_time + dur / 2.0]
         else:
             target_times = []
+            first_t = 10.0 if (start_time == 0.0 and dur > 60.0) else start_time
             for i in range(count):
                 ratio = i / float(count - 1)
-                t = start_time + ratio * dur
+                if i == 0:
+                    t = first_t
+                else:
+                    t = start_time + ratio * dur
                 if i == count - 1 and dur > 0.08:
                     t = min(t, end_time - 0.04)
                 target_times.append(t)
@@ -232,9 +236,10 @@ class ThumbnailService:
         else:
             dt = self._calculate_dt(duration)
             num_samples = max(6, min(24, int(round(duration / dt)) + 1))
-            step = duration / float(num_samples - 1)
-            raw_times = [i * step for i in range(num_samples)]
-            raw_times[-1] = max(0.0, duration - 0.05)
+            start_t = 10.0 if duration > 60.0 else 0.0
+            step = (duration - start_t) / float(num_samples - 1)
+            raw_times = [start_t + i * step for i in range(num_samples)]
+            raw_times[-1] = max(start_t, duration - 0.05)
             times = []
             for t in raw_times:
                 rt = round(max(0.0, min(duration, t)), 3)
