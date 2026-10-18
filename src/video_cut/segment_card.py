@@ -552,7 +552,11 @@ class SegmentCard(Gtk.Box):
         self._on_split_pill_clicked()
 
     def update_thumbnails(self, thumbnails: List[Optional[Path]]) -> None:
-        """Populate the filmstrip box with thumbnails or placeholders for loading slots."""
+        """Populate the filmstrip box with thumbnails or animated spinners for loading slots."""
+        if getattr(self, "_current_thumb_list", None) == thumbnails:
+            return
+        self._current_thumb_list = list(thumbnails)
+
         child = self.filmstrip_box.get_first_child()
         while child:
             next_child = child.get_next_sibling()
@@ -567,10 +571,12 @@ class SegmentCard(Gtk.Box):
             placeholder.set_hexpand(True)
             placeholder.set_size_request(-1, 68)
             placeholder.add_css_class("thumbnail-placeholder")
-            icon = Gtk.Image.new_from_icon_name("video-x-generic-symbolic")
-            icon.set_pixel_size(24)
-            icon.add_css_class("dim-label")
-            placeholder.append(icon)
+            spinner = Gtk.Spinner()
+            spinner.set_spinning(True)
+            spinner.set_halign(Gtk.Align.CENTER)
+            spinner.set_valign(Gtk.Align.CENTER)
+            spinner.set_size_request(24, 24)
+            placeholder.append(spinner)
             self.filmstrip_box.append(placeholder)
             return
 
@@ -615,15 +621,17 @@ class SegmentCard(Gtk.Box):
                 pic.set_size_request(-1, 68)
                 self.filmstrip_box.append(pic)
             else:
-                # Polished placeholder for loading slot
+                # Polished animated spinner for loading slot
                 slot = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
                 slot.set_hexpand(True)
                 slot.set_size_request(-1, 68)
                 slot.add_css_class("thumbnail-placeholder")
-                icon = Gtk.Image.new_from_icon_name("video-x-generic-symbolic")
-                icon.set_pixel_size(18)
-                icon.add_css_class("dim-label")
-                slot.append(icon)
+                spinner = Gtk.Spinner()
+                spinner.set_spinning(True)
+                spinner.set_halign(Gtk.Align.CENTER)
+                spinner.set_valign(Gtk.Align.CENTER)
+                spinner.set_size_request(20, 20)
+                slot.append(spinner)
                 self.filmstrip_box.append(slot)
 
     def set_needle_ratio(self, ratio: Optional[float]) -> None:

@@ -559,12 +559,20 @@ class MainWindow(Adw.ApplicationWindow):
             def on_first_thumb(path: Path, first_thumb_path: Path):
                 self.timeline_widget.recalculate_layout(force=True)
 
+            def on_thumb_progress(completed: int, total: int, thumb_p: Path):
+                self.timeline_widget.show_thumbnail_progress(completed, total)
+                self.timeline_widget.recalculate_layout(force=True)
+
+            # Show initial progress immediately
+            self.timeline_widget.show_thumbnail_progress(0, 0)
+
             # Trigger background thumbnail generation
             self.thumbnail_service.generate_thumbnails_async(
                 source_path=video_path,
                 duration=meta.duration,
                 on_done=self._on_thumbnails_ready,
                 on_first_thumb=on_first_thumb,
+                on_progress=on_thumb_progress,
             )
 
         self.timeline_widget.rebuild_filmstrip()
@@ -575,6 +583,8 @@ class MainWindow(Adw.ApplicationWindow):
 
     def _on_thumbnails_ready(self, path: Path, items: list) -> None:
         """Called when full thumbnails for a video are ready in cache."""
+        if not self.thumbnail_service.has_pending_jobs():
+            self.timeline_widget.hide_thumbnail_progress()
         self.timeline_widget.recalculate_layout(force=True)
 
     def split_at_cursor(self) -> None:

@@ -84,3 +84,50 @@ def test_thumbnail_service_timeline_positions_and_placeholders(tmp_path):
     assert abs(exact_match[0] - 2.5) < 0.01
     assert exact_match[1].exists()
 
+
+def test_thumbnail_service_progress_and_cache(tmp_path):
+    service = ThumbnailService(cache_dir=tmp_path)
+    p = Path("/tmp/test_video.mp4")
+
+    progress_ticks = []
+    received = []
+
+    def on_prog(completed, total, path):
+        progress_ticks.append((completed, total))
+
+    service.generate_thumbnails_async(
+        p,
+        5.0,
+        on_done=lambda path, items: received.append(items),
+        on_progress=on_prog,
+    )
+
+    service.executor.shutdown(wait=True)
+    service.wait_idle()
+
+    # Dispatch queued GLib idle_add events
+    from gi.repository import GLib
+    ctx = GLib.MainContext.default()
+    while ctx.pending():
+        ctx.iteration(False)
+
+    # Progress ticks should have fired
+    assert len(progress_ticks) > 0
+    last_completed, last_total = progress_ticks[-1]
+    assert last_completed == last_total
+
+    # Verify index.json was created for instant reloads
+    key = service._file_key(p)
+    index_file = tmp_path / key / "index.json"
+    assert index_file.exists()
+
+    # Create a new service instance pointing to the same cache_dir to test instant disk reload
+    service2 = ThumbnailService(cache_dir=tmp_path)
+    reloaded = []
+    service2.generate_thumbnails_async(p, 5.0, on_done=lambda path, items: reloaded.append(items))
+    service2.executor.shutdown(wait=True)
+    service2.wait_idle()
+
+    assert len(service2._cache[key]) == last_total
+
+
