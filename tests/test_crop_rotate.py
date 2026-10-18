@@ -233,3 +233,25 @@ def test_crop_rotate_dialog_geometry_and_rotations():
     assert applied_results[0][1] == 0
     assert applied_results[0][2] is False
     assert applied_results[0][3] is False
+
+
+def test_crop_rotate_dialog_drawing_renders_without_error():
+    import cairo
+    try:
+        Gtk.init()
+    except Exception:
+        pass
+
+    parent = Gtk.Window()
+    seg = Segment(source_path=Path("/tmp/fake.mp4"), source_duration=5.0, crop=(0.1, 0.1, 0.8, 0.8))
+    dialog = CropRotateDialog(parent=parent, segment=seg, on_apply=lambda *a: None)
+
+    # Render surface
+    surf = cairo.ImageSurface(cairo.FORMAT_ARGB32, 600, 400)
+    cr = cairo.Context(surf)
+    # Must execute all drawing code without raising any exception
+    dialog._on_draw(dialog.drawing_area, cr, 600, 400)
+
+    # Rotate and render again
+    dialog._rotate_cw()
+    dialog._on_draw(dialog.drawing_area, cr, 600, 400)

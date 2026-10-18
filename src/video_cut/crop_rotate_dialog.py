@@ -1,6 +1,7 @@
 """Modal dialog for interactive Crop, Rotate, and Flip transformations on video segments."""
 
 from __future__ import annotations
+import io
 import math
 import subprocess
 import tempfile
@@ -61,9 +62,10 @@ class CropRotateDialog(Adw.Window):
         )
         self.selected_preset: str = "Free"
 
-        # Frame pixbufs
+        # Frame pixbufs and surfaces
         self.base_pixbuf: Optional[GdkPixbuf.Pixbuf] = None
         self._transformed_pixbuf: Optional[GdkPixbuf.Pixbuf] = None
+        self._cairo_surface: Optional[cairo.ImageSurface] = None
         self._load_reference_frame()
 
         # Canvas geometry caches
@@ -163,6 +165,15 @@ class CropRotateDialog(Adw.Window):
             pb = pb.flip(False)
 
         self._transformed_pixbuf = pb
+        try:
+            ok, data = pb.save_to_bufferv("png", [], [])
+            if ok:
+                self._cairo_surface = cairo.ImageSurface.create_from_png(io.BytesIO(data))
+            else:
+                self._cairo_surface = None
+        except Exception:
+            self._cairo_surface = None
+
         self._update_readout_label()
 
     def _build_ui(self) -> None:
@@ -566,12 +577,12 @@ class CropRotateDialog(Adw.Window):
         cr.set_source_rgb(0.12, 0.12, 0.14)
         cr.paint()
 
-        pb = self._transformed_pixbuf
-        if not pb:
+        surf = self._cairo_surface
+        if not surf:
             return
 
-        img_w = pb.get_width()
-        img_h = pb.get_height()
+        img_w = surf.get_width()
+        img_h = surf.get_height()
         if img_w <= 0 or img_h <= 0:
             return
 
@@ -591,7 +602,7 @@ class CropRotateDialog(Adw.Window):
         cr.save()
         cr.translate(dest_x, dest_y)
         cr.scale(scale, scale)
-        Gdk.cairo_set_source_pixbuf(cr, pb, 0, 0)
+        cr.set_source_surface(surf, 0, 0)
         cr.paint()
         cr.restore()
 
