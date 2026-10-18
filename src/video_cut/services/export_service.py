@@ -131,6 +131,7 @@ class ExportService:
         target_width: Optional[int] = None,
         target_height: Optional[int] = None,
         settings: Optional[ExportSettings] = None,
+        fast_seek: bool = False,
     ) -> List[str]:
         """Construct the FFmpeg command line for concatenating segments."""
         if not segments:
@@ -145,6 +146,20 @@ class ExportService:
                 unique_paths.append(seg.source_path)
 
         path_to_idx = {p: i for i, p in enumerate(unique_paths)}
+
+        # Determine fast seek offset per unique input if requested
+        path_to_min_start: dict[Path, float] = {}
+        if fast_seek:
+            for p in unique_paths:
+                segs_for_path = [s for s in segments if s.source_path == p]
+                min_s = min(s.start_time for s in segs_for_path)
+                path_to_min_start[p] = min_s if min_s > 0.05 else 0.0
+        else:
+            for p in unique_paths:
+                path_to_min_start[p] = 0.0
+
+        # Check audio presence for unique paths
+        path_has_audio = {p: ProbeService.has_audio(p) for p in unique_paths}
 
         # 2. Determine target dimensions if not provided
         if target_width is None and settings and settings.target_width is not None:
@@ -167,6 +182,9 @@ class ExportService:
         # 3. Assemble command inputs
         cmd = ["ffmpeg", "-y"]
         for p in unique_paths:
+            min_s = path_to_min_start[p]
+            if min_s > 0.0:
+                cmd.extend(["-ss", f"{min_s:.3f}"])
             cmd.extend(["-i", str(p)])
 
         # 4. Assemble filter_complex
@@ -175,11 +193,14 @@ class ExportService:
 
         for j, seg in enumerate(segments):
             in_idx = path_to_idx[seg.source_path]
+            min_s = path_to_min_start[seg.source_path]
+            trimmed_start = max(0.0, seg.start_time - min_s)
+            trimmed_end = max(trimmed_start, seg.end_time - min_s)
             v_label = f"v{j}"
             a_label = f"a{j}"
 
             v_chain: List[str] = [
-                f"trim=start={seg.start_time:.3f}:end={seg.end_time:.3f}",
+                f"trim=start={trimmed_start:.3f}:end={trimmed_end:.3f}",
                 "setpts=PTS-STARTPTS",
             ]
 
@@ -217,11 +238,16 @@ class ExportService:
                 v_chain.append(f"fps={settings.fps:.3f}")
 
             v_filter = f"[{in_idx}:v]{','.join(v_chain)}[{v_label}]"
-            a_filter = (
-                f"[{in_idx}:a]atrim=start={seg.start_time:.3f}:end={seg.end_time:.3f},"
-                f"asetpts=PTS-STARTPTS,"
-                f"aresample=48000,aformat=channel_layouts=stereo[{a_label}]"
-            )
+            if path_has_audio.get(seg.source_path, True):
+                a_filter = (
+                    f"[{in_idx}:a]atrim=start={trimmed_start:.3f}:end={trimmed_end:.3f},"
+                    f"asetpts=PTS-STARTPTS,"
+                    f"aresample=48000,aformat=channel_layouts=stereo[{a_label}]"
+                )
+            else:
+                a_filter = (
+                    f"anullsrc=r=48000:cl=stereo,atrim=duration={seg.duration:.3f}[{a_label}]"
+                )
 
             filter_parts.append(v_filter)
             filter_parts.append(a_filter)
@@ -300,7 +326,7 @@ class ExportService:
 
         def worker() -> None:
             try:
-                cmd = self.build_ffmpeg_command(segments, out_path, settings=settings)
+                cmd = self.build_ffmpeg_command(segments, out_path, settings=settings, fast_seek=True)
             except Exception as e:
                 GLib.idle_add(on_done, False, str(e))
                 return
@@ -313,6 +339,20 @@ class ExportService:
                     text=True,
                     bufsize=1,
                 )
+
+                stderr_lines: list[str] = []
+                def drain_stderr():
+                    if self._process and self._process.stderr:
+                        try:
+                            for line in self._process.stderr:
+                                stderr_lines.append(line)
+                                if len(stderr_lines) > 200:
+                                    stderr_lines.pop(0)
+                        except Exception:
+                            pass
+
+                stderr_thread = threading.Thread(target=drain_stderr, daemon=True)
+                stderr_thread.start()
 
                 time_pattern = re.compile(r"out_time_us=(\d+)")
 
@@ -335,13 +375,12 @@ class ExportService:
                         GLib.idle_add(on_progress, fraction, cur_s)
 
                 rc = self._process.wait()
+                stderr_thread.join(timeout=1.0)
                 if rc == 0 and not self._cancelled:
                     GLib.idle_add(on_progress, 1.0, total_duration)
                     GLib.idle_add(on_done, True, None)
                 else:
-                    stderr_msg = ""
-                    if self._process.stderr:
-                        stderr_msg = self._process.stderr.read()[-500:]
+                    stderr_msg = "".join(stderr_lines)[-500:]
                     GLib.idle_add(on_done, False, f"FFmpeg failed (code {rc}): {stderr_msg}")
             except Exception as e:
                 GLib.idle_add(on_done, False, str(e))

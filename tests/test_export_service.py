@@ -35,3 +35,16 @@ def test_build_ffmpeg_command_single_video_multiple_segments():
     inputs = [arg for i, arg in enumerate(cmd) if cmd[i - 1] == "-i"]
     assert len(inputs) == 1
     assert inputs[0] == str(p)
+
+
+def test_build_ffmpeg_command_fast_seek():
+    service = ExportService()
+    p = Path("/tmp/test_video.mp4")
+    seg1 = Segment(source_path=p, source_duration=60.0, start_time=10.0, end_time=15.0)
+
+    cmd = service.build_ffmpeg_command([seg1], "/tmp/out_fast.mp4", target_width=640, target_height=360, fast_seek=True)
+
+    cmd_str = " ".join(cmd)
+    assert "-ss 10.000 -i /tmp/test_video.mp4" in cmd_str
+    assert "trim=start=0.000:end=5.000" in cmd_str
+

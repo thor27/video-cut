@@ -109,3 +109,29 @@ class ProbeService:
             return None
         except Exception:
             return None
+
+    @staticmethod
+    def has_audio(file_path: Path | str) -> bool:
+        """Check if media file has an audio stream."""
+        path = Path(file_path)
+        if not path.exists():
+            return False
+
+        cmd = [
+            "ffprobe",
+            "-v",
+            "error",
+            "-select_streams",
+            "a:0",
+            "-show_entries",
+            "stream=codec_type",
+            "-of",
+            "json",
+            str(path),
+        ]
+        try:
+            res = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True, check=True)
+            data = json.loads(res.stdout)
+            return len(data.get("streams", [])) > 0
+        except Exception:
+            return False

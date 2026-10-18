@@ -909,7 +909,7 @@ class MainWindow(Adw.ApplicationWindow):
         spinner.start()
         status_box.append(spinner)
 
-        lbl_status = Gtk.Label(label=_("Initializing export pipeline..."))
+        lbl_status = Gtk.Label(label=_("Rendering video..."))
         lbl_status.add_css_class("heading")
         status_box.append(lbl_status)
         box.append(status_box)
@@ -917,10 +917,10 @@ class MainWindow(Adw.ApplicationWindow):
         progress_bar = Gtk.ProgressBar()
         progress_bar.set_show_text(True)
         progress_bar.set_fraction(0.0)
-        progress_bar.set_text(_("Starting..."))
+        progress_bar.set_text(_("Rendering..."))
         box.append(progress_bar)
 
-        lbl_details = Gtk.Label(label=_("Preparing streams for {name}...").format(name=destination.name))
+        lbl_details = Gtk.Label(label=_("Exporting to {name}...").format(name=destination.name))
         lbl_details.add_css_class("caption")
         box.append(lbl_details)
 
@@ -961,19 +961,18 @@ class MainWindow(Adw.ApplicationWindow):
 
         def on_progress(fraction: float, cur_s: float) -> None:
             nonlocal has_received_progress
-            if fraction > 0.001 and not has_received_progress:
+            if not has_received_progress:
                 has_received_progress = True
                 stop_pulse()
 
-            if has_received_progress:
-                progress_bar.set_fraction(fraction)
-                percent = int(fraction * 100)
-                progress_bar.set_text(f"{percent}%")
-                lbl_status.set_label(_("Rendering video ({percent}%)...").format(percent=percent))
-                lbl_details.set_label(_("Processed: {processed} / {total}").format(
-                    processed=format_time(cur_s),
-                    total=format_time(self.timeline.total_duration),
-                ))
+            progress_bar.set_fraction(fraction)
+            percent = int(fraction * 100)
+            progress_bar.set_text(f"{percent}%")
+            lbl_status.set_label(_("Rendering video ({percent}%)...").format(percent=percent))
+            lbl_details.set_label(_("Processed: {processed} / {total}").format(
+                processed=format_time(cur_s),
+                total=format_time(self.timeline.total_duration),
+            ))
 
         def on_done(success: bool, error: Optional[str]) -> None:
             nonlocal can_close
