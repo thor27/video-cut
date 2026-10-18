@@ -104,6 +104,16 @@ Generated packages will be placed in the `dist/` folder:
 - **AppImage (`.AppImage`)**: Run standalone via `./dist/VideoCut-*.AppImage`
 - **Snap Package (`.snap`)**: Install locally via `sudo snap install --dangerous ./dist/video-cut_*.snap`
 
+### Versioning
+
+Video Cut uses a single source of truth for versioning defined in [`src/video_cut/__init__.py`](src/video_cut/__init__.py). Python packaging metadata (`pyproject.toml`), Snapcraft (`snap/snapcraft.yaml`), and all packaging scripts automatically adopt this version.
+
+To view or update the version:
+```bash
+./scripts/set_version.sh --show    # Display current version
+./scripts/set_version.sh 0.2.0     # Set a new version across the project
+```
+
 ## Usage
 
 Launch the application:

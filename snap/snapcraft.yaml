@@ -1,6 +1,6 @@
 name: video-cut
 base: core24
-version: '0.1.0'
+adopt-info: video-cut
 summary: Simple, fast, and modern video cutting tool
 description: |
   Video Cut is a lightweight, responsive video editor inspired by macOS QuickTime
@@ -33,6 +33,10 @@ parts:
     source: .
     stage-packages:
       - ffmpeg
+    override-pull: |
+      craftctl default
+      VERSION="$(grep -m1 '^__version__' src/video_cut/__init__.py | cut -d'"' -f2)"
+      craftctl set version="$VERSION"
     override-build: |
       craftctl default
       # Install desktop file and icons into standard snap paths

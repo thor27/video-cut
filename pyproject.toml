@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "video-cut"
-version = "0.1.0"
+dynamic = ["version"]
 description = "A simple, fast, and modern video cutting and segment arranging tool using GTK 4 and FFmpeg"
 readme = "README.md"
 license = { text = "GPL-3.0-or-later" }
@@ -18,6 +18,9 @@ video-cut = "video_cut.__main__:main"
 
 [tool.setuptools.package-data]
 video_cut = ["resources/*", "locale/*/*/*"]
+
+[tool.setuptools.dynamic]
+version = {attr = "video_cut.__version__"}
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

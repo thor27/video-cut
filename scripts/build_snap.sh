@@ -6,8 +6,8 @@ REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 DIST_DIR="${REPO_ROOT}/dist"
 SNAP_DIR="${REPO_ROOT}/snap"
 
-# Extract version from pyproject.toml
-VERSION="$(grep -m1 '^version' "${REPO_ROOT}/pyproject.toml" | cut -d'"' -f2)"
+# Extract version from src/video_cut/__init__.py
+VERSION="$(grep -m1 '^__version__' "${REPO_ROOT}/src/video_cut/__init__.py" | cut -d'"' -f2)"
 if [ -z "$VERSION" ]; then
     VERSION="0.1.0"
 fi
