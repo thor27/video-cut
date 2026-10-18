@@ -46,9 +46,9 @@ A simple, fast, and modern Python GTK 4 / Libadwaita tool to edit and cut videos
   - Previous / next single frame (<kbd>,</kbd> / <kbd>.</kbd>)
   - Step backward / forward 1 second (<kbd>Left</kbd> / <kbd>Right</kbd>)
   - Play / Pause (<kbd>Space</kbd>)
-- **Quick & Advanced Export**:
+- **Quick Export & Export Options**:
   - One-click quick export (<kbd>Ctrl+E</kbd>) rendering standard MP4 with optimal settings.
-  - Dropdown menu on the export button with an **Advanced Export…** modal dynamically querying installed FFmpeg capabilities:
+  - Dropdown menu on the export button with an **Export options...** modal dynamically querying installed FFmpeg capabilities:
     - **Containers**: MP4 (`.mp4`), Matroska (`.mkv`), WebM (`.webm`), QuickTime (`.mov`).
     - **Video Codecs**: H.264 / AVC, H.265 / HEVC, VP9, AV1 (SVT-AV1 / libaom), Apple ProRes (`prores_ks`).
     - **Resolutions**: Match Source, 4K UHD, 2K QHD, 1080p FHD, 720p HD, 480p SD.

@@ -99,14 +99,14 @@ class MainWindow(Adw.ApplicationWindow):
         export_content = Adw.ButtonContent(icon_name="document-save-symbolic", label=_("Export"))
         self.btn_export.set_child(export_content)
         self.btn_export.set_tooltip_text(_("Export combined video (Ctrl+E)"))
-        self.btn_export.set_dropdown_tooltip(_("Advanced Export options"))
+        self.btn_export.set_dropdown_tooltip(_("Export options"))
         self.btn_export.set_focusable(False)
         self.btn_export.add_css_class("suggested-action")
         self.btn_export.set_sensitive(False)
         self.btn_export.connect("clicked", lambda _: self._export_video_dialog())
 
         export_menu = Gio.Menu()
-        export_menu.append(_("Advanced Export…"), "win.advanced_export")
+        export_menu.append(_("Export options..."), "win.advanced_export")
         self.btn_export.set_menu_model(export_menu)
 
         self.action_adv_export = Gio.SimpleAction.new("advanced_export", None)

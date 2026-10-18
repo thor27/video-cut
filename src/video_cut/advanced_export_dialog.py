@@ -26,7 +26,7 @@ class AdvancedExportDialog(Adw.Window):
         source_fps: Optional[float] = None,
     ) -> None:
         super().__init__(transient_for=parent, modal=True)
-        self.set_title(_("Advanced Export"))
+        self.set_title(_("Export Options"))
         self.set_default_size(480, 600)
         self.on_export = on_export
 
