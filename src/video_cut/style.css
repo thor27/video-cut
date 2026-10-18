@@ -226,9 +226,12 @@ popover.square-menu {
 popover.square-menu > contents {
     border-radius: 6px;
     padding: 4px;
-    background-color: @card_bg_color;
-    border: 1px solid alpha(currentColor, 0.14);
-    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+    background-color: #383838;
+    background-color: @popover_bg_color;
+    color: #ffffff;
+    color: @popover_fg_color;
+    border: 1px solid alpha(currentColor, 0.18);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
 }
 
 popover.square-menu button.flat {
@@ -237,9 +240,10 @@ popover.square-menu button.flat {
     min-height: 32px;
     font-size: 13px;
     font-weight: 500;
+    color: @popover_fg_color;
 }
 
 popover.square-menu button.flat:hover {
-    background-color: alpha(currentColor, 0.08);
+    background-color: alpha(currentColor, 0.1);
 }
 
