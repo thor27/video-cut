@@ -96,8 +96,8 @@ class MainWindow(Adw.ApplicationWindow):
 
         # Right controls: Export (SplitButton with dropdown for Advanced Export)
         self.btn_export = Adw.SplitButton()
-        self.btn_export.set_label(_("Export"))
-        self.btn_export.set_icon_name("document-save-symbolic")
+        export_content = Adw.ButtonContent(icon_name="document-save-symbolic", label=_("Export"))
+        self.btn_export.set_child(export_content)
         self.btn_export.set_tooltip_text(_("Export combined video (Ctrl+E)"))
         self.btn_export.set_dropdown_tooltip(_("Advanced Export options"))
         self.btn_export.set_focusable(False)
