@@ -326,3 +326,19 @@ class ProjectTimeline:
         self.selected_segment_id = None
         self.undo_stack.clear()
         self.redo_stack.clear()
+
+
+@dataclass
+class ExportSettings:
+    """Configurable parameters for exporting video."""
+
+    container: str = "mp4"           # mp4, mkv, webm, mov
+    video_codec: str = "libx264"     # libx264, libx265, libvpx-vp9, libsvtav1, prores_ks
+    crf: int = 21                    # 18, 21, 26
+    preset: str = "veryfast"         # ultrafast, veryfast, fast, medium, slow
+    target_width: Optional[int] = None
+    target_height: Optional[int] = None
+    fps: Optional[float] = None      # 24, 30, 60 or None for original
+    audio_codec: str = "aac"         # aac, libopus, libmp3lame, flac
+    audio_bitrate: str = "192k"      # 128k, 192k, 256k, 320k
+

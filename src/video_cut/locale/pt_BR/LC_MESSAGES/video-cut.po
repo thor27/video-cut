@@ -1,319 +1,680 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: video-cut 0.1.0\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-10-18 12:11-0400\n"
+"Language: pt_BR\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Language: pt_BR\n"
 
-msgid "Video Cut"
-msgstr "Video Cut"
-
-msgid "Video Editor"
-msgstr "Editor de Vídeo"
-
-msgid "About Video Cut"
-msgstr "Sobre o Video Cut"
-
-msgid "A simple, fast, and modern video cutting and segment arranging tool"
-msgstr "Uma ferramenta simples, rápida e moderna para cortar e organizar segmentos de vídeo"
-
-msgid "Open"
-msgstr "Abrir"
-
-msgid "Open video or image (Ctrl+O)"
-msgstr "Abrir vídeo ou imagem (Ctrl+O)"
-
-msgid "Export"
-msgstr "Exportar"
-
-msgid "Export combined video (Ctrl+E)"
-msgstr "Exportar vídeo combinado (Ctrl+E)"
-
-msgid "No Media Loaded"
-msgstr "Nenhuma mídia carregada"
-
-msgid "Open a video or image file to begin cutting and arranging clips"
-msgstr "Abra um arquivo de vídeo ou imagem para começar a cortar e organizar clipes"
-
-msgid "Open Video or Image"
-msgstr "Abrir Vídeo ou Imagem"
-
-msgid "Add Video or Image as Segment"
-msgstr "Adicionar Vídeo ou Imagem como Segmento"
-
-msgid "Add Video\nor Image"
-msgstr "Adicionar Vídeo\nou Imagem"
-
-msgid "Open Video\nor Image"
-msgstr "Abrir Vídeo\nou Imagem"
-
-msgid "All Supported Media (Videos & Images)"
-msgstr "Todas as Mídias Suportadas (Vídeos e Imagens)"
-
-msgid "Video Files"
-msgstr "Arquivos de Vídeo"
-
-msgid "Image Files"
-msgstr "Arquivos de Imagem"
-
-msgid "MP4 Video"
-msgstr "Vídeo MP4"
-
-msgid "All Files"
-msgstr "Todos os Arquivos"
-
-msgid "Audio Files (*.mp3, *.wav, *.aac, *.m4a, *.ogg, *.flac, *.opus)"
-msgstr "Arquivos de Áudio (*.mp3, *.wav, *.aac, *.m4a, *.ogg, *.flac, *.opus)"
-
-msgid "Undo (Ctrl+Z)"
-msgstr "Desfazer (Ctrl+Z)"
-
-msgid "Redo (Ctrl+Shift+Z or Ctrl+Y)"
-msgstr "Refazer (Ctrl+Shift+Z ou Ctrl+Y)"
-
-msgid "Cut clip (Ctrl+X)"
-msgstr "Recortar clipe (Ctrl+X)"
-
-msgid "Copy clip (Ctrl+C)"
-msgstr "Copiar clipe (Ctrl+C)"
-
-msgid "Paste clip (Ctrl+V)"
-msgstr "Colar clipe (Ctrl+V)"
-
-msgid "Crop & Rotate (C)"
-msgstr "Cortar e Girar (C)"
-
-msgid "Crop & Rotate..."
-msgstr "Cortar e Girar..."
-
-msgid "Delete clip (Delete)"
-msgstr "Excluir clipe (Delete)"
-
-msgid "Previous segment (Home)"
-msgstr "Segmento anterior (Home)"
-
-msgid "Step back 1s (Left Arrow)"
-msgstr "Voltar 1s (Seta Esquerda)"
-
-msgid "Previous frame (,)"
-msgstr "Quadro anterior (,)"
-
-msgid "Play / Pause (Space)"
-msgstr "Reproduzir / Pausar (Espaço)"
-
-msgid "Next frame (.)"
-msgstr "Próximo quadro (.)"
-
-msgid "Step forward 1s (Right Arrow)"
-msgstr "Avançar 1s (Seta Direita)"
-
-msgid "Next segment (End)"
-msgstr "Próximo segmento (End)"
-
-msgid "Move clip left (Alt+Left)"
-msgstr "Mover clipe para a esquerda (Alt+Esquerda)"
-
-msgid "Move clip right (Alt+Right)"
-msgstr "Mover clipe para a direita (Alt+Direita)"
-
-msgid "Move Clip Left"
-msgstr "Mover Clipe para a Esquerda"
-
-msgid "Move Clip Right"
-msgstr "Mover Clipe para a Direita"
-
-msgid "Split clip at cursor"
-msgstr "Dividir clipe no cursor"
-
-msgid "Split at Cursor"
-msgstr "Dividir no Cursor"
-
-msgid "Split"
-msgstr "Dividir"
-
-msgid "Cut"
-msgstr "Recortar"
-
-msgid "Copy"
-msgstr "Copiar"
-
-msgid "Paste"
-msgstr "Colar"
-
-msgid "Delete"
-msgstr "Excluir"
-
-msgid "Generating thumbnails..."
-msgstr "Gerando miniaturas..."
-
-msgid "Generating thumbnails ({completed}/{total})..."
-msgstr "Gerando miniaturas ({completed}/{total})..."
-
-msgid "Crop & Rotate"
-msgstr "Cortar e Girar"
-
-msgid "Crop & Rotate — {name}"
-msgstr "Cortar e Girar — {name}"
-
-msgid "Cancel"
-msgstr "Cancelar"
-
-msgid "Apply"
-msgstr "Aplicar"
-
-msgid "Rotate 90° Counter-Clockwise"
-msgstr "Girar 90° no sentido anti-horário"
-
-msgid "Rotate 90° Clockwise"
-msgstr "Girar 90° no sentido horário"
-
-msgid "Flip Horizontally"
-msgstr "Espelhar Horizontalmente"
-
-msgid "Flip Vertically"
-msgstr "Espelhar Verticalmente"
-
-msgid "Reset"
-msgstr "Redefinir"
-
-msgid "Reset crop, rotation, and flip"
-msgstr "Redefinir corte, rotação e espelhamento"
-
-msgid "Aspect Ratio:"
-msgstr "Proporção:"
-
-msgid "Free"
-msgstr "Livre"
-
-msgid "Original"
-msgstr "Original"
-
-msgid "Crop: {crop_w} × {crop_h} px ({preset}){rot_str}{flip_str}"
-msgstr "Corte: {crop_w} × {crop_h} px ({preset}){rot_str}{flip_str}"
-
-msgid " • Flip H+V"
-msgstr " • Espelhar H+V"
-
-msgid " • Flip H"
-msgstr " • Espelhar H"
-
-msgid " • Flip V"
-msgstr " • Espelhar V"
-
+#: src/video_cut/image_import_dialog.py:111
+#: src/video_cut/image_import_dialog.py:138
 msgid "Open Image"
 msgstr "Abrir Imagem"
 
+#: src/video_cut/image_import_dialog.py:111
 msgid "Import Image as Segment"
 msgstr "Importar Imagem como Segmento"
 
-msgid "Import Image Segment"
-msgstr "Importar Segmento de Imagem"
+#: src/video_cut/image_import_dialog.py:134 src/video_cut/window.py:912
+#: src/video_cut/advanced_export_dialog.py:57
+#: src/video_cut/crop_rotate_dialog.py:190
+msgid "Cancel"
+msgstr "Cancelar"
 
+#: src/video_cut/image_import_dialog.py:138
 msgid "Add Segment"
 msgstr "Adicionar Segmento"
 
+#: src/video_cut/image_import_dialog.py:145
+msgid "Import Image Segment"
+msgstr "Importar Segmento de Imagem"
+
+#: src/video_cut/image_import_dialog.py:209
 msgid "Segment Duration"
 msgstr "Duração do Segmento"
 
+#: src/video_cut/image_import_dialog.py:210
 msgid "Specify how long the image appears in the timeline"
 msgstr "Especifique por quanto tempo a imagem aparece na linha do tempo"
 
+#: src/video_cut/image_import_dialog.py:214
 msgid "Duration"
 msgstr "Duração"
 
+#: src/video_cut/image_import_dialog.py:215
 msgid "Time in seconds (0.5s – 300.0s)"
 msgstr "Tempo em segundos (0.5s – 300.0s)"
 
+#: src/video_cut/image_import_dialog.py:238
 msgid "Quick Presets"
 msgstr "Predefinições Rápidas"
 
+#: src/video_cut/image_import_dialog.py:239
 msgid "Select a standard duration"
 msgstr "Selecione uma duração padrão"
 
+#: src/video_cut/image_import_dialog.py:258
 msgid "Soundtrack (Optional)"
 msgstr "Trilha Sonora (Opcional)"
 
-msgid "Attach music or voiceover. If selected, you can slice the exact segment to play."
-msgstr "Anexe música ou locução. Se selecionado, você pode cortar o segmento exato para tocar."
+#: src/video_cut/image_import_dialog.py:260
+msgid ""
+"Attach music or voiceover. If selected, you can slice the exact segment to "
+"play."
+msgstr ""
+"Anexe música ou locução. Se selecionado, você pode cortar o segmento exato "
+"para tocar."
 
+#: src/video_cut/image_import_dialog.py:265
 msgid "No Soundtrack Selected"
 msgstr "Nenhuma Trilha Sonora Selecionada"
 
+#: src/video_cut/image_import_dialog.py:266
 msgid "Video will be generated with silent audio"
 msgstr "O vídeo será gerado com áudio silencioso"
 
+#: src/video_cut/image_import_dialog.py:270
 msgid "Choose Audio..."
 msgstr "Escolher Áudio..."
 
+#: src/video_cut/image_import_dialog.py:284
 msgid "Change..."
 msgstr "Alterar..."
 
+#: src/video_cut/image_import_dialog.py:290
 msgid "Remove soundtrack"
 msgstr "Remover trilha sonora"
 
+#: src/video_cut/image_import_dialog.py:309
 msgid "Start Offset:"
 msgstr "Deslocamento Inicial:"
 
+#: src/video_cut/image_import_dialog.py:344
 msgid "Preview Audio Slice"
 msgstr "Pré-visualizar Trecho de Áudio"
 
+#: src/video_cut/image_import_dialog.py:377
 msgid "Select Soundtrack Audio"
 msgstr "Selecionar Áudio da Trilha Sonora"
 
+#: src/video_cut/image_import_dialog.py:381
+msgid "Audio Files (*.mp3, *.wav, *.aac, *.m4a, *.ogg, *.flac, *.opus)"
+msgstr "Arquivos de Áudio (*.mp3, *.wav, *.aac, *.m4a, *.ogg, *.flac, *.opus)"
+
+#: src/video_cut/image_import_dialog.py:388 src/video_cut/window.py:818
+msgid "All Files"
+msgstr "Todos os Arquivos"
+
+#: src/video_cut/image_import_dialog.py:416
+#, python-brace-format
 msgid "Total track duration: {duration}"
 msgstr "Duração total da faixa: {duration}"
 
-msgid "Plays {start} → {end} ({duration:.1f}s)"
-msgstr "Toca {start} → {end} ({duration:.1f}s)"
-
+#: src/video_cut/image_import_dialog.py:467
+#, python-brace-format
 msgid "Plays {start} → {duration} (padded with silence to {total})"
 msgstr "Toca {start} → {duration} (preenchido com silêncio até {total})"
 
-msgid "Export Combined Video"
-msgstr "Exportar Vídeo Combinado"
+#: src/video_cut/image_import_dialog.py:474
+#, python-brace-format
+msgid "Plays {start} → {end} ({duration:.1f}s)"
+msgstr "Toca {start} → {end} ({duration:.1f}s)"
 
-msgid "Exporting Video"
-msgstr "Exportando Vídeo"
+#: src/video_cut/timeline_widget.py:150
+msgid "Undo (Ctrl+Z)"
+msgstr "Desfazer (Ctrl+Z)"
 
-msgid "Initializing export pipeline..."
-msgstr "Inicializando processo de exportação..."
+#: src/video_cut/timeline_widget.py:158
+msgid "Redo (Ctrl+Shift+Z or Ctrl+Y)"
+msgstr "Refazer (Ctrl+Shift+Z ou Ctrl+Y)"
 
-msgid "Starting..."
-msgstr "Iniciando..."
+#: src/video_cut/timeline_widget.py:172
+msgid "Cut clip (Ctrl+X)"
+msgstr "Recortar clipe (Ctrl+X)"
 
-msgid "Preparing streams for {name}..."
-msgstr "Preparando fluxos para {name}..."
+#: src/video_cut/timeline_widget.py:180
+msgid "Copy clip (Ctrl+C)"
+msgstr "Copiar clipe (Ctrl+C)"
 
-msgid "Rendering video ({percent}%)..."
-msgstr "Renderizando vídeo ({percent}%)..."
+#: src/video_cut/timeline_widget.py:188
+msgid "Paste clip (Ctrl+V)"
+msgstr "Colar clipe (Ctrl+V)"
 
-msgid "Processed: {processed} / {total}"
-msgstr "Processado: {processed} / {total}"
+#: src/video_cut/timeline_widget.py:196
+msgid "Crop & Rotate (C)"
+msgstr "Cortar e Girar (C)"
 
-msgid "Export complete: {name}"
-msgstr "Exportação concluída: {name}"
+#: src/video_cut/timeline_widget.py:204
+msgid "Delete clip (Delete)"
+msgstr "Excluir clipe (Delete)"
 
-msgid "Export failed: {error}"
-msgstr "Falha na exportação: {error}"
+#: src/video_cut/timeline_widget.py:224
+msgid "Previous segment (Home)"
+msgstr "Segmento anterior (Home)"
 
-msgid "Unknown error"
-msgstr "Erro desconhecido"
+#: src/video_cut/timeline_widget.py:233
+msgid "Step back 1s (Left Arrow)"
+msgstr "Voltar 1s (Seta Esquerda)"
 
+#: src/video_cut/timeline_widget.py:242
+msgid "Previous frame (,)"
+msgstr "Quadro anterior (,)"
+
+#: src/video_cut/timeline_widget.py:251
+msgid "Play / Pause (Space)"
+msgstr "Reproduzir / Pausar (Espaço)"
+
+#: src/video_cut/timeline_widget.py:260
+msgid "Next frame (.)"
+msgstr "Próximo quadro (.)"
+
+#: src/video_cut/timeline_widget.py:269
+msgid "Step forward 1s (Right Arrow)"
+msgstr "Avançar 1s (Seta Direita)"
+
+#: src/video_cut/timeline_widget.py:278
+msgid "Next segment (End)"
+msgstr "Próximo segmento (End)"
+
+#: src/video_cut/timeline_widget.py:294 src/video_cut/window.py:1031
+msgid "Generating thumbnails..."
+msgstr "Gerando miniaturas..."
+
+#: src/video_cut/timeline_widget.py:354 src/video_cut/segment_card.py:166
+msgid "Split clip at cursor"
+msgstr "Dividir clipe no cursor"
+
+#: src/video_cut/timeline_widget.py:365 src/video_cut/segment_card.py:175
+msgid "Split"
+msgstr "Dividir"
+
+#: src/video_cut/timeline_widget.py:499 src/video_cut/window.py:498
+msgid "Add Video or Image as Segment"
+msgstr "Adicionar Vídeo ou Imagem como Segmento"
+
+#: src/video_cut/timeline_widget.py:499 src/video_cut/window.py:141
+#: src/video_cut/window.py:475
+msgid "Open Video or Image"
+msgstr "Abrir Vídeo ou Imagem"
+
+#: src/video_cut/timeline_widget.py:510
+msgid ""
+"Add Video\n"
+"or Image"
+msgstr ""
+"Adicionar Vídeo\n"
+"ou Imagem"
+
+#: src/video_cut/timeline_widget.py:510
+msgid ""
+"Open Video\n"
+"or Image"
+msgstr ""
+"Abrir Vídeo\n"
+"ou Imagem"
+
+#: src/video_cut/services/export_service.py:70
+#: src/video_cut/services/export_service.py:76
+msgid "MP4 (.mp4)"
+msgstr "MP4 (.mp4)"
+
+#: src/video_cut/services/export_service.py:71
+msgid "Matroska (.mkv)"
+msgstr "Matroska (.mkv)"
+
+#: src/video_cut/services/export_service.py:72
+msgid "WebM (.webm)"
+msgstr "WebM (.webm)"
+
+#: src/video_cut/services/export_service.py:73
+msgid "QuickTime (.mov)"
+msgstr "QuickTime (.mov)"
+
+#: src/video_cut/services/export_service.py:83
+msgid "H.264 / AVC (Most Compatible)"
+msgstr "H.264 / AVC (Mais Compatível)"
+
+#: src/video_cut/services/export_service.py:84
+msgid "H.265 / HEVC (High Efficiency)"
+msgstr "H.265 / HEVC (Alta Eficiência)"
+
+#: src/video_cut/services/export_service.py:85
+msgid "VP9 (Web Open Standard)"
+msgstr "VP9 (Padrão Aberto Web)"
+
+#: src/video_cut/services/export_service.py:86
+msgid "AV1 (Next-Gen Open Standard)"
+msgstr "AV1 (Padrão Aberto Nova Geração)"
+
+#: src/video_cut/services/export_service.py:87
+msgid "Apple ProRes (Editing Master)"
+msgstr "Apple ProRes (Master de Edição)"
+
+#: src/video_cut/services/export_service.py:97
+msgid "H.264 / AVC"
+msgstr "H.264 / AVC"
+
+#: src/video_cut/services/export_service.py:105
+msgid "AAC (Universal Default)"
+msgstr "AAC (Padrão Universal)"
+
+#: src/video_cut/services/export_service.py:106
+msgid "Opus (High Quality Voice & Music)"
+msgstr "Opus (Alta Qualidade para Voz e Música)"
+
+#: src/video_cut/services/export_service.py:108
+msgid "FLAC (Lossless Audio)"
+msgstr "FLAC (Áudio Sem Perdas)"
+
+#: src/video_cut/services/export_service.py:115
+msgid "AAC"
+msgstr "AAC"
+
+#: src/video_cut/window.py:75 src/video_cut/window.py:440
+#: src/video_cut/window.py:995 src/video_cut/app.py:24
+msgid "Video Cut"
+msgstr "Video Cut"
+
+#: src/video_cut/window.py:75 src/video_cut/window.py:441
+msgid "Video Editor"
+msgstr "Editor de Vídeo"
+
+#: src/video_cut/window.py:81
+msgid "About Video Cut"
+msgstr "Sobre o Video Cut"
+
+#: src/video_cut/window.py:90
+msgid "Open"
+msgstr "Abrir"
+
+#: src/video_cut/window.py:92
+msgid "Open video or image (Ctrl+O)"
+msgstr "Abrir vídeo ou imagem (Ctrl+O)"
+
+#: src/video_cut/window.py:99
+msgid "Export"
+msgstr "Exportar"
+
+#: src/video_cut/window.py:101
+msgid "Export combined video (Ctrl+E)"
+msgstr "Exportar vídeo combinado (Ctrl+E)"
+
+#: src/video_cut/window.py:102
+msgid "Advanced Export options"
+msgstr "Opções avançadas de exportação"
+
+#: src/video_cut/window.py:109
+msgid "Advanced Export…"
+msgstr ""
+
+#: src/video_cut/window.py:139
+msgid "No Media Loaded"
+msgstr "Nenhuma mídia carregada"
+
+#: src/video_cut/window.py:140
+msgid "Open a video or image file to begin cutting and arranging clips"
+msgstr ""
+"Abra um arquivo de vídeo ou imagem para começar a cortar e organizar clipes"
+
+#: src/video_cut/window.py:448
+msgid "All Supported Media (Videos & Images)"
+msgstr "Todas as Mídias Suportadas (Vídeos e Imagens)"
+
+#: src/video_cut/window.py:457
+msgid "Video Files"
+msgstr "Arquivos de Vídeo"
+
+#: src/video_cut/window.py:465
+msgid "Image Files"
+msgstr "Arquivos de Imagem"
+
+#: src/video_cut/window.py:556
+#, python-brace-format
 msgid "Failed to convert image: {error}"
 msgstr "Falha ao converter imagem: {error}"
 
+#: src/video_cut/window.py:562
 msgid "Failed to load media: invalid or unsupported file"
 msgstr "Falha ao carregar mídia: arquivo inválido ou não suportado"
 
+#: src/video_cut/window.py:628
 msgid "Cannot split too close to clip boundary"
 msgstr "Não é possível dividir muito próximo ao limite do clipe"
 
+#: src/video_cut/window.py:651 src/video_cut/window.py:658
 msgid "Cannot delete the only remaining segment"
 msgstr "Não é possível excluir o único segmento restante"
 
+#: src/video_cut/window.py:685
 msgid "Cannot cut the only remaining segment"
 msgstr "Não é possível recortar o único segmento restante"
 
+#: src/video_cut/window.py:741
+#, python-brace-format
 msgid "Crop & Rotate applied to {name}"
 msgstr "Cortar e Girar aplicado a {name}"
+
+#: src/video_cut/window.py:785
+msgid "Export Combined Video"
+msgstr "Exportar Vídeo Combinado"
+
+#: src/video_cut/window.py:801
+msgid "MP4 Video (*.mp4)"
+msgstr "Vídeo MP4 (*.mp4)"
+
+#: src/video_cut/window.py:804
+msgid "Matroska Video (*.mkv)"
+msgstr "Vídeo Matroska (*.mkv)"
+
+#: src/video_cut/window.py:807
+msgid "WebM Video (*.webm)"
+msgstr "Vídeo WebM (*.webm)"
+
+#: src/video_cut/window.py:810
+msgid "QuickTime Video (*.mov)"
+msgstr "Vídeo QuickTime (*.mov)"
+
+#: src/video_cut/window.py:843
+msgid "Exporting Video"
+msgstr "Exportando Vídeo"
+
+#: src/video_cut/window.py:879
+msgid "Initializing export pipeline..."
+msgstr "Inicializando processo de exportação..."
+
+#: src/video_cut/window.py:887
+msgid "Starting..."
+msgstr "Iniciando..."
+
+#: src/video_cut/window.py:890
+#, python-brace-format
+msgid "Preparing streams for {name}..."
+msgstr "Preparando fluxos para {name}..."
+
+#: src/video_cut/window.py:939
+#, python-brace-format
+msgid "Rendering video ({percent}%)..."
+msgstr "Renderizando vídeo ({percent}%)..."
+
+#: src/video_cut/window.py:940
+#, python-brace-format
+msgid "Processed: {processed} / {total}"
+msgstr "Processado: {processed} / {total}"
+
+#: src/video_cut/window.py:953
+#, python-brace-format
+msgid "Export complete: {name}"
+msgstr "Exportação concluída: {name}"
+
+#: src/video_cut/window.py:956
+#, python-brace-format
+msgid "Export failed: {error}"
+msgstr "Falha na exportação: {error}"
+
+#: src/video_cut/window.py:956
+msgid "Unknown error"
+msgstr "Erro desconhecido"
+
+#: src/video_cut/window.py:999
+msgid "A simple, fast, and modern video cutting and segment arranging tool"
+msgstr ""
+"Uma ferramenta simples, rápida e moderna para cortar e organizar segmentos "
+"de vídeo"
+
+#: src/video_cut/window.py:1029
+#, python-brace-format
+msgid "Generating thumbnails ({completed}/{total})..."
+msgstr "Gerando miniaturas ({completed}/{total})..."
+
+#: src/video_cut/advanced_export_dialog.py:29
+msgid "Advanced Export"
+msgstr "Exportação Avançada"
+
+#: src/video_cut/advanced_export_dialog.py:61
+#, fuzzy
+msgid "Export…"
+msgstr "Exportar"
+
+#: src/video_cut/advanced_export_dialog.py:72
+msgid "Format and Container"
+msgstr "Formato e Contêiner"
+
+#: src/video_cut/advanced_export_dialog.py:75
+msgid "Container Format"
+msgstr "Formato do Contêiner"
+
+#: src/video_cut/advanced_export_dialog.py:83
+msgid "Video"
+msgstr "Vídeo"
+
+#: src/video_cut/advanced_export_dialog.py:87
+msgid "Resolution"
+msgstr "Resolução"
+
+#: src/video_cut/advanced_export_dialog.py:89
+#, python-brace-format
+msgid "Match Source ({w}×{h})"
+msgstr "Igual à fonte ({w}×{h})"
+
+#: src/video_cut/advanced_export_dialog.py:91
+#: src/video_cut/advanced_export_dialog.py:110
+msgid "Match Source"
+msgstr "Igual à fonte"
+
+#: src/video_cut/advanced_export_dialog.py:95
+msgid "4K UHD (3840×2160)"
+msgstr ""
+
+#: src/video_cut/advanced_export_dialog.py:96
+msgid "2K QHD (2560×1440)"
+msgstr ""
+
+#: src/video_cut/advanced_export_dialog.py:97
+msgid "1080p FHD (1920×1080)"
+msgstr ""
+
+#: src/video_cut/advanced_export_dialog.py:98
+msgid "720p HD (1280×720)"
+msgstr ""
+
+#: src/video_cut/advanced_export_dialog.py:99
+msgid "480p SD (854×480)"
+msgstr ""
+
+#: src/video_cut/advanced_export_dialog.py:106
+msgid "Frame Rate"
+msgstr "Taxa de Quadros"
+
+#: src/video_cut/advanced_export_dialog.py:108
+#, python-brace-format
+msgid "Match Source ({fps:.2f} fps)"
+msgstr "Igual à fonte ({fps:.2f} fps)"
+
+#: src/video_cut/advanced_export_dialog.py:114
+msgid "60 fps"
+msgstr "60 fps"
+
+#: src/video_cut/advanced_export_dialog.py:115
+msgid "30 fps"
+msgstr "30 fps"
+
+#: src/video_cut/advanced_export_dialog.py:116
+msgid "24 fps"
+msgstr "24 fps"
+
+#: src/video_cut/advanced_export_dialog.py:123
+msgid "Video Codec"
+msgstr "Codec de Vídeo"
+
+#: src/video_cut/advanced_export_dialog.py:128
+msgid "Quality"
+msgstr "Qualidade"
+
+#: src/video_cut/advanced_export_dialog.py:130
+msgid "Balanced (CRF 21)"
+msgstr "Equilibrada (CRF 21)"
+
+#: src/video_cut/advanced_export_dialog.py:131
+msgid "High Quality (CRF 18)"
+msgstr "Alta Qualidade (CRF 18)"
+
+#: src/video_cut/advanced_export_dialog.py:132
+msgid "Smaller Size (CRF 26)"
+msgstr "Tamanho Menor (CRF 26)"
+
+#: src/video_cut/advanced_export_dialog.py:139
+msgid "Encoding Speed"
+msgstr "Velocidade de Codificação"
+
+#: src/video_cut/advanced_export_dialog.py:141
+msgid "Very Fast (Default)"
+msgstr "Muito Rápido (Padrão)"
+
+#: src/video_cut/advanced_export_dialog.py:142
+msgid "Ultrafast"
+msgstr "Ultra Rápido"
+
+#: src/video_cut/advanced_export_dialog.py:143
+msgid "Fast"
+msgstr "Rápido"
+
+#: src/video_cut/advanced_export_dialog.py:144
+msgid "Medium"
+msgstr "Médio"
+
+#: src/video_cut/advanced_export_dialog.py:145
+msgid "Slow"
+msgstr "Lento"
+
+#: src/video_cut/advanced_export_dialog.py:152
+msgid "Audio"
+msgstr "Áudio"
+
+#: src/video_cut/advanced_export_dialog.py:156
+msgid "Audio Codec"
+msgstr "Codec de Áudio"
+
+#: src/video_cut/advanced_export_dialog.py:161
+msgid "Audio Bitrate"
+msgstr "Taxa de Bits de Áudio"
+
+#: src/video_cut/advanced_export_dialog.py:163
+msgid "192 kbps (Default)"
+msgstr "192 kbps (Padrão)"
+
+#: src/video_cut/advanced_export_dialog.py:164
+msgid "128 kbps"
+msgstr "128 kbps"
+
+#: src/video_cut/advanced_export_dialog.py:165
+msgid "256 kbps"
+msgstr "256 kbps"
+
+#: src/video_cut/advanced_export_dialog.py:166
+msgid "320 kbps"
+msgstr "320 kbps"
+
+#: src/video_cut/segment_card.py:142
+msgid "Move clip left (Alt+Left)"
+msgstr "Mover clipe para a esquerda (Alt+Esquerda)"
+
+#: src/video_cut/segment_card.py:153
+msgid "Move clip right (Alt+Right)"
+msgstr "Mover clipe para a direita (Alt+Direita)"
+
+#: src/video_cut/segment_card.py:267
+msgid "Split at Cursor"
+msgstr "Dividir no Cursor"
+
+#: src/video_cut/segment_card.py:273
+msgid "Cut"
+msgstr "Recortar"
+
+#: src/video_cut/segment_card.py:276
+msgid "Copy"
+msgstr "Copiar"
+
+#: src/video_cut/segment_card.py:279
+msgid "Paste"
+msgstr "Colar"
+
+#: src/video_cut/segment_card.py:282
+msgid "Crop & Rotate..."
+msgstr "Cortar e Girar..."
+
+#: src/video_cut/segment_card.py:288
+msgid "Move Clip Left"
+msgstr "Mover Clipe para a Esquerda"
+
+#: src/video_cut/segment_card.py:291
+msgid "Move Clip Right"
+msgstr "Mover Clipe para a Direita"
+
+#: src/video_cut/segment_card.py:297
+msgid "Delete"
+msgstr "Excluir"
+
+#: src/video_cut/crop_rotate_dialog.py:79
+#, python-brace-format
+msgid "Crop & Rotate — {name}"
+msgstr "Cortar e Girar — {name}"
+
+#: src/video_cut/crop_rotate_dialog.py:194
+msgid "Apply"
+msgstr "Aplicar"
+
+#: src/video_cut/crop_rotate_dialog.py:237
+msgid "Rotate 90° Counter-Clockwise"
+msgstr "Girar 90° no sentido anti-horário"
+
+#: src/video_cut/crop_rotate_dialog.py:242
+msgid "Rotate 90° Clockwise"
+msgstr "Girar 90° no sentido horário"
+
+#: src/video_cut/crop_rotate_dialog.py:247
+msgid "Flip Horizontally"
+msgstr "Espelhar Horizontalmente"
+
+#: src/video_cut/crop_rotate_dialog.py:252
+msgid "Flip Vertically"
+msgstr "Espelhar Verticalmente"
+
+#: src/video_cut/crop_rotate_dialog.py:262
+msgid "Reset"
+msgstr "Redefinir"
+
+#: src/video_cut/crop_rotate_dialog.py:266
+msgid "Reset crop, rotation, and flip"
+msgstr "Redefinir corte, rotação e espelhamento"
+
+#: src/video_cut/crop_rotate_dialog.py:276
+msgid "Aspect Ratio:"
+msgstr "Proporção:"
+
+#: src/video_cut/crop_rotate_dialog.py:314
+msgid " • Flip H+V"
+msgstr " • Espelhar H+V"
+
+#: src/video_cut/crop_rotate_dialog.py:316
+msgid " • Flip H"
+msgstr " • Espelhar H"
+
+#: src/video_cut/crop_rotate_dialog.py:318
+msgid " • Flip V"
+msgstr " • Espelhar V"
+
+#: src/video_cut/crop_rotate_dialog.py:321
+#, python-brace-format
+msgid "Crop: {crop_w} × {crop_h} px ({preset}){rot_str}{flip_str}"
+msgstr "Corte: {crop_w} × {crop_h} px ({preset}){rot_str}{flip_str}"
+
+#~ msgid "Crop & Rotate"
+#~ msgstr "Cortar e Girar"
+
+#~ msgid "Free"
+#~ msgstr "Livre"
+
+#~ msgid "Original"
+#~ msgstr "Original"

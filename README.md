@@ -46,9 +46,15 @@ A simple, fast, and modern Python GTK 4 / Libadwaita tool to edit and cut videos
   - Previous / next single frame (<kbd>,</kbd> / <kbd>.</kbd>)
   - Step backward / forward 1 second (<kbd>Left</kbd> / <kbd>Right</kbd>)
   - Play / Pause (<kbd>Space</kbd>)
-- **High-Quality Export**:
-  - Seamless MP4 rendering via FFmpeg `filter_complex` (accurate cuts, zero audio drift, resolution standardization, crop, rotation, flip, and soundtrack muxing).
-  - Smart automatic naming defaulting to `<original_name>_edited.mp4`.
+- **Quick & Advanced Export**:
+  - One-click quick export (<kbd>Ctrl+E</kbd>) rendering standard MP4 with optimal settings.
+  - Dropdown menu on the export button with an **Advanced Export…** modal dynamically querying installed FFmpeg capabilities:
+    - **Containers**: MP4 (`.mp4`), Matroska (`.mkv`), WebM (`.webm`), QuickTime (`.mov`).
+    - **Video Codecs**: H.264 / AVC, H.265 / HEVC, VP9, AV1 (SVT-AV1 / libaom), Apple ProRes (`prores_ks`).
+    - **Resolutions**: Match Source, 4K UHD, 2K QHD, 1080p FHD, 720p HD, 480p SD.
+    - **Quality & Speed**: CRF presets (Balanced 21, High Quality 18, Smaller Size 26) and encoding speed presets (Ultrafast to Slow).
+    - **Frame Rates**: Match Source, 60 fps, 30 fps, 24 fps.
+    - **Audio Codecs & Bitrates**: AAC, Opus, MP3, FLAC (Lossless) with bitrates from 128 kbps to 320 kbps.
   - Real-time export progress modal with percentage and duration indicators.
 - **Custom Application Icon**: Beautiful vector icon combining a film frame and scissors.
 
@@ -116,10 +122,10 @@ video-cut /path/to/my_video.mp4
   - `image_service.py`: Image-to-video synthesis with customizable duration, aspect-ratio scaling, and optional audio track muxing.
   - `export_service.py`: FFmpeg `filter_complex` concatenation and rendering engine handling crops, rotations, flips, and audio synchronization.
 - `src/video_cut/i18n.py` & `src/video_cut/locale/`: Gettext runtime with automatic system locale detection and translation catalog files (`.po` / `.mo`) for `en_US`, `es`, `pt_BR`, and `fr`.
-- `src/video_cut/dialogs/`:
+- Dialogs:
   - `crop_rotate_dialog.py`: Interactive crop canvas with drag handles, rotation (90° CW/CCW), flip (H/V), and aspect ratio presets.
   - `image_import_dialog.py`: Modal for image import duration selection, background soundtrack attachment, and audio preview.
-  - `export_dialog.py`: Real-time rendering dialog with percentage and time indicators.
+  - `advanced_export_dialog.py`: Advanced export modal configuring container formats, codecs, CRF quality, encoding speed, and resolutions.
 - `src/video_cut/player.py`: Hardware-accelerated playback pipeline supporting seamless multi-segment sequencing and live transformations.
 - `src/video_cut/timeline_widget.py` & `segment_card.py`: Proportional timeline layout, dynamic thumbnail sizing (80px minimum), centralized orange playhead needle, and drag-and-drop sequencing.
 - `src/video_cut/window.py`: Libadwaita main application window with HeaderBar actions, edit toolbar, keyboard shortcuts, and state coordination.

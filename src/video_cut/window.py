@@ -10,7 +10,7 @@ gi.require_version("Gdk", "4.0")
 gi.require_version("Adw", "1")
 from gi.repository import Gtk, Gdk, Adw, GLib, Gio
 
-from .models import ProjectTimeline, Segment
+from .models import ProjectTimeline, Segment, ExportSettings
 from .player import VideoPlayerController
 from .timeline_widget import TimelineWidget
 from .services.probe_service import ProbeService
@@ -19,6 +19,7 @@ from .services.export_service import ExportService
 from .services.image_service import ImageService
 from .image_import_dialog import ImageImportDialog
 from .crop_rotate_dialog import CropRotateDialog
+from .advanced_export_dialog import AdvancedExportDialog
 from .utils import format_time, clamp
 from .i18n import _
 
@@ -93,15 +94,26 @@ class MainWindow(Adw.ApplicationWindow):
         btn_open.connect("clicked", lambda _: self._open_video_dialog())
         self.header_bar.pack_start(btn_open)
 
-        # Right controls: Export
-        self.btn_export = Gtk.Button()
-        export_content = Adw.ButtonContent(icon_name="document-save-symbolic", label=_("Export"))
-        self.btn_export.set_child(export_content)
+        # Right controls: Export (SplitButton with dropdown for Advanced Export)
+        self.btn_export = Adw.SplitButton()
+        self.btn_export.set_label(_("Export"))
+        self.btn_export.set_icon_name("document-save-symbolic")
         self.btn_export.set_tooltip_text(_("Export combined video (Ctrl+E)"))
+        self.btn_export.set_dropdown_tooltip(_("Advanced Export options"))
         self.btn_export.set_focusable(False)
         self.btn_export.add_css_class("suggested-action")
         self.btn_export.set_sensitive(False)
         self.btn_export.connect("clicked", lambda _: self._export_video_dialog())
+
+        export_menu = Gio.Menu()
+        export_menu.append(_("Advanced Export…"), "win.advanced_export")
+        self.btn_export.set_menu_model(export_menu)
+
+        self.action_adv_export = Gio.SimpleAction.new("advanced_export", None)
+        self.action_adv_export.connect("activate", lambda *_: self._open_advanced_export_dialog())
+        self.action_adv_export.set_enabled(False)
+        self.add_action(self.action_adv_export)
+
         self.header_bar.pack_end(self.btn_export)
 
         self.toolbar_view.add_top_bar(self.header_bar)
@@ -405,6 +417,8 @@ class MainWindow(Adw.ApplicationWindow):
         can_delete = has_selection and len(self.timeline.segments) > 1
 
         self.btn_export.set_sensitive(has_video)
+        if hasattr(self, "action_adv_export"):
+            self.action_adv_export.set_enabled(has_video)
         self.btn_undo.set_sensitive(self.timeline.can_undo)
         self.btn_redo.set_sensitive(self.timeline.can_redo)
         self.btn_cut.set_sensitive(can_cut)
@@ -738,36 +752,89 @@ class MainWindow(Adw.ApplicationWindow):
         self.player.sync_timeline_change(self.current_global_time)
         self._update_ui_state()
 
-    def _export_video_dialog(self) -> None:
+    def _open_advanced_export_dialog(self) -> None:
+        if self.timeline.is_empty:
+            return
+
+        src_w, src_h, src_fps = None, None, None
+        try:
+            first_seg = self.timeline.segments[0]
+            meta = ProbeService.probe(first_seg.source_path)
+            if meta:
+                src_w, src_h, src_fps = meta.width, meta.height, meta.fps
+        except Exception:
+            pass
+
+        def on_export(settings: ExportSettings) -> None:
+            self._export_video_dialog(settings=settings)
+
+        dialog = AdvancedExportDialog(
+            parent=self,
+            on_export=on_export,
+            source_width=src_w,
+            source_height=src_h,
+            source_fps=src_fps,
+        )
+        dialog.present()
+
+    def _export_video_dialog(self, settings: Optional[ExportSettings] = None) -> None:
         if self.timeline.is_empty:
             return
 
         dialog = Gtk.FileDialog.new()
         dialog.set_title(_("Export Combined Video"))
 
-        # Name based on original video name with _edited.mp4
+        ext = "mp4"
+        if settings:
+            ext = settings.container
+            if ext == "matroska":
+                ext = "mkv"
+
+        # Name based on original video name with appropriate extension
         first_seg = self.timeline.segments[0]
         stem = first_seg.source_path.stem
-        dialog.set_initial_name(f"{stem}_edited.mp4")
+        dialog.set_initial_name(f"{stem}_edited.{ext}")
 
-        filter_mp4 = Gtk.FileFilter.new()
-        filter_mp4.set_name(_("MP4 Video"))
-        filter_mp4.add_pattern("*.mp4")
         filters = Gio.ListStore.new(Gtk.FileFilter)
-        filters.append(filter_mp4)
+        filter_cur = Gtk.FileFilter.new()
+        if ext == "mp4":
+            filter_cur.set_name(_("MP4 Video (*.mp4)"))
+            filter_cur.add_pattern("*.mp4")
+        elif ext == "mkv":
+            filter_cur.set_name(_("Matroska Video (*.mkv)"))
+            filter_cur.add_pattern("*.mkv")
+        elif ext == "webm":
+            filter_cur.set_name(_("WebM Video (*.webm)"))
+            filter_cur.add_pattern("*.webm")
+        elif ext == "mov":
+            filter_cur.set_name(_("QuickTime Video (*.mov)"))
+            filter_cur.add_pattern("*.mov")
+        else:
+            filter_cur.set_name(f"{ext.upper()} (*.{ext})")
+            filter_cur.add_pattern(f"*.{ext}")
+        filters.append(filter_cur)
+
+        filter_all = Gtk.FileFilter.new()
+        filter_all.set_name(_("All Files"))
+        filter_all.add_pattern("*")
+        filters.append(filter_all)
+
         dialog.set_filters(filters)
 
         def on_save_finish(dlg, res):
             try:
                 gfile = dlg.save_finish(res)
                 if gfile:
-                    self._start_export(Path(gfile.get_path()))
+                    dest = Path(gfile.get_path())
+                    if not dest.suffix:
+                        dest = dest.with_suffix(f".{ext}")
+                    self._start_export(dest, settings=settings)
             except Exception as e:
                 print(f"Export file selection cancelled or error: {e}")
 
         dialog.save(self, None, on_save_finish)
 
-    def _start_export(self, destination: Path) -> None:
+    def _start_export(self, destination: Path, settings: Optional[ExportSettings] = None) -> None:
         self.player.pause()
 
         # Build Export Dialog Modal (non-closable during export: must wait or click cancel)
@@ -893,6 +960,7 @@ class MainWindow(Adw.ApplicationWindow):
             output_path=destination,
             on_progress=on_progress,
             on_done=on_done,
+            settings=settings,
         )
 
     def _open_in_default_player(self, file_path: Path) -> None:
