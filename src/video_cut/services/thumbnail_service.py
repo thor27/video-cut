@@ -153,10 +153,14 @@ class ThumbnailService:
                 cmd = [
                     "ffmpeg",
                     "-y",
+                    "-nostdin",
                     "-ss",
                     f"{target_time:.3f}",
                     "-i",
                     str(path),
+                    "-an",
+                    "-sn",
+                    "-dn",
                     "-frames:v",
                     "1",
                     "-vf",
@@ -244,52 +248,81 @@ class ThumbnailService:
             self._active_jobs += 1
             self._in_progress_keys.add(key)
 
-        def extract_single(idx: int, t: float) -> tuple[float, Path]:
+        vf = "scale=160:90:force_original_aspect_ratio=decrease,pad=160:90:(ow-iw)/2:(oh-ih)/2"
+
+        items: list[tuple[int, float, Path]] = []
+        for idx, t in enumerate(times):
             ts_ms = int(round(t * 1000))
             out_p = video_cache_dir / f"thumb_{idx:03d}_{ts_ms}.jpg"
-            if not out_p.exists():
-                cmd = [
-                    "ffmpeg",
-                    "-y",
-                    "-ss",
-                    f"{t:.3f}",
-                    "-i",
-                    str(path),
-                    "-frames:v",
-                    "1",
-                    "-vf",
-                    "scale=160:90:force_original_aspect_ratio=decrease,pad=160:90:(ow-iw)/2:(oh-ih)/2",
-                    "-q:v",
-                    "3",
-                    str(out_p),
-                ]
-                try:
-                    subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True)
-                except Exception:
-                    pass
+            items.append((idx, t, out_p))
 
-            with self._cache_lock:
-                if out_p.exists():
-                    if key not in self._cache:
-                        self._cache[key] = []
-                    if not any(abs(existing_ts - t) < 0.01 for existing_ts, _ in self._cache[key]):
-                        self._cache[key].append((t, out_p))
-                        self._cache[key].sort(key=lambda x: x[0])
-                completed_counter[0] += 1
-                curr_completed = completed_counter[0]
-                if curr_completed == total_samples:
-                    self._completed_keys.add(key)
+        def extract_batch(batch_items: list[tuple[int, float, Path]]) -> None:
+            to_extract = [item for item in batch_items if not item[2].exists()]
+            if to_extract:
+                cmd = ["ffmpeg", "-y", "-nostdin"]
+                for idx, t, out_p in to_extract:
+                    cmd.extend(["-skip_frame", "bidir", "-ss", f"{t:.3f}", "-i", str(path)])
+                for local_i, (idx, t, out_p) in enumerate(to_extract):
+                    cmd.extend([
+                        "-map", f"{local_i}:v:0",
+                        "-frames:v", "1",
+                        "-an", "-sn", "-dn",
+                        "-vf", vf,
+                        "-q:v", "3",
+                        str(out_p),
+                    ])
+                res = subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                if res.returncode != 0:
+                    # Fallback to individual extraction if batched multi-input fails
+                    for idx, t, out_p in to_extract:
+                        if not out_p.exists():
+                            fb_cmd = [
+                                "ffmpeg", "-y", "-nostdin",
+                                "-ss", f"{t:.3f}",
+                                "-i", str(path),
+                                "-an", "-sn", "-dn",
+                                "-frames:v", "1",
+                                "-vf", vf,
+                                "-q:v", "3",
+                                str(out_p),
+                            ]
+                            try:
+                                subprocess.run(fb_cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                            except Exception:
+                                pass
 
-            if idx == 0 and out_p.exists() and on_first_thumb:
-                GLib.idle_add(on_first_thumb, path, out_p)
+            for idx, t, out_p in batch_items:
+                with self._cache_lock:
+                    if out_p.exists():
+                        if key not in self._cache:
+                            self._cache[key] = []
+                        if not any(abs(existing_ts - t) < 0.01 for existing_ts, _ in self._cache[key]):
+                            self._cache[key].append((t, out_p))
+                            self._cache[key].sort(key=lambda x: x[0])
+                    completed_counter[0] += 1
+                    curr_completed = completed_counter[0]
+                    if curr_completed == total_samples:
+                        self._completed_keys.add(key)
 
-            if on_progress and out_p.exists():
-                GLib.idle_add(on_progress, curr_completed, total_samples, out_p)
+                if idx == 0 and out_p.exists() and on_first_thumb:
+                    GLib.idle_add(on_first_thumb, path, out_p)
 
-            return (t, out_p)
+                if on_progress and out_p.exists():
+                    GLib.idle_add(on_progress, curr_completed, total_samples, out_p)
 
-        # Submit tasks to executor immediately so parallel execution begins at once
-        futures = [self.executor.submit(extract_single, idx, t) for idx, t in enumerate(times)]
+        # Submit first thumbnail individually for instant response (< 100ms)
+        # and batch remaining samples across workers for high-speed parallel seeks
+        batches: list[list[tuple[int, float, Path]]] = []
+        if items:
+            batches.append(items[:1])
+            remaining = items[1:]
+            if remaining:
+                mid = (len(remaining) + 1) // 2
+                batches.append(remaining[:mid])
+                if remaining[mid:]:
+                    batches.append(remaining[mid:])
+
+        futures = [self.executor.submit(extract_batch, b) for b in batches]
 
         def coordinator() -> None:
             for f in futures:
