@@ -6,11 +6,152 @@ from typing import Callable, Optional
 import gi
 
 gi.require_version("Gtk", "4.0")
+gi.require_version("Gdk", "4.0")
+gi.require_version("Gsk", "4.0")
 gi.require_version("Adw", "1")
-from gi.repository import Gtk, GLib
+from gi.repository import Gtk, Gdk, Gsk, Graphene, GObject, GLib
 
 from .models import ProjectTimeline, Segment
 from .utils import clamp
+
+
+class TransformedPaintable(GObject.Object, Gdk.Paintable):
+    """Wraps a Gdk.Paintable (such as Gtk.MediaFile) to apply crop, rotation, and flip in real-time."""
+
+    def __init__(
+        self,
+        base: Gdk.Paintable,
+        rotation: int = 0,
+        hflip: bool = False,
+        vflip: bool = False,
+        crop: Optional[tuple[float, float, float, float]] = None,
+    ) -> None:
+        super().__init__()
+        self.base = base
+        self.rotation = rotation % 360
+        self.hflip = hflip
+        self.vflip = vflip
+        self.crop = crop or (0.0, 0.0, 1.0, 1.0)
+
+        self._signal_handlers: list[int] = []
+        try:
+            self._signal_handlers.append(
+                self.base.connect("invalidate-contents", self._on_base_invalidate_contents)
+            )
+            self._signal_handlers.append(
+                self.base.connect("invalidate-size", self._on_base_invalidate_size)
+            )
+        except Exception:
+            pass
+
+    def detach(self) -> None:
+        """Disconnect signals from the underlying base paintable."""
+        if hasattr(self, "_signal_handlers") and self._signal_handlers:
+            for hid in self._signal_handlers:
+                try:
+                    self.base.disconnect(hid)
+                except Exception:
+                    pass
+            self._signal_handlers.clear()
+
+    def update_transform(
+        self,
+        rotation: int = 0,
+        hflip: bool = False,
+        vflip: bool = False,
+        crop: Optional[tuple[float, float, float, float]] = None,
+    ) -> None:
+        """Update transformation parameters and trigger size & content recalculation."""
+        self.rotation = rotation % 360
+        self.hflip = hflip
+        self.vflip = vflip
+        self.crop = crop or (0.0, 0.0, 1.0, 1.0)
+        self.invalidate_size()
+        self.invalidate_contents()
+
+    def _on_base_invalidate_contents(self, *args) -> None:
+        self.invalidate_contents()
+
+    def _on_base_invalidate_size(self, *args) -> None:
+        self.invalidate_size()
+
+    def _get_oriented_dims(self) -> tuple[float, float]:
+        bw = self.base.get_intrinsic_width()
+        bh = self.base.get_intrinsic_height()
+        if bw <= 0 or bh <= 0:
+            return 1920.0, 1080.0
+        if self.rotation in (90, 270):
+            return float(bh), float(bw)
+        return float(bw), float(bh)
+
+    def do_get_intrinsic_width(self) -> int:
+        ow, _ = self._get_oriented_dims()
+        cw = self.crop[2] if self.crop else 1.0
+        return max(1, int(round(ow * cw)))
+
+    def do_get_intrinsic_height(self) -> int:
+        _, oh = self._get_oriented_dims()
+        ch = self.crop[3] if self.crop else 1.0
+        return max(1, int(round(oh * ch)))
+
+    def do_get_intrinsic_aspect_ratio(self) -> float:
+        w = self.do_get_intrinsic_width()
+        h = self.do_get_intrinsic_height()
+        return (w / h) if h > 0 else 0.0
+
+    def do_snapshot(self, snapshot: Gtk.Snapshot, width: float, height: float) -> None:
+        bw = self.base.get_intrinsic_width()
+        bh = self.base.get_intrinsic_height()
+        if bw <= 0 or bh <= 0 or width <= 0 or height <= 0:
+            return
+
+        rot = self.rotation % 360
+        if rot in (90, 270):
+            rw, rh = float(bh), float(bw)
+        else:
+            rw, rh = float(bw), float(bh)
+
+        ow, oh = rw, rh
+        cx, cy, cw, ch = self.crop if self.crop else (0.0, 0.0, 1.0, 1.0)
+        cx_px = cx * ow
+        cy_px = cy * oh
+        cw_px = max(1.0, cw * ow)
+        ch_px = max(1.0, ch * oh)
+
+        sx = width / cw_px
+        sy = height / ch_px
+
+        rect = Graphene.Rect().init(0, 0, float(width), float(height))
+        snapshot.push_clip(rect)
+        try:
+            tf = Gsk.Transform.new()
+            tf = tf.scale(sx, sy)
+            tf = tf.translate(Graphene.Point().init(-cx_px, -cy_px))
+
+            if self.hflip and self.vflip:
+                tf = tf.translate(Graphene.Point().init(rw, rh))
+                tf = tf.scale(-1, -1)
+            elif self.hflip:
+                tf = tf.translate(Graphene.Point().init(rw, 0))
+                tf = tf.scale(-1, 1)
+            elif self.vflip:
+                tf = tf.translate(Graphene.Point().init(0, rh))
+                tf = tf.scale(1, -1)
+
+            if rot == 90:
+                tf = tf.translate(Graphene.Point().init(bh, 0))
+                tf = tf.rotate(90)
+            elif rot == 180:
+                tf = tf.translate(Graphene.Point().init(bw, bh))
+                tf = tf.rotate(180)
+            elif rot == 270:
+                tf = tf.translate(Graphene.Point().init(0, bw))
+                tf = tf.rotate(270)
+
+            snapshot.transform(tf)
+            self.base.snapshot(snapshot, float(bw), float(bh))
+        finally:
+            snapshot.pop()
 
 
 class VideoPlayerController:
@@ -29,6 +170,7 @@ class VideoPlayerController:
         self.on_playback_state_changed = on_playback_state_changed
 
         self.current_media_file: Optional[Gtk.MediaFile] = None
+        self.current_transformed_paintable: Optional[TransformedPaintable] = None
         self.current_source_path: Optional[Path] = None
         self.current_global_time: float = 0.0
 
@@ -45,6 +187,9 @@ class VideoPlayerController:
         self.pause()
         self.current_global_time = 0.0
         self.current_source_path = None
+        if self.current_transformed_paintable:
+            self.current_transformed_paintable.detach()
+            self.current_transformed_paintable = None
         if self.current_media_file:
             self.current_media_file = None
         self.video_picture.set_paintable(None)
@@ -55,6 +200,72 @@ class VideoPlayerController:
             self.seek_to_global_time(0.0)
         else:
             self.clear()
+
+    def _apply_segment_transform(self, seg: Optional[Segment] = None, force: bool = False) -> None:
+        """Attach or update TransformedPaintable if segment has transforms, else use raw media file."""
+        if self.current_media_file is None:
+            if self.current_transformed_paintable:
+                self.current_transformed_paintable.detach()
+                self.current_transformed_paintable = None
+            self.video_picture.set_paintable(None)
+            return
+
+        if seg is None:
+            try:
+                _, seg, _ = self.timeline.map_global_time(self.current_global_time)
+            except ValueError:
+                seg = None
+
+        if seg is not None and seg.has_transform:
+            if (
+                self.current_transformed_paintable is not None
+                and self.current_transformed_paintable.base == self.current_media_file
+            ):
+                tp = self.current_transformed_paintable
+                if (
+                    force
+                    or tp.rotation != (seg.rotation % 360)
+                    or tp.hflip != seg.hflip
+                    or tp.vflip != seg.vflip
+                    or tp.crop != seg.crop
+                ):
+                    tp.update_transform(
+                        rotation=seg.rotation,
+                        hflip=seg.hflip,
+                        vflip=seg.vflip,
+                        crop=seg.crop,
+                    )
+                if self.video_picture.get_paintable() != tp:
+                    self.video_picture.set_paintable(tp)
+            else:
+                if self.current_transformed_paintable:
+                    self.current_transformed_paintable.detach()
+                self.current_transformed_paintable = TransformedPaintable(
+                    base=self.current_media_file,
+                    rotation=seg.rotation,
+                    hflip=seg.hflip,
+                    vflip=seg.vflip,
+                    crop=seg.crop,
+                )
+                self.video_picture.set_paintable(self.current_transformed_paintable)
+        else:
+            if self.current_transformed_paintable:
+                self.current_transformed_paintable.detach()
+                self.current_transformed_paintable = None
+            if self.video_picture.get_paintable() != self.current_media_file:
+                self.video_picture.set_paintable(self.current_media_file)
+
+    def refresh_current_transform(self) -> None:
+        """Refresh transform of the current segment without restarting playback."""
+        if self.timeline.is_empty:
+            return
+        try:
+            idx, seg, source_ts = self.timeline.map_global_time(self.current_global_time)
+            self._apply_segment_transform(seg, force=True)
+            self._seek_media_file(source_ts)
+            self.on_time_update(self.current_global_time)
+        except ValueError:
+            pass
 
     def seek_to_global_time(self, global_time: float) -> None:
         """Seek player to an arbitrary global timeline timestamp."""
@@ -70,13 +281,20 @@ class VideoPlayerController:
             return
 
         if self.current_source_path != seg.source_path or self.current_media_file is None:
-            self._load_file_and_seek(seg.source_path, source_ts, and_play=self._is_playing)
+            self._load_file_and_seek(seg.source_path, source_ts, and_play=self._is_playing, seg=seg)
         else:
+            self._apply_segment_transform(seg)
             self._seek_media_file(source_ts)
 
         self.on_time_update(self.current_global_time)
 
-    def _load_file_and_seek(self, path: Path, source_ts: float, and_play: bool = False) -> None:
+    def _load_file_and_seek(
+        self,
+        path: Path,
+        source_ts: float,
+        and_play: bool = False,
+        seg: Optional[Segment] = None,
+    ) -> None:
         """Load a video file into Gtk.MediaFile and attach to Gtk.Picture."""
         if self.current_media_file:
             self.current_media_file.pause()
@@ -84,7 +302,7 @@ class VideoPlayerController:
         self.current_source_path = path
         mf = Gtk.MediaFile.new_for_filename(str(path))
         self.current_media_file = mf
-        self.video_picture.set_paintable(mf)
+        self._apply_segment_transform(seg)
 
         def on_prepared(obj, pspec):
             if obj.is_prepared():
@@ -117,8 +335,9 @@ class VideoPlayerController:
         try:
             idx, seg, source_ts = self.timeline.map_global_time(self.current_global_time)
             if self.current_source_path != seg.source_path or self.current_media_file is None:
-                self._load_file_and_seek(seg.source_path, source_ts, and_play=True)
+                self._load_file_and_seek(seg.source_path, source_ts, and_play=True, seg=seg)
             else:
+                self._apply_segment_transform(seg)
                 self._seek_media_file(source_ts)
                 self.current_media_file.play()
         except ValueError:
@@ -157,13 +376,16 @@ class VideoPlayerController:
             try:
                 idx, seg, source_ts = self.timeline.map_global_time(self.current_global_time)
                 if self.current_source_path != seg.source_path or self.current_media_file is None:
-                    self._load_file_and_seek(seg.source_path, source_ts, and_play=was_playing)
+                    self._load_file_and_seek(seg.source_path, source_ts, and_play=was_playing, seg=seg)
                 else:
+                    self._apply_segment_transform(seg)
                     self._seek_media_file(source_ts)
                     if was_playing:
                         self.current_media_file.play()
             except ValueError:
                 pass
+        else:
+            self.clear()
 
         self.on_time_update(self.current_global_time)
 
@@ -191,8 +413,9 @@ class VideoPlayerController:
 
             # Check if source video file needs to change
             if seg.source_path != self.current_source_path:
-                self._load_file_and_seek(seg.source_path, source_ts, and_play=True)
+                self._load_file_and_seek(seg.source_path, source_ts, and_play=True, seg=seg)
             elif self.current_media_file:
+                self._apply_segment_transform(seg)
                 # Ensure media file is playing
                 if not self.current_media_file.get_playing():
                     self.current_media_file.play()

@@ -253,3 +253,65 @@ def test_crop_rotate_dialog_drawing_renders_without_error():
     dialog._rotate_cw()
     dialog._render_preview()
     assert dialog.preview_picture.get_paintable() is not None
+
+
+def test_transformed_paintable_and_player_transform(tmp_path):
+    from video_cut.player import TransformedPaintable, VideoPlayerController
+
+    # Create dummy mp4 if /tmp/test_vid.mp4 doesn't exist
+    vid_path = tmp_path / "test.mp4"
+    if not vid_path.exists():
+        import subprocess
+        subprocess.run(
+            ["ffmpeg", "-y", "-f", "lavfi", "-i", "testsrc=duration=1:size=160x120:rate=10", str(vid_path)],
+            check=True,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+
+    # Test TransformedPaintable with a texture
+    pixbuf = GdkPixbuf.Pixbuf.new(GdkPixbuf.Colorspace.RGB, False, 8, 160, 120)
+    texture = Gdk.Texture.new_for_pixbuf(pixbuf)
+    tp = TransformedPaintable(texture, rotation=90, hflip=True, vflip=False, crop=(0.1, 0.2, 0.6, 0.4))
+    assert tp.rotation == 90
+    assert tp.hflip is True
+    assert tp.vflip is False
+    assert tp.crop == (0.1, 0.2, 0.6, 0.4)
+    assert tp.do_get_intrinsic_width() > 0
+    assert tp.do_get_intrinsic_height() > 0
+
+    s = Gtk.Snapshot.new()
+    tp.snapshot(s, 200, 300)
+
+    # Update transform
+    tp.update_transform(rotation=180, hflip=False, vflip=True, crop=None)
+    assert tp.rotation == 180
+    assert tp.hflip is False
+    assert tp.vflip is True
+    assert tp.crop == (0.0, 0.0, 1.0, 1.0)
+
+    tp.detach()
+
+    # VideoPlayerController test
+    timeline = ProjectTimeline()
+    seg = timeline.add_video(vid_path, 1.0)
+    seg.rotation = 90
+    seg.crop = (0.1, 0.1, 0.8, 0.8)
+
+    pic = Gtk.Picture()
+    ctrl = VideoPlayerController(timeline, pic, lambda t: None, lambda s: None)
+    ctrl.seek_to_global_time(0.0)
+
+    # Paintable should be TransformedPaintable
+    paintable = pic.get_paintable()
+    assert isinstance(paintable, TransformedPaintable)
+    assert paintable.rotation == 90
+
+    # Reset transform and call refresh_current_transform
+    seg.rotation = 0
+    seg.crop = None
+    ctrl.refresh_current_transform()
+    assert pic.get_paintable() == ctrl.current_media_file
+
+    ctrl.clear()
+

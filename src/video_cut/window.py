@@ -701,6 +701,7 @@ class MainWindow(Adw.ApplicationWindow):
             seg.rotation = rotation
             seg.hflip = hflip
             seg.vflip = vflip
+            self.player.refresh_current_transform()
             self.timeline_widget.rebuild_filmstrip()
             self._update_ui_state()
             self._show_toast(f"Crop & Rotate applied to {seg.source_name}")
@@ -912,5 +913,6 @@ class MainWindow(Adw.ApplicationWindow):
 
     def _show_toast(self, text: str, timeout: int = 2) -> None:
         toast = Adw.Toast.new(text)
+        toast.set_use_markup(False)
         toast.set_timeout(timeout)
         self.toast_overlay.add_toast(toast)

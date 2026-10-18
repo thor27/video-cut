@@ -17,8 +17,10 @@ class VideoCutApplication(Adw.Application):
     """Main Adw.Application."""
 
     def __init__(self, initial_video: Optional[str] = None) -> None:
-        GLib.set_prgname("io.github.thomaz.videocut")
-        GLib.set_application_name("Video Cut")
+        if not GLib.get_prgname():
+            GLib.set_prgname("io.github.thomaz.videocut")
+        if not GLib.get_application_name():
+            GLib.set_application_name("Video Cut")
         super().__init__(
             application_id="io.github.thomaz.videocut",
             flags=Gio.ApplicationFlags.HANDLES_OPEN | Gio.ApplicationFlags.NON_UNIQUE,
