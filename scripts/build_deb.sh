@@ -103,7 +103,7 @@ Section: video
 Priority: optional
 Architecture: ${ARCH}
 Depends: python3 (>= 3.10), python3-gi (>= 3.42.0), gir1.2-gtk-4.0, gir1.2-adw-1, gstreamer1.0-gtk4, gstreamer1.0-plugins-base, gstreamer1.0-plugins-good, gstreamer1.0-libav, ffmpeg
-Maintainer: Thomaz <thor27@gmail.com>
+Maintainer: Thomaz Reis <thor27@gmail.com>
 Installed-Size: ${INSTALLED_SIZE}
 Homepage: https://github.com/thor27/video-cut
 Description: Easy-to-use tool to cut, merge, crop, and rotate videos

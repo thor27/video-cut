@@ -6,6 +6,9 @@ build-backend = "setuptools.build_meta"
 name = "video-cut"
 dynamic = ["version"]
 description = "Easy-to-use video editor to cut and merge videos, add images, crop, and rotate"
+authors = [
+    { name = "Thomaz Reis", email = "thor27@gmail.com" }
+]
 readme = "README.md"
 license = { text = "GPL-3.0-or-later" }
 requires-python = ">=3.10"

@@ -1036,7 +1036,7 @@ class MainWindow(Adw.ApplicationWindow):
             modal=True,
             application_name=_("Video Cut"),
             application_icon="io.github.thomaz.videocut",
-            developer_name="Thomaz",
+            developer_name="Thomaz Reis",
             version=__version__,
             comments=_(
                 "An easy-to-use video editor to cut and merge videos, add images, crop, and rotate"

@@ -190,6 +190,10 @@ video-cut /path/to/my_video.mp4
 pytest tests/
 ```
 
+## Author
+
+- **Thomaz Reis** — [@thor27](https://github.com/thor27)
+
 ## License
 
 This project is licensed under the GNU General Public License v3.0 - see the [LICENSE](LICENSE) file for details.
