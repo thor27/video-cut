@@ -43,13 +43,12 @@ def test_parse_uri_list(tmp_path):
     assert parse_uri_list("") == []
 
 
-def test_desktop_drag_and_drop(tmp_path):
-    v1 = tmp_path / "clip1.mp4"
-    v2 = tmp_path / "clip2.mp4"
-    v1.write_text("dummy")
-    v2.write_text("dummy")
+def test_desktop_drag_and_drop():
+    v1 = Path("/tmp/test_video.mp4")
+    v2 = Path("/tmp/test_video2.mp4")
 
     app = Adw.Application(application_id="io.github.thomaz.videocut.test.dnd")
+    err = []
 
     def run_test(app):
         win = None
@@ -58,15 +57,16 @@ def test_desktop_drag_and_drop(tmp_path):
 
             # 1. Test drag enter / leave highlights add button (and not the entire window)
             assert not win.has_css_class("window-drop-active")
-            assert not win.timeline_widget.btn_add.has_css_class("drop-target-active")
+            assert not win.btn_open_empty.has_css_class("drop-target-active")
+            assert win.timeline_widget.btn_add is None
             action = win._on_window_drag_enter(None, 100.0, 100.0)
             assert action == Gdk.DragAction.COPY
             assert not win.has_css_class("window-drop-active")
-            assert win.timeline_widget.btn_add.has_css_class("drop-target-active")
+            assert win.btn_open_empty.has_css_class("drop-target-active")
 
             win._on_window_drag_leave(None)
             assert not win.has_css_class("window-drop-active")
-            assert not win.timeline_widget.btn_add.has_css_class("drop-target-active")
+            assert not win.btn_open_empty.has_css_class("drop-target-active")
 
             # 2. Test drop rejection for internal segment strings
             assert win._on_window_drop(None, "video-cut-segment:seg-1", 0, 0) is False
@@ -78,6 +78,14 @@ def test_desktop_drag_and_drop(tmp_path):
             assert accepted is True
             assert len(win.timeline.segments) == 1
             assert win.timeline.segments[0].source_path == v1
+            assert win.timeline_widget.btn_add is not None
+
+            # When timeline is active, btn_add is highlighted on drag
+            assert not win.timeline_widget.btn_add.has_css_class("drop-target-active")
+            win._on_window_drag_enter(None, 100.0, 100.0)
+            assert win.timeline_widget.btn_add.has_css_class("drop-target-active")
+            win._on_window_drag_leave(None)
+            assert not win.timeline_widget.btn_add.has_css_class("drop-target-active")
 
             # 4. Test drop second file when timeline has active video -> appends
             accepted2 = win._on_window_drop(None, f"{v2.as_uri()}\n", 0, 0)
@@ -91,6 +99,8 @@ def test_desktop_drag_and_drop(tmp_path):
             accepted3 = win._on_window_drop(None, fl, 0, 0)
             assert accepted3 is True
             assert len(win.timeline.segments) == 3
+        except Exception as e:
+            err.append(e)
         finally:
             if win:
                 win.close()
@@ -98,15 +108,16 @@ def test_desktop_drag_and_drop(tmp_path):
 
     app.connect("activate", run_test)
     app.run(["test"])
+    if err:
+        raise err[0]
 
 
-def test_universal_copy_and_paste(tmp_path):
-    v1 = tmp_path / "clip1.mp4"
-    v2 = tmp_path / "clip2.mp4"
-    v1.write_text("dummy")
-    v2.write_text("dummy")
+def test_universal_copy_and_paste():
+    v1 = Path("/tmp/test_video.mp4")
+    v2 = Path("/tmp/test_video2.mp4")
 
     app = Adw.Application(application_id="io.github.thomaz.videocut.test.clipboard.universal")
+    err = []
 
     def run_test(app):
         win = None
@@ -143,6 +154,8 @@ def test_universal_copy_and_paste(tmp_path):
 
             # Test has_pasteable_content
             assert win._has_pasteable_content() is True
+        except Exception as e:
+            err.append(e)
         finally:
             if win:
                 win.close()
@@ -150,3 +163,5 @@ def test_universal_copy_and_paste(tmp_path):
 
     app.connect("activate", run_test)
     app.run(["test"])
+    if err:
+        raise err[0]

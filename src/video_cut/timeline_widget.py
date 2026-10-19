@@ -496,29 +496,32 @@ class TimelineWidget(Gtk.Box):
             self._cards[seg.id] = card
             self.cards_box.append(card)
 
-        # Append "+ Add Video or Image" / "Open Video or Image" button card at the end (or as main button when empty)
-        self.btn_add = Gtk.Button()
-        self.btn_add.set_tooltip_text(_("Add Video or Image as Segment") if not self.timeline.is_empty else _("Open Video or Image"))
-        self.btn_add.set_focusable(False)
-        self.btn_add.add_css_class("card")
-        self.btn_add.add_css_class("add-segment-button")
-        if self._is_drop_active:
-            self.btn_add.add_css_class("drop-target-active")
-        self.btn_add.set_size_request(85, -1)
-        self.btn_add.set_hexpand(False)
-        btn_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4)
-        btn_box.set_valign(Gtk.Align.CENTER)
-        btn_box.set_halign(Gtk.Align.CENTER)
-        icon = Gtk.Image.new_from_icon_name("list-add-symbolic")
-        icon.set_pixel_size(24)
-        lbl = Gtk.Label(label=_("Add Video\nor Image") if not self.timeline.is_empty else _("Open Video\nor Image"))
-        lbl.set_justify(Gtk.Justification.CENTER)
-        lbl.add_css_class("caption")
-        btn_box.append(icon)
-        btn_box.append(lbl)
-        self.btn_add.set_child(btn_box)
-        self.btn_add.connect("clicked", lambda _: self.on_add_video_requested())
-        self.cards_box.append(self.btn_add)
+        # Append "+ Add Video or Image" button card at the end when timeline has segments
+        if not self.timeline.is_empty:
+            self.btn_add = Gtk.Button()
+            self.btn_add.set_tooltip_text(_("Add Video or Image as Segment"))
+            self.btn_add.set_focusable(False)
+            self.btn_add.add_css_class("card")
+            self.btn_add.add_css_class("add-segment-button")
+            if self._is_drop_active:
+                self.btn_add.add_css_class("drop-target-active")
+            self.btn_add.set_size_request(85, -1)
+            self.btn_add.set_hexpand(False)
+            btn_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4)
+            btn_box.set_valign(Gtk.Align.CENTER)
+            btn_box.set_halign(Gtk.Align.CENTER)
+            icon = Gtk.Image.new_from_icon_name("list-add-symbolic")
+            icon.set_pixel_size(24)
+            lbl = Gtk.Label(label=_("Add Video\nor Image"))
+            lbl.set_justify(Gtk.Justification.CENTER)
+            lbl.add_css_class("caption")
+            btn_box.append(icon)
+            btn_box.append(lbl)
+            self.btn_add.set_child(btn_box)
+            self.btn_add.connect("clicked", lambda _: self.on_add_video_requested())
+            self.cards_box.append(self.btn_add)
+        else:
+            self.btn_add = None
         self._last_layout_width = -1
         self.recalculate_layout(force=True)
         def _do_idle_layout():
