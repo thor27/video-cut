@@ -71,7 +71,7 @@ cp "${REPO_ROOT}/src/video_cut/resources/io.github.thomaz.videocut.svg" "${APPDI
 chmod 644 "${APPDIR}/usr/share/pixmaps/"*
 
 mkdir -p "${APPDIR}/usr/share/icons/hicolor/scalable/actions"
-cp "${REPO_ROOT}/src/video_cut/resources/video-split-symbolic.svg" \
+cp "${REPO_ROOT}/src/video_cut/resources/hicolor/scalable/actions/video-split-symbolic.svg" \
    "${APPDIR}/usr/share/icons/hicolor/scalable/actions/video-split-symbolic.svg"
 chmod 644 "${APPDIR}/usr/share/icons/hicolor/scalable/actions/"*
 
