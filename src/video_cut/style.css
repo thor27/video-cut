@@ -193,11 +193,6 @@ popover.playhead-split-popover > contents {
     background-color: alpha(@accent_color, 0.06);
 }
 
-/* Consistent disabled button styling across GTK versions */
-button:disabled {
-    opacity: 0.45;
-}
-
 .transport-box {
     background-color: alpha(currentColor, 0.06);
     border-radius: 20px;
