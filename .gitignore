@@ -55,6 +55,8 @@ cover/
 # Translations
 *.mo
 *.pot
+!src/video_cut/locale/**/*.mo
+!src/video_cut/locale/*.pot
 
 # Django stuff:
 *.log

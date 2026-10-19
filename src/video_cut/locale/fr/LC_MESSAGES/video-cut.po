@@ -418,11 +418,9 @@ msgstr "Échec de l'exportation : {error}"
 msgid "Unknown error"
 msgstr "Erreur inconnue"
 
-#: src/video_cut/window.py:999
-msgid "A simple, fast, and modern video cutting and segment arranging tool"
-msgstr ""
-"Un outil simple, rapide et moderne pour couper et organiser des segments "
-"vidéo"
+#: src/video_cut/window.py:1041
+msgid "An easy-to-use tool to edit video, add images, merge multiple videos together, crop, and rotate"
+msgstr "Un outil facile à utiliser pour éditer des vidéos, ajouter des images, fusionner plusieurs vidéos, rogner et faire pivoter"
 
 #: src/video_cut/window.py:1029
 #, python-brace-format

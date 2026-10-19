@@ -1,6 +1,6 @@
 [Desktop Entry]
 Name=Video Cut
-Comment=Simple, fast, and modern video cutting and segment arranging tool
+Comment=Easy-to-use tool to edit video, add images, merge multiple videos together, crop, and rotate
 Exec=video-cut %U
 Icon=io.github.thomaz.videocut
 Terminal=false
@@ -9,4 +9,4 @@ Categories=AudioVideo;Video;AudioVideoEditing;
 MimeType=video/mp4;video/x-matroska;video/webm;video/quicktime;image/jpeg;image/png;
 StartupNotify=true
 StartupWMClass=io.github.thomaz.videocut
-Keywords=video;cut;video-cut;editor;trim;clip;movie;
+Keywords=video;cut;video-cut;editor;trim;clip;movie;crop;rotate;merge;images;

@@ -1,11 +1,12 @@
 name: video-cut
 base: core24
 adopt-info: video-cut
-summary: Simple, fast, and modern video cutting tool
+summary: Easy-to-use tool to edit, merge, crop, and rotate videos
 description: |
-  Video Cut is a lightweight, responsive video editor inspired by macOS QuickTime
-  and Preview. It offers proportional filmstrip timelines, interactive crop and
-  rotation, dynamic FFmpeg capability detection, multi-format export, and zero hover obstructions.
+  Video Cut is an easy-to-use, fast, and lightweight video editor inspired by macOS
+  QuickTime and Preview. It lets you cut and edit videos, add images with audio
+  soundtracks, merge multiple videos together, crop, and rotate clips on an
+  interactive filmstrip timeline with multi-format export.
 
 icon: src/video_cut/resources/icon_512.png
 grade: stable

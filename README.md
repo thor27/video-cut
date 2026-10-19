@@ -7,7 +7,7 @@
 [![Latest Release](https://img.shields.io/github/v/release/thor27/video-cut?label=Latest%20Version&color=orange)](https://github.com/thor27/video-cut/releases/latest)
 [![Releases](https://img.shields.io/badge/Downloads-GitHub%20Releases-blue)](https://github.com/thor27/video-cut/releases)
 
-A simple, fast, and modern Python GTK 4 / Libadwaita tool to edit and cut videos, inspired by macOS Preview and QuickTime video editing.
+An easy-to-use, fast, and modern video editing tool to edit and cut videos, add images with custom duration and soundtracks, merge multiple videos together, crop, and rotate. Inspired by macOS Preview and QuickTime video editing.
 
 <p align="center">
   <img src="screenshot.png" alt="Video Cut Screenshot" width="850">
@@ -48,6 +48,10 @@ All version releases, assets, and changelogs are available on the **[GitHub Vers
   - Customizable clip duration (0.5s to 300s) with quick presets (1s, 3s, 5s, 10s).
   - Attach optional background music or voiceover soundtrack (`.mp3`, `.wav`, `.aac`, `.m4a`, `.ogg`, `.flac`).
   - Audio start offset slider and real-time audio slice preview player.
+- **Merge Multiple Videos Together**:
+  - Add multiple videos, clips, and images into a single unified timeline.
+  - Rearrange segments from different files with drag-and-drop or keyboard shortcuts.
+  - Seamlessly export into a single merged video with synchronized audio.
 - **Internationalization (i18n)**:
   - Automatic system language detection (`LANG`, `LC_ALL`, `LANGUAGE`).
   - Native translations for:

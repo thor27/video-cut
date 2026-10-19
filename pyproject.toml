@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "video-cut"
 dynamic = ["version"]
-description = "A simple, fast, and modern video cutting and segment arranging tool using GTK 4 and FFmpeg"
+description = "Easy-to-use tool to edit video, add images, merge multiple videos together, crop, and rotate"
 readme = "README.md"
 license = { text = "GPL-3.0-or-later" }
 requires-python = ">=3.10"
