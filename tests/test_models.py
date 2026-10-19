@@ -9,6 +9,16 @@ def test_segment_creation_and_duration():
     seg = Segment(source_path=Path("/tmp/video.mp4"), source_duration=10.0, start_time=2.0, end_time=7.5)
     assert seg.duration == 5.5
     assert seg.source_name == "video.mp4"
+    assert seg.stem == "video"
+
+    # With display_name (e.g. from an image converted to a video file with a hash name)
+    seg_image = Segment(
+        source_path=Path("/tmp/cache/5f4dcc3b5aa765d61d8327deb882cf99.mp4"),
+        source_duration=3.0,
+        display_name="my_photo.png",
+    )
+    assert seg_image.source_name == "my_photo.png"
+    assert seg_image.stem == "my_photo"
 
 
 def test_segment_clamping():

@@ -1084,9 +1084,9 @@ class MainWindow(Adw.ApplicationWindow):
             if ext == "matroska":
                 ext = "mkv"
 
-        # Name based on original video name with appropriate extension
+        # Name based on original video or image name with appropriate extension
         first_seg = self.timeline.segments[0]
-        stem = first_seg.source_path.stem
+        stem = first_seg.stem
         dialog.set_initial_name(f"{stem}_edited.{ext}")
 
         filters = Gio.ListStore.new(Gtk.FileFilter)

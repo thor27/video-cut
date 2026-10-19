@@ -1,5 +1,6 @@
 """Unit tests for probe_service and thumbnail_service."""
 
+import time
 import pytest
 from pathlib import Path
 from video_cut.services.probe_service import ProbeService
@@ -108,9 +109,13 @@ def test_thumbnail_service_progress_and_cache(tmp_path):
     # Dispatch queued GLib idle_add events
     from gi.repository import GLib
     ctx = GLib.MainContext.default()
-    for _ in range(100):
-        if not ctx.iteration(False):
-            break
+    start_wait = time.time()
+    while not progress_ticks and (time.time() - start_wait < 5.0):
+        while ctx.pending():
+            ctx.iteration(False)
+        time.sleep(0.01)
+    while ctx.pending():
+        ctx.iteration(False)
 
     # Progress ticks should have fired
     assert len(progress_ticks) > 0
@@ -206,9 +211,13 @@ def test_video_larger_than_one_minute_samples_first_frame_at_10s(tmp_path):
     # Dispatch queued GLib idle_add events
     from gi.repository import GLib
     ctx = GLib.MainContext.default()
-    for _ in range(50):
-        if not ctx.iteration(False):
-            break
+    start_wait = time.time()
+    while (not received or not first_thumb_captured) and (time.time() - start_wait < 5.0):
+        while ctx.pending():
+            ctx.iteration(False)
+        time.sleep(0.01)
+    while ctx.pending():
+        ctx.iteration(False)
 
     key = service._file_key(video_path)
     cached_items = service._cache[key]

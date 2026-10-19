@@ -54,8 +54,23 @@ def test_load_image_initial_and_add(sample_image):
             assert abs(win.timeline.total_duration - 1.0) < 0.05
             assert seg.display_name == sample_image.name
             assert seg.source_name == sample_image.name
+            assert seg.stem == sample_image.stem
             assert seg.thumbnails == [sample_image]
             assert win.window_title.get_title() == sample_image.name
+
+            # Verify export initial filename uses original image stem instead of hex hash
+            saved_initial_name = None
+            def mock_save(dlg_self, parent, cancellable, callback):
+                nonlocal saved_initial_name
+                saved_initial_name = dlg_self.get_initial_name()
+
+            orig_save = Gtk.FileDialog.save
+            try:
+                Gtk.FileDialog.save = mock_save
+                win._export_video_dialog()
+                assert saved_initial_name == f"{sample_image.stem}_edited.mp4"
+            finally:
+                Gtk.FileDialog.save = orig_save
 
             # 2. Add video after the image
             v1 = Path("/tmp/test_video.mp4")

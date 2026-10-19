@@ -44,6 +44,11 @@ class Segment:
         return self.source_path.name
 
     @property
+    def stem(self) -> str:
+        """Stem (filename without extension) of the source or custom display name."""
+        return Path(self.source_name).stem
+
+    @property
     def has_transform(self) -> bool:
         """Return True if any crop, rotation, or flip transform is active."""
         has_crop = self.crop is not None and not (
