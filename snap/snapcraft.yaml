@@ -19,8 +19,8 @@ apps:
     common-id: io.github.thomaz.videocut
     desktop: usr/share/applications/io.github.thomaz.videocut.desktop
     environment:
-      LD_LIBRARY_PATH: $SNAP/gnome-platform/usr/lib/$CRAFT_ARCH_TRIPLET_BUILD_FOR:$SNAP/gnome-platform/usr/lib/x86_64-linux-gnu:$SNAP/gnome-platform/lib/x86_64-linux-gnu:$LD_LIBRARY_PATH
-      GST_PLUGIN_SYSTEM_PATH_1_0: $SNAP/gnome-platform/usr/lib/$CRAFT_ARCH_TRIPLET_BUILD_FOR/gstreamer-1.0:$SNAP/usr/lib/$CRAFT_ARCH_TRIPLET_BUILD_FOR/gstreamer-1.0
+      LD_LIBRARY_PATH: $SNAP/gnome-platform/usr/lib/x86_64-linux-gnu:$SNAP/gnome-platform/lib/x86_64-linux-gnu:$LD_LIBRARY_PATH
+      GST_PLUGIN_SYSTEM_PATH_1_0: $SNAP/gnome-platform/usr/lib/x86_64-linux-gnu/gstreamer-1.0:$SNAP/usr/lib/x86_64-linux-gnu/gstreamer-1.0
     plugs:
       - home
       - removable-media
@@ -38,7 +38,6 @@ parts:
     source: .
     stage-packages:
       - ffmpeg
-      - gstreamer1.0-gtk4
       - gstreamer1.0-plugins-good
       - gstreamer1.0-plugins-bad
       - gstreamer1.0-libav
