@@ -315,3 +315,22 @@ def test_transformed_paintable_and_player_transform(tmp_path):
 
     ctrl.clear()
 
+
+def test_crop_rotate_preset_i18n():
+    from video_cut.crop_rotate_dialog import get_preset_label, get_preset_tooltip
+    from video_cut.i18n import set_language
+
+    set_language("pt_BR")
+    assert get_preset_label("Free") == "Livre"
+    assert get_preset_label("Original") == "Original"
+    assert get_preset_label("16:9") == "16:9"
+    assert get_preset_tooltip("Free") == "Livre (sem restrição)"
+    assert get_preset_tooltip("Original") == "Proporção original"
+    assert get_preset_tooltip("16:9") == "16:9 Widescreen"
+
+    set_language("en_US")
+    assert get_preset_label("Free") == "Free"
+    assert get_preset_label("Original") == "Original"
+    assert get_preset_tooltip("Free") == "Freeform (unconstrained)"
+
+

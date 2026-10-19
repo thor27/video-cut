@@ -66,6 +66,11 @@ def test_translations_pt_br():
     assert _("Undo (Ctrl+Z)") == "Desfazer (Ctrl+Z)"
     assert _("Redo (Ctrl+Shift+Z or Ctrl+Y)") == "Refazer (Ctrl+Shift+Z ou Ctrl+Y)"
     assert _("Crop & Rotate — {name}").format(name="clip.mp4") == "Cortar e Girar — clip.mp4"
+    assert _("Aspect Ratio:") == "Proporção:"
+    assert _("Free") == "Livre"
+    assert _("Original") == "Original"
+    assert _("Freeform (unconstrained)") == "Livre (sem restrição)"
+    assert _("Original aspect ratio") == "Proporção original"
 
 
 def test_translations_es():
@@ -81,6 +86,11 @@ def test_translations_es():
     assert _("Undo (Ctrl+Z)") == "Deshacer (Ctrl+Z)"
     assert _("Redo (Ctrl+Shift+Z or Ctrl+Y)") == "Rehacer (Ctrl+Shift+Z o Ctrl+Y)"
     assert _("Crop & Rotate — {name}").format(name="clip.mp4") == "Recortar y Girar — clip.mp4"
+    assert _("Aspect Ratio:") == "Relación de aspecto:"
+    assert _("Free") == "Libre"
+    assert _("Original") == "Original"
+    assert _("Freeform (unconstrained)") == "Libre (sin restricciones)"
+    assert _("Original aspect ratio") == "Proporción original"
 
 
 def test_translations_fr():
@@ -96,6 +106,11 @@ def test_translations_fr():
     assert _("Undo (Ctrl+Z)") == "Annuler (Ctrl+Z)"
     assert _("Redo (Ctrl+Shift+Z or Ctrl+Y)") == "Rétablir (Ctrl+Shift+Z ou Ctrl+Y)"
     assert _("Crop & Rotate — {name}").format(name="clip.mp4") == "Rogner et Pivoter — clip.mp4"
+    assert _("Aspect Ratio:") == "Format d'image :"
+    assert _("Free") == "Libre"
+    assert _("Original") == "Original"
+    assert _("Freeform (unconstrained)") == "Libre (sans contrainte)"
+    assert _("Original aspect ratio") == "Format d'origine"
 
 
 def test_translations_en_us():
@@ -106,6 +121,11 @@ def test_translations_en_us():
     assert _("Export") == "Export"
     assert _("No Media Loaded") == "No Media Loaded"
     assert _("Split at Cursor") == "Split at Cursor"
+    assert _("Aspect Ratio:") == "Aspect Ratio:"
+    assert _("Free") == "Free"
+    assert _("Original") == "Original"
+    assert _("Freeform (unconstrained)") == "Freeform (unconstrained)"
+    assert _("Original aspect ratio") == "Original aspect ratio"
 
 
 def test_fallback_unsupported_language():

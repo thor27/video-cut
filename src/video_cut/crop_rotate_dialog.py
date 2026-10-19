@@ -34,6 +34,34 @@ ASPECT_PRESETS = [
 ]
 
 
+def get_preset_label(preset: str) -> str:
+    """Return the localized button label for an aspect ratio preset."""
+    if preset == "Free":
+        return _("Free")
+    elif preset == "Original":
+        return _("Original")
+    return preset
+
+
+def get_preset_tooltip(preset: str) -> str:
+    """Return the localized tooltip for an aspect ratio preset."""
+    if preset == "Free":
+        return _("Freeform (unconstrained)")
+    elif preset == "Original":
+        return _("Original aspect ratio")
+    elif preset == "16:9":
+        return _("16:9 Widescreen")
+    elif preset == "9:16":
+        return _("9:16 Vertical")
+    elif preset == "1:1":
+        return _("1:1 Square")
+    elif preset == "4:3":
+        return _("4:3 Standard")
+    elif preset == "21:9":
+        return _("21:9 Ultrawide")
+    return preset
+
+
 class CropRotateDialog(Adw.Window):
     """Modal dialog allowing users to crop, rotate, and flip a video segment with live preview."""
 
@@ -282,8 +310,9 @@ class CropRotateDialog(Adw.Window):
         self._preset_buttons: dict[str, Gtk.ToggleButton] = {}
 
         for label, ratio in ASPECT_PRESETS:
-            btn_label = _(label) if label in ("Free", "Original") else label
+            btn_label = get_preset_label(label)
             btn = Gtk.ToggleButton(label=btn_label)
+            btn.set_tooltip_text(get_preset_tooltip(label))
             if label == "Free":
                 btn.set_active(True)
             btn.connect("toggled", self._on_preset_toggled, label)
@@ -317,7 +346,7 @@ class CropRotateDialog(Adw.Window):
         elif self.vflip:
             flip_str = _(" • Flip V")
 
-        preset_display = _(self.selected_preset) if self.selected_preset in ("Free", "Original") else self.selected_preset
+        preset_display = get_preset_label(self.selected_preset)
         self.lbl_readout.set_label(_("Crop: {crop_w} × {crop_h} px ({preset}){rot_str}{flip_str}").format(
             crop_w=crop_w,
             crop_h=crop_h,
