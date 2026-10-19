@@ -58,11 +58,25 @@ parts:
       craftctl set version="$VERSION"
     override-build: |
       craftctl default
-      # Install desktop file and icons into standard snap paths
+      # Ensure style.css and package assets are in installed site-packages
+      for pydir in ${CRAFT_PART_INSTALL}/lib/python*/site-packages/video_cut; do
+        if [ -d "$pydir" ]; then
+          cp -f src/video_cut/style.css "$pydir/style.css"
+          cp -rf src/video_cut/resources "$pydir/"
+          cp -rf src/video_cut/locale "$pydir/"
+        fi
+      done
+      # Also install style.css, desktop file, and icons into standard system paths
+      install -D -m 644 src/video_cut/style.css \
+        ${CRAFT_PART_INSTALL}/usr/share/video-cut/style.css
       install -D -m 644 src/video_cut/resources/io.github.thomaz.videocut.desktop \
         ${CRAFT_PART_INSTALL}/usr/share/applications/io.github.thomaz.videocut.desktop
       install -D -m 644 src/video_cut/resources/io.github.thomaz.videocut.svg \
         ${CRAFT_PART_INSTALL}/usr/share/icons/hicolor/scalable/apps/io.github.thomaz.videocut.svg
+      install -D -m 644 src/video_cut/resources/icon_512.png \
+        ${CRAFT_PART_INSTALL}/usr/share/pixmaps/video-cut.png
+      install -D -m 644 src/video_cut/resources/icon_512.png \
+        ${CRAFT_PART_INSTALL}/usr/share/pixmaps/io.github.thomaz.videocut.png
       for size in 16 24 32 48 64 128 256 512; do
         if [ -f "src/video_cut/resources/icon_${size}.png" ]; then
           install -D -m 644 src/video_cut/resources/icon_${size}.png \

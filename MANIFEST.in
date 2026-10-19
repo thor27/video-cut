@@ -1,0 +1,3 @@
+include src/video_cut/style.css
+recursive-include src/video_cut/resources *
+recursive-include src/video_cut/locale *

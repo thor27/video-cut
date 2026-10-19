@@ -1,5 +1,4 @@
-"""Main application window using Libadwaita."""
-
+import os
 import subprocess
 from pathlib import Path
 from typing import Optional
@@ -52,7 +51,18 @@ class MainWindow(Adw.ApplicationWindow):
         # Load CSS and icons
         css_provider = Gtk.CssProvider()
         css_path = Path(__file__).parent / "style.css"
-        if css_path.exists():
+        if not css_path.exists():
+            snap_dir = os.environ.get("SNAP")
+            for candidate in [
+                Path(snap_dir) / "usr" / "share" / "video-cut" / "style.css" if snap_dir else None,
+                Path(snap_dir) / "share" / "video-cut" / "style.css" if snap_dir else None,
+                Path("/usr/share/video-cut/style.css"),
+            ]:
+                if candidate and candidate.exists():
+                    css_path = candidate
+                    break
+
+        if css_path and css_path.exists():
             css_provider.load_from_path(str(css_path))
             Gtk.StyleContext.add_provider_for_display(
                 Gdk.Display.get_default(),
