@@ -181,11 +181,21 @@ popover.playhead-split-popover > contents {
     min-height: 85px;
     border: 2px dashed alpha(currentColor, 0.2);
     border-radius: 10px;
+    padding: 6px 4px;
+}
+
+.add-segment-button label {
+    line-height: 1.25;
 }
 
 .add-segment-button:hover {
     border-color: @accent_color;
     background-color: alpha(@accent_color, 0.06);
+}
+
+/* Consistent disabled button styling across GTK versions */
+button:disabled {
+    opacity: 0.45;
 }
 
 .transport-box {

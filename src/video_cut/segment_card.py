@@ -740,15 +740,16 @@ class SegmentCard(Gtk.Box):
         if self.needle.get_visible():
             self.show_split_pill()
 
-    def _create_drag_preview_texture(self) -> Optional[Gdk.MemoryTexture]:
+    def _create_drag_preview_texture(self) -> Optional[Gdk.Texture]:
         """Generate a sleek miniature preview card for drag-and-drop feedback."""
+        # 1. Try PIL first for the full card with badge, duration, and border
         try:
             from PIL import Image, ImageDraw
 
             width, height = 120, 68
             img = Image.new("RGBA", (width, height), (30, 30, 32, 245))
 
-            # 1. Paste first thumbnail if available
+            # Paste first thumbnail if available
             valid_thumbs = [p for p in self.segment.thumbnails if p.exists()]
             if valid_thumbs:
                 try:
@@ -760,23 +761,30 @@ class SegmentCard(Gtk.Box):
 
             draw = ImageDraw.Draw(img)
 
-            # 2. Dark badge overlay at bottom
+            # Dark badge overlay at bottom
             banner_h = 22
             draw.rectangle([(0, height - banner_h), (width, height)], fill=(0, 0, 0, 195))
 
-            # 3. Text: Clip index and duration
+            # Text: Clip index and duration
             dur_str = format_time(self.segment.duration, show_millis=False)
             text = f"#{self.index + 1} • {dur_str}"
             draw.text((6, height - banner_h + 4), text, fill=(255, 255, 255, 255))
 
-            # 4. Orange accent border
+            # Orange accent border
             draw.rectangle([(0, 0), (width - 1, height - 1)], outline=(255, 85, 0, 240), width=2)
 
             raw_bytes = img.tobytes("raw", "RGBA")
             glib_bytes = GLib.Bytes.new(raw_bytes)
             return Gdk.MemoryTexture.new(width, height, Gdk.MemoryFormat.R8G8B8A8, glib_bytes, width * 4)
-        except Exception as e:
-            print(f"Error creating drag preview texture: {e}")
+        except Exception:
+            # 2. Fallback to direct GdkPixbuf without PIL so thumbnail is always shown
+            try:
+                valid_thumbs = [p for p in self.segment.thumbnails if p.exists()]
+                if valid_thumbs:
+                    pixbuf = GdkPixbuf.Pixbuf.new_from_file_at_scale(str(valid_thumbs[0]), 120, 68, False)
+                    return Gdk.Texture.new_for_pixbuf(pixbuf)
+            except Exception:
+                pass
             return None
 
     def _setup_drag_and_drop(self) -> None:

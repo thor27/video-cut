@@ -11,6 +11,7 @@ license = { text = "GPL-3.0-or-later" }
 requires-python = ">=3.10"
 dependencies = [
     "PyGObject>=3.42.0",
+    "Pillow>=9.0.0",
 ]
 
 [project.scripts]
