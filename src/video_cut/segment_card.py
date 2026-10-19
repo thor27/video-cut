@@ -300,6 +300,7 @@ class SegmentCard(Gtk.Box):
         box.append(self.menu_delete)
 
         self.context_menu.set_child(box)
+        self._update_context_menu_state()
 
     def _on_menu_item_clicked(self, action: Callable[[], None]) -> None:
         self.context_menu.popdown()
@@ -723,16 +724,17 @@ class SegmentCard(Gtk.Box):
     def _on_filmstrip_drag_update(self, gesture, offset_x: float, offset_y: float) -> None:
         start_x = getattr(self, "_drag_start_x", 0.0)
         start_y = getattr(self, "_drag_start_y", 0.0)
-        res = gesture.get_start_point()
-        if res and res[0]:
-            start_x = res[1]
-            start_y = res[2]
-            cur_x = start_x + offset_x
-            cur_y = start_y + offset_y
-            if self.on_scrub_update:
-                self.on_scrub_update(self, cur_x, cur_y)
-            elif self.on_scrub_to_source_time:
-                self._scrub_at_x(cur_x)
+        if gesture:
+            res = gesture.get_start_point()
+            if res and res[0]:
+                start_x = res[1]
+                start_y = res[2]
+        cur_x = start_x + offset_x
+        cur_y = start_y + offset_y
+        if self.on_scrub_update:
+            self.on_scrub_update(self, cur_x, cur_y)
+        elif self.on_scrub_to_source_time:
+            self._scrub_at_x(cur_x)
 
     def _on_filmstrip_drag_end(self, gesture, offset_x: float, offset_y: float) -> None:
         self._is_drag_scrubbing = False

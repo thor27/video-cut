@@ -466,7 +466,7 @@ class TimelineWidget(Gtk.Box):
         total = self.timeline.total_duration
         self._update_time_label()
 
-        can_delete = len(self.timeline.segments) > 1
+        can_delete = len(self.timeline.segments) > 0
         total_segments = len(self.timeline.segments)
         for idx, seg in enumerate(self.timeline.segments):
             card = SegmentCard(

@@ -232,8 +232,8 @@ class ProjectTimeline:
         self.selected_segment_id = right_seg.id
         return seg, right_seg
 
-    def delete_segment(self, segment_id: str, allow_last: bool = False) -> bool:
-        """Remove a segment by ID. Returns True if removed. Prevents deleting the only segment unless allow_last=True."""
+    def delete_segment(self, segment_id: str, allow_last: bool = True) -> bool:
+        """Remove a segment by ID. Returns True if removed. Allows deleting the last segment when allow_last=True."""
         if len(self.segments) <= 1 and not allow_last:
             return False
 

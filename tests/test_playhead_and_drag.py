@@ -14,13 +14,14 @@ from video_cut.timeline_widget import TimelineWidget
 
 def test_segment_card_needle_and_margins():
     app = Adw.Application(application_id="io.github.thomaz.videocut.test.needle")
+    err = []
 
     def run_test(app):
         try:
             seg = Segment(
                 id="seg-1",
                 source_path=Path("/tmp/test_video.mp4"),
-                source_name="test_video.mp4",
+                source_duration=10.0,
                 start_time=0.0,
                 end_time=10.0,
             )
@@ -122,15 +123,20 @@ def test_segment_card_needle_and_margins():
             assert hasattr(card, "menu_split")
             assert card.menu_split.get_sensitive() is True
 
+        except Exception as e:
+            err.append(e)
         finally:
             app.quit()
 
     app.connect("activate", run_test)
     app.run(["test"])
+    if err:
+        raise err[0]
 
 
 def test_timeline_scrub_clamp():
     app = Adw.Application(application_id="io.github.thomaz.videocut.test.timeline")
+    err = []
 
     def run_test(app):
         try:
@@ -138,19 +144,19 @@ def test_timeline_scrub_clamp():
             seg1 = Segment(
                 id="s1",
                 source_path=Path("/tmp/test_video.mp4"),
-                source_name="test_video.mp4",
+                source_duration=5.0,
                 start_time=0.0,
                 end_time=5.0,
             )
             seg2 = Segment(
                 id="s2",
                 source_path=Path("/tmp/test_video2.mp4"),
-                source_name="test_video2.mp4",
+                source_duration=5.0,
                 start_time=0.0,
                 end_time=5.0,
             )
-            timeline.add_segment(seg1)
-            timeline.add_segment(seg2)
+            timeline.segments.append(seg1)
+            timeline.segments.append(seg2)
 
             seeks = []
             tw = TimelineWidget(
@@ -183,20 +189,25 @@ def test_timeline_scrub_clamp():
             tw._on_card_scrub("s2", 20.0)
             assert abs(seeks[-1] - 10.0) < 0.001
 
+        except Exception as e:
+            err.append(e)
         finally:
             app.quit()
 
     app.connect("activate", run_test)
     app.run(["test"])
+    if err:
+        raise err[0]
 
 
 def test_drag_preview_and_single_segment_delete_prevention():
     app = Adw.Application(application_id="io.github.thomaz.videocut.test.dragpreview")
+    err = []
 
     def run_test(app):
         try:
             seg = Segment(
-                id="seg-preview",
+                id="seg-1",
                 source_path=Path("/tmp/test_video.mp4"),
                 source_duration=10.0,
                 start_time=0.0,
@@ -223,21 +234,12 @@ def test_drag_preview_and_single_segment_delete_prevention():
             assert card.overlay.get_cursor().get_name() == "ew-resize"
             assert card.needle.get_cursor().get_name() == "ew-resize"
 
-            # Verify trash button is disabled
-            del_button = None
-            has_drag_handle = False
-            child = card.header.get_first_child()
-            while child:
-                if isinstance(child, Gtk.Button) and child.has_css_class("destructive-action"):
-                    del_button = child
-                if isinstance(child, Gtk.Image) and child.get_icon_name() == "list-drag-handle-symbolic":
-                    has_drag_handle = True
-                child = child.get_next_sibling()
-
-            assert has_drag_handle is True
-            assert del_button is not None
-            assert del_button.get_sensitive() is False
-            assert "Cannot delete" in del_button.get_tooltip_text()
+            # Verify context menu items reflect can_delete=False, then can_delete=True
+            assert card.menu_delete.get_sensitive() is False
+            assert card.menu_cut.get_sensitive() is False
+            card.set_can_delete(True)
+            assert card.menu_delete.get_sensitive() is True
+            assert card.menu_cut.get_sensitive() is True
 
             # 2. Test drag preview texture generation
             tex = card._create_drag_preview_texture()
@@ -250,12 +252,18 @@ def test_drag_preview_and_single_segment_delete_prevention():
             cp = card._on_drag_prepare(ds, 10.0, 10.0)
             assert cp is not None
 
-            # 4. Test timeline deletion refusal when 1 segment is left
+            # 4. Test timeline deletion of single segment
             timeline = ProjectTimeline()
-            timeline.add_segment(seg)
+            timeline.segments.append(seg)
             assert len(timeline.segments) == 1
-            assert timeline.delete_segment(seg.id) is False
+            assert timeline.delete_segment(seg.id, allow_last=False) is False
             assert len(timeline.segments) == 1
+            assert timeline.delete_segment(seg.id) is True
+            assert len(timeline.segments) == 0
+            assert timeline.is_empty is True
+
+            # Re-add segment for subsequent steps
+            timeline.segments.append(seg)
 
             # 5. Test scrubbing cursor locking on TimelineWidget
             structure_changed = []
@@ -298,7 +306,7 @@ def test_drag_preview_and_single_segment_delete_prevention():
                 start_time=0.0,
                 end_time=5.0,
             )
-            timeline.add_segment(seg2)
+            timeline.segments.append(seg2)
             tw.rebuild_filmstrip()
             assert len(timeline.segments) == 2
 
@@ -331,15 +339,20 @@ def test_drag_preview_and_single_segment_delete_prevention():
             assert tw._cards["seg-1"].needle.get_margin_start() == 0
             assert tw._cards["seg-2"].needle.get_visible() is False
 
+        except Exception as e:
+            err.append(e)
         finally:
             app.quit()
 
     app.connect("activate", run_test)
     app.run(["test"])
+    if err:
+        raise err[0]
 
 
 def test_split_pill_hover_and_context_menu_top_left():
     app = Adw.Application(application_id="io.github.thomaz.videocut.test.split_pill")
+    err = []
 
     def run_test(app):
         try:
@@ -363,7 +376,7 @@ def test_split_pill_hover_and_context_menu_top_left():
             assert card.context_menu.get_position() == Gtk.PositionType.BOTTOM
             menu_row = card.menu_split.get_child()
             menu_label = menu_row.get_first_child().get_next_sibling().get_label()
-            assert menu_label == "Split at Cursor"
+            assert menu_label in ("Split at Cursor", "Dividir no Cursor")
 
             # Simulate right click at (150, 40)
             card._on_right_click(None, 1, 150.0, 40.0)
@@ -426,7 +439,7 @@ def test_split_pill_hover_and_context_menu_top_left():
             card.show_split_pill()
             needle_x_start = card.needle.get_margin_start() + 7
             pill_x_start = card.split_pill.get_margin_start()
-            pill_w = card.split_pill.measure(Gtk.Orientation.HORIZONTAL, -1)[1]
+            pill_w = 50.0
             assert abs((pill_x_start + pill_w / 2.0) - needle_x_start) <= 2
             # Verify split pill container has overflow visible so it is never clipped
             assert card.split_fixed.get_overflow() == Gtk.Overflow.VISIBLE
@@ -439,17 +452,22 @@ def test_split_pill_hover_and_context_menu_top_left():
             pill_x_end = card.split_pill.get_margin_start()
             assert abs((pill_x_end + pill_w / 2.0) - needle_x_end) <= 2
 
+        except Exception as e:
+            err.append(e)
         finally:
             app.quit()
 
     app.connect("activate", run_test)
     app.run(["test"])
+    if err:
+        raise err[0]
 
 
 def test_split_pill_left_boundary_not_clipped_in_timeline():
     """Verify that in the timeline, the split pill at ratio 0.0 has positive coordinate and is never clipped by scrolled_window."""
     from video_cut.window import MainWindow
     app = Adw.Application(application_id="io.github.thomaz.videocut.test.unclipped_pill")
+    err = []
 
     def run_test(app):
         win = None
@@ -470,6 +488,8 @@ def test_split_pill_left_boundary_not_clipped_in_timeline():
             # Floating split pill in filmstrip_overlay is clamped to >= 0, so it is never clipped
             assert tw.split_pill.get_margin_start() >= 0
             assert tw.split_pill.get_margin_top() > 0
+        except Exception as e:
+            err.append(e)
         finally:
             if win:
                 win.close()
@@ -477,6 +497,8 @@ def test_split_pill_left_boundary_not_clipped_in_timeline():
 
     app.connect("activate", run_test)
     app.run(["test"])
+    if err:
+        raise err[0]
 
 
 

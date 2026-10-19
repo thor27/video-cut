@@ -100,6 +100,12 @@ def test_timeline_delete():
     assert timeline.segments[0].id == s2.id
     assert timeline.selected_segment_id == s2.id
 
+    # Deleting the last segment
+    assert timeline.delete_segment(s2.id) is True
+    assert len(timeline.segments) == 0
+    assert timeline.is_empty is True
+    assert timeline.selected_segment_id is None
+
 
 def test_timeline_undo_redo():
     timeline = ProjectTimeline()

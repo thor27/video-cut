@@ -520,10 +520,10 @@ class MainWindow(Adw.ApplicationWindow):
             self.timeline.selected_segment_id
             and self.timeline.get_segment(self.timeline.selected_segment_id)
         )
-        can_cut = has_selection and len(self.timeline.segments) > 1
+        can_cut = has_selection
         can_copy = has_selection
         can_paste = self._has_pasteable_content()
-        can_delete = has_selection and len(self.timeline.segments) > 1
+        can_delete = has_selection
 
         self.btn_export.set_sensitive(has_video)
         if hasattr(self, "action_adv_export"):
@@ -548,6 +548,7 @@ class MainWindow(Adw.ApplicationWindow):
             self.player.clear()
             self.window_title.set_title(_("Video Cut"))
             self.window_title.set_subtitle(_("Video Editor"))
+            self.hide_thumbnail_progress()
 
     def _create_media_file_filters(self) -> Gio.ListStore:
         filters = Gio.ListStore.new(Gtk.FileFilter)
@@ -852,16 +853,10 @@ class MainWindow(Adw.ApplicationWindow):
         self._update_ui_state()
 
     def delete_selected_segment(self) -> None:
-        if len(self.timeline.segments) <= 1:
-            self._show_toast(_("Cannot delete the only remaining segment"))
-            return
         if self.timeline.selected_segment_id:
             self.delete_segment(self.timeline.selected_segment_id)
 
     def delete_segment(self, segment_id: str) -> None:
-        if len(self.timeline.segments) <= 1:
-            self._show_toast(_("Cannot delete the only remaining segment"))
-            return
         self.timeline.save_state(self.current_global_time)
         if self.timeline.delete_segment(segment_id):
             self.current_global_time = clamp(self.current_global_time, 0.0, self.timeline.total_duration)
@@ -901,9 +896,6 @@ class MainWindow(Adw.ApplicationWindow):
             return
         seg = self.timeline.get_segment(self.timeline.selected_segment_id)
         if not seg:
-            return
-        if len(self.timeline.segments) <= 1:
-            self._show_toast(_("Cannot cut the only remaining segment"))
             return
 
         self._clipboard_segment = seg.copy()

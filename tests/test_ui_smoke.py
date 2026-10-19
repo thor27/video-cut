@@ -66,10 +66,18 @@ def test_ui_smoke():
             assert len(win.timeline.segments) == 1
             assert abs(win.timeline.total_duration - 5.0) < 0.1
 
-            # Verify single segment CANNOT be deleted!
+            # Verify single segment CAN be deleted, returning to empty state!
             win.timeline.selected_segment_id = win.timeline.segments[0].id
             win.delete_selected_segment()
+            assert len(win.timeline.segments) == 0
+            assert win.timeline.is_empty is True
+            assert win.player_stack.get_visible_child_name() == "empty"
+
+            # Undo restores the single segment
+            assert win.timeline.can_undo is True
+            win.undo()
             assert len(win.timeline.segments) == 1
+            assert win.player_stack.get_visible_child_name() == "player"
 
             # Simulate moving playhead to 2.0s and splitting
             win.current_global_time = 2.0
@@ -109,10 +117,17 @@ def test_ui_smoke():
             win.delete_segment(rem_id)
             assert len(win.timeline.segments) == 1
 
-            # Verify deleting the last remaining segment is blocked
+            # Verify deleting the last remaining segment transitions to empty state
             last_id = win.timeline.segments[0].id
             win.delete_segment(last_id)
+            assert len(win.timeline.segments) == 0
+            assert win.timeline.is_empty is True
+            assert win.player_stack.get_visible_child_name() == "empty"
+
+            # Undo restores it back
+            win.undo()
             assert len(win.timeline.segments) == 1
+            assert win.player_stack.get_visible_child_name() == "player"
         finally:
             if win:
                 win.close()

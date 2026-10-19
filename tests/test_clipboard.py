@@ -57,8 +57,8 @@ def test_clipboard_ui_and_selection():
             # Load video: initially 1 segment
             win.load_video(Path("/tmp/test_video.mp4"))
             assert len(win.timeline.segments) == 1
-            s1 = win.timeline.segments[0]
-            assert win.btn_delete.get_sensitive() is False, "Cannot delete only remaining segment"
+            assert win.btn_delete.get_sensitive() is True, "Can delete single remaining segment"
+            assert win.btn_cut.get_sensitive() is True, "Can cut single remaining segment"
 
             # Split into 2 segments using win.btn_split / split_at_cursor
             win.current_global_time = 2.0

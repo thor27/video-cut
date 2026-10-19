@@ -192,7 +192,8 @@ class VideoPlayerController:
             self.current_transformed_paintable = None
         if self.current_media_file:
             self.current_media_file = None
-        self.video_picture.set_paintable(None)
+        if self.video_picture and self.video_picture.get_paintable() is not None:
+            self.video_picture.set_paintable(None)
 
     def load_initial(self) -> None:
         """Load the first segment in the timeline if available."""
@@ -207,7 +208,8 @@ class VideoPlayerController:
             if self.current_transformed_paintable:
                 self.current_transformed_paintable.detach()
                 self.current_transformed_paintable = None
-            self.video_picture.set_paintable(None)
+            if self.video_picture and self.video_picture.get_paintable() is not None:
+                self.video_picture.set_paintable(None)
             return
 
         if seg is None:
