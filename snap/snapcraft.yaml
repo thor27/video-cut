@@ -62,7 +62,9 @@ parts:
       for pydir in ${CRAFT_PART_INSTALL}/lib/python*/site-packages/video_cut; do
         if [ -d "$pydir" ]; then
           cp -f src/video_cut/style.css "$pydir/style.css"
+          rm -rf "$pydir/resources"
           cp -rf src/video_cut/resources "$pydir/"
+          rm -f "$pydir/resources/video-split-symbolic.svg"
           cp -rf src/video_cut/locale "$pydir/"
         fi
       done
@@ -87,6 +89,7 @@ parts:
       done
     override-prime: |
       craftctl default
+      find "${CRAFT_PRIME}" -name "video-split-symbolic.svg" -not -path "*/hicolor/*" -delete
       for arch in x86_64-linux-gnu aarch64-linux-gnu; do
         if [ -d "${CRAFT_PRIME}/usr/lib/${arch}/blas" ]; then
           ln -sf blas/libblas.so.3 "${CRAFT_PRIME}/usr/lib/${arch}/libblas.so.3"
