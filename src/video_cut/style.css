@@ -60,6 +60,12 @@
     background-color: alpha(@accent_color, 0.12);
 }
 
+.window-drop-active {
+    outline: 3px dashed @accent_color;
+    outline-offset: -3px;
+    background-color: alpha(@accent_color, 0.06);
+}
+
 .segment-header {
     padding: 2px 4px 4px 4px;
     min-height: 34px;

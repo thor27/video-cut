@@ -1,13 +1,14 @@
 import os
 import subprocess
 from pathlib import Path
-from typing import Optional
+from typing import Optional, List
+from urllib.parse import unquote, urlparse
 import gi
 
 gi.require_version("Gtk", "4.0")
 gi.require_version("Gdk", "4.0")
 gi.require_version("Adw", "1")
-from gi.repository import Gtk, Gdk, Adw, GLib, Gio
+from gi.repository import Gtk, Gdk, Adw, GLib, Gio, GObject
 
 from .models import ProjectTimeline, Segment, ExportSettings
 from .player import VideoPlayerController
@@ -22,6 +23,33 @@ from .advanced_export_dialog import AdvancedExportDialog
 from .utils import format_time, clamp
 from .i18n import _
 from . import __version__
+
+
+def parse_uri_list(text: str) -> list[Path]:
+    """Parse text/uri-list, nautilus clipboard, or newline-separated paths into local Paths."""
+    paths: list[Path] = []
+    if not text:
+        return paths
+    for line in text.strip().splitlines():
+        line = line.strip()
+        if not line or line.startswith("#") or line.startswith("x-special/") or line in ("copy", "cut"):
+            continue
+        if line.startswith("file://"):
+            try:
+                parsed = urlparse(line)
+                p = Path(unquote(parsed.path))
+                if p.exists():
+                    paths.append(p)
+            except Exception:
+                pass
+        elif line.startswith("/"):
+            try:
+                p = Path(line)
+                if p.exists():
+                    paths.append(p)
+            except Exception:
+                pass
+    return paths
 
 
 class MainWindow(Adw.ApplicationWindow):
@@ -46,6 +74,8 @@ class MainWindow(Adw.ApplicationWindow):
         # Build UI layout
         self._build_ui()
         self._setup_shortcuts()
+        self._setup_window_drag_and_drop()
+        self._setup_clipboard_listener()
 
     def _build_ui(self) -> None:
         # Load CSS and icons
@@ -180,7 +210,9 @@ class MainWindow(Adw.ApplicationWindow):
         self.empty_status = Adw.StatusPage()
         self.empty_status.set_icon_name("video-x-generic-symbolic")
         self.empty_status.set_title(_("No Media Loaded"))
-        self.empty_status.set_description(_("Open a video or image file to begin cutting and arranging clips"))
+        self.empty_status.set_description(
+            _("Drag and drop videos or images here, paste from clipboard (Ctrl+V), or click to open")
+        )
         btn_open_empty = Gtk.Button(label=_("Open Video or Image"))
         btn_open_empty.add_css_class("suggested-action")
         btn_open_empty.add_css_class("pill")
@@ -448,6 +480,40 @@ class MainWindow(Adw.ApplicationWindow):
     def _on_segment_selection_changed(self, segment_id: Optional[str]) -> None:
         self._update_ui_state()
 
+    def _setup_clipboard_listener(self) -> None:
+        """Listen for system clipboard updates to update paste button sensitivity."""
+        try:
+            display = Gdk.Display.get_default()
+            if display:
+                cb = display.get_clipboard()
+                cb.connect("changed", self._on_clipboard_changed)
+        except Exception as e:
+            print(f"Could not connect clipboard listener: {e}")
+
+    def _on_clipboard_changed(self, clipboard: Gdk.Clipboard) -> None:
+        self._update_ui_state()
+
+    def _has_pasteable_content(self) -> bool:
+        """Check if internal clipboard or desktop clipboard contains pasteable media."""
+        if self._clipboard_segment is not None:
+            return True
+        try:
+            display = Gdk.Display.get_default()
+            if display:
+                cb = display.get_clipboard()
+                fmts = cb.get_formats()
+                if (
+                    fmts.contain_gtype(Gdk.Texture)
+                    or fmts.contain_gtype(Gdk.FileList)
+                    or fmts.contain_mime_type("text/uri-list")
+                    or fmts.contain_mime_type("image/png")
+                    or fmts.contain_mime_type("image/jpeg")
+                ):
+                    return True
+        except Exception:
+            pass
+        return False
+
     def _update_ui_state(self) -> None:
         has_video = not self.timeline.is_empty
         has_selection = bool(
@@ -456,7 +522,7 @@ class MainWindow(Adw.ApplicationWindow):
         )
         can_cut = has_selection and len(self.timeline.segments) > 1
         can_copy = has_selection
-        can_paste = self._clipboard_segment is not None
+        can_paste = self._has_pasteable_content()
         can_delete = has_selection and len(self.timeline.segments) > 1
 
         self.btn_export.set_sensitive(has_video)
@@ -523,10 +589,7 @@ class MainWindow(Adw.ApplicationWindow):
                 gfile = dlg.open_finish(res)
                 if gfile:
                     media_path = Path(gfile.get_path())
-                    if ImageService.is_image(media_path):
-                        self._show_image_import_dialog(media_path, replace=True)
-                    else:
-                        self.load_video(media_path, replace=True)
+                    self.import_media_files([media_path], replace=True)
             except Exception as e:
                 print(f"Error opening media: {e}")
 
@@ -546,14 +609,103 @@ class MainWindow(Adw.ApplicationWindow):
                 gfile = dlg.open_finish(res)
                 if gfile:
                     media_path = Path(gfile.get_path())
-                    if ImageService.is_image(media_path):
-                        self._show_image_import_dialog(media_path, replace=False)
-                    else:
-                        self.load_video(media_path, replace=False)
+                    self.import_media_files([media_path], replace=False)
             except Exception as e:
                 print(f"Error adding media: {e}")
 
         dialog.open(self, None, on_add_finish)
+
+    def _save_texture_to_temp_file(self, texture: Gdk.Texture) -> Path:
+        """Save a Gdk.Texture to a temporary PNG file in the project cache directory."""
+        cache_dir = self.thumbnail_service.cache_dir / "pasted"
+        cache_dir.mkdir(parents=True, exist_ok=True)
+        temp_path = cache_dir / f"pasted_image_{int(GLib.get_real_time())}.png"
+        texture.save_to_png(str(temp_path))
+        return temp_path
+
+    def import_media_files(self, paths: List[Path], replace: Optional[bool] = None) -> None:
+        """Import a list of video or image paths, opening if empty or appending if active."""
+        if not paths:
+            return
+
+        valid_paths = [p for p in paths if p.exists()]
+        if not valid_paths:
+            self._show_toast(_("No valid media files found"))
+            return
+
+        if replace is None:
+            replace = self.timeline.is_empty
+
+        # Single image import -> prompt duration & soundtrack dialog
+        if len(valid_paths) == 1 and ImageService.is_image(valid_paths[0]):
+            self._show_image_import_dialog(valid_paths[0], replace=replace)
+            return
+
+        # Sequential batch import
+        imported_count = 0
+        for idx, media_path in enumerate(valid_paths):
+            is_first = (idx == 0 and replace)
+            try:
+                if ImageService.is_image(media_path):
+                    self.load_video(media_path, replace=is_first, duration=3.0)
+                else:
+                    self.load_video(media_path, replace=is_first)
+                imported_count += 1
+            except Exception as e:
+                print(f"Error importing {media_path}: {e}")
+
+        if imported_count == 1:
+            self._show_toast(_("Added '{name}' to timeline").format(name=valid_paths[0].name))
+        elif imported_count > 1:
+            self._show_toast(_("Added {count} media clips to timeline").format(count=imported_count))
+
+    def _setup_window_drag_and_drop(self) -> None:
+        """Enable dragging and dropping video/image files onto the window."""
+        drop_target = Gtk.DropTarget()
+        drop_target.set_gtypes([Gdk.FileList, Gio.File, Gdk.Texture, str])
+        drop_target.set_actions(Gdk.DragAction.COPY)
+        drop_target.connect("enter", self._on_window_drag_enter)
+        drop_target.connect("leave", self._on_window_drag_leave)
+        drop_target.connect("drop", self._on_window_drop)
+        self.add_controller(drop_target)
+
+    def _on_window_drag_enter(self, target: Gtk.DropTarget, x: float, y: float) -> Gdk.DragAction:
+        self.add_css_class("window-drop-active")
+        return Gdk.DragAction.COPY
+
+    def _on_window_drag_leave(self, target: Gtk.DropTarget) -> None:
+        self.remove_css_class("window-drop-active")
+
+    def _on_window_drop(self, target: Gtk.DropTarget, value, x: float, y: float) -> bool:
+        self.remove_css_class("window-drop-active")
+        paths: List[Path] = []
+
+        if isinstance(value, Gdk.FileList):
+            for gfile in value.get_files():
+                p = gfile.get_path()
+                if p:
+                    paths.append(Path(p))
+        elif isinstance(value, Gio.File):
+            p = value.get_path()
+            if p:
+                paths.append(Path(p))
+        elif isinstance(value, Gdk.Texture):
+            try:
+                temp_img = self._save_texture_to_temp_file(value)
+                paths.append(temp_img)
+            except Exception as e:
+                print(f"Error saving dropped texture: {e}")
+        elif isinstance(value, str):
+            # Ignore internal segment reordering drag
+            if value.startswith("video-cut-segment:") or (hasattr(self, "timeline") and self.timeline.get_segment(value) is not None):
+                return False
+            paths = parse_uri_list(value)
+
+        if not paths:
+            return False
+
+        self.import_media_files(paths, replace=self.timeline.is_empty)
+        return True
 
     def _show_image_import_dialog(self, image_path: Path, replace: bool) -> None:
         def on_confirm(duration: float, audio_path: Optional[Path], audio_start: float):
@@ -707,18 +859,34 @@ class MainWindow(Adw.ApplicationWindow):
             self.timeline_widget.rebuild_filmstrip()
             self._update_ui_state()
 
+    def _copy_to_system_clipboard(self, source_path: Path) -> None:
+        """Export local media file to desktop system clipboard."""
+        try:
+            display = Gdk.Display.get_default()
+            if not display:
+                return
+            cb = display.get_clipboard()
+            if source_path.exists():
+                gfile = Gio.File.new_for_path(str(source_path.resolve()))
+                fl = Gdk.FileList.new_from_list([gfile])
+                cp = Gdk.ContentProvider.new_for_value(GObject.Value(Gdk.FileList, fl))
+                cb.set_content(cp)
+        except Exception as e:
+            print(f"Could not copy file to system clipboard: {e}")
+
     def copy_selected_segment(self) -> None:
-        """Copy the currently selected segment to internal clipboard."""
+        """Copy currently selected segment to internal clipboard and system clipboard."""
         if not self.timeline.selected_segment_id:
             return
         seg = self.timeline.get_segment(self.timeline.selected_segment_id)
         if not seg:
             return
         self._clipboard_segment = seg.copy()
+        self._copy_to_system_clipboard(seg.source_path)
         self._update_ui_state()
 
     def cut_selected_segment(self) -> None:
-        """Cut the currently selected segment to internal clipboard."""
+        """Cut currently selected segment to internal clipboard and system clipboard."""
         if not self.timeline.selected_segment_id:
             return
         seg = self.timeline.get_segment(self.timeline.selected_segment_id)
@@ -729,6 +897,7 @@ class MainWindow(Adw.ApplicationWindow):
             return
 
         self._clipboard_segment = seg.copy()
+        self._copy_to_system_clipboard(seg.source_path)
         self.timeline.save_state(self.current_global_time)
         if self.timeline.delete_segment(seg.id):
             self.current_global_time = clamp(self.current_global_time, 0.0, self.timeline.total_duration)
@@ -736,22 +905,102 @@ class MainWindow(Adw.ApplicationWindow):
             self.timeline_widget.rebuild_filmstrip()
             self._update_ui_state()
 
-    def paste_segment(self) -> None:
-        """Paste segment from internal clipboard after the current selection."""
+    def _paste_internal_segment(self) -> None:
+        """Paste segment from internal clipboard after current selection."""
         if not self._clipboard_segment:
             return
-
         self.timeline.save_state(self.current_global_time)
         pasted = self.timeline.paste_segment(
             self._clipboard_segment,
             after_segment_id=self.timeline.selected_segment_id,
         )
         new_idx = self.timeline.get_segment_index(pasted.id)
-        # Position playhead at the start of the newly pasted segment
         self.current_global_time = self.timeline.get_segment_global_start(new_idx)
         self.player.sync_timeline_change(self.current_global_time)
         self.timeline_widget.rebuild_filmstrip()
         self._update_ui_state()
+
+    def paste_segment(self) -> None:
+        """Universal paste: paste internal segment, clipboard image, or clipboard files/URIs."""
+        display = Gdk.Display.get_default()
+        cb = display.get_clipboard() if display else None
+
+        # 1. If internal segment is available and clipboard was set locally
+        if self._clipboard_segment and (cb is None or cb.is_local()):
+            self._paste_internal_segment()
+            return
+
+        # 2. If system clipboard has content
+        if cb is not None:
+            fmts = cb.get_formats()
+
+            # A. Texture / Image
+            if fmts.contain_gtype(Gdk.Texture) or fmts.contain_mime_type("image/png") or fmts.contain_mime_type("image/jpeg"):
+                cb.read_texture_async(None, self._on_clipboard_texture_read)
+                return
+
+            # B. File list
+            if fmts.contain_gtype(Gdk.FileList):
+                cb.read_value_async(Gdk.FileList, GLib.PRIORITY_DEFAULT, None, self._on_clipboard_file_list_read)
+                return
+
+            # C. Text / URI list
+            if fmts.contain_gtype(str) or fmts.contain_mime_type("text/uri-list") or fmts.contain_mime_type("text/plain"):
+                cb.read_text_async(None, self._on_clipboard_text_read)
+                return
+
+        # 3. Fallback to internal segment if available
+        if self._clipboard_segment:
+            self._paste_internal_segment()
+            return
+
+        # 4. Nothing on clipboard
+        self._show_toast(_("Clipboard does not contain any video or image"))
+
+    def _on_clipboard_texture_read(self, cb: Gdk.Clipboard, res: Gio.AsyncResult) -> None:
+        try:
+            texture = cb.read_texture_finish(res)
+            if texture:
+                temp_path = self._save_texture_to_temp_file(texture)
+                self.import_media_files([temp_path], replace=self.timeline.is_empty)
+                return
+        except Exception as e:
+            print(f"Error reading texture from clipboard: {e}")
+        self._show_toast(_("Failed to read image from clipboard"))
+
+    def _on_clipboard_file_list_read(self, cb: Gdk.Clipboard, res: Gio.AsyncResult) -> None:
+        try:
+            val = cb.read_value_finish(res)
+            if val:
+                paths = []
+                for gfile in val.get_files():
+                    p = gfile.get_path()
+                    if p:
+                        paths.append(Path(p))
+                if paths:
+                    self.import_media_files(paths, replace=self.timeline.is_empty)
+                    return
+        except Exception as e:
+            print(f"Error reading file list from clipboard: {e}")
+        if self._clipboard_segment:
+            self._paste_internal_segment()
+        else:
+            self._show_toast(_("Clipboard does not contain any video or image"))
+
+    def _on_clipboard_text_read(self, cb: Gdk.Clipboard, res: Gio.AsyncResult) -> None:
+        try:
+            text = cb.read_text_finish(res)
+            if text:
+                paths = parse_uri_list(text)
+                if paths:
+                    self.import_media_files(paths, replace=self.timeline.is_empty)
+                    return
+        except Exception as e:
+            print(f"Error reading text/URIs from clipboard: {e}")
+        if self._clipboard_segment:
+            self._paste_internal_segment()
+        else:
+            self._show_toast(_("Clipboard does not contain any video or image"))
 
     def open_crop_rotate_selected_segment(self) -> None:
         """Open Crop & Rotate modal dialog for the selected segment."""

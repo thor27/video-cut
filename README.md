@@ -59,6 +59,11 @@ All version releases, assets, and changelogs are available on the **[GitHub Vers
     - 🇪🇸 **Spanish** (`es`)
     - 🇧🇷 **Portuguese (Brazil)** (`pt_BR`)
     - 🇫🇷 **French** (`fr`)
+- **Desktop Integration (Drag & Drop + Universal Clipboard)**:
+  - Drag and drop videos or images directly from file managers (GNOME Files, Dolphin, Thunar) into the app to open or add to timeline.
+  - Interactive visual drop target with animated accent outline feedback.
+  - Universal Clipboard Paste (<kbd>Ctrl+V</kbd>): paste copied video files from file managers, or raw screenshots/images from web browsers and image viewers directly into the project.
+  - Universal Copy (<kbd>Ctrl+C</kbd>): copying an internal clip simultaneously writes the video file to the desktop clipboard for pasting in other applications.
 - **Clipboard & Edit Toolbar**:
   - Dedicated edit toolbar directly below the canvas with Split (<kbd>S</kbd>), Copy (<kbd>Ctrl+C</kbd>), Paste (<kbd>Ctrl+V</kbd>), Crop & Rotate (<kbd>C</kbd>), Delete (<kbd>Del</kbd>/<kbd>Backspace</kbd>), and Move Left/Right (<kbd>Alt+Left</kbd> / <kbd>Alt+Right</kbd>).
 - **Split at Cursor**: Slice clips at the cursor position (<kbd>S</kbd>, toolbar button, or right-click context menu).

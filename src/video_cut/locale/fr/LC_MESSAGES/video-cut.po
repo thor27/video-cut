@@ -665,6 +665,33 @@ msgstr " • Retourner V"
 msgid "Crop: {crop_w} × {crop_h} px ({preset}){rot_str}{flip_str}"
 msgstr "Rognage : {crop_w} × {crop_h} px ({preset}){rot_str}{flip_str}"
 
+#: src/video_cut/window.py:213
+msgid "Drag and drop videos or images here, paste from clipboard (Ctrl+V), or click to open"
+msgstr "Glissez-déposez des vidéos ou des images ici, collez depuis le presse-papiers (Ctrl+V) ou cliquez pour ouvrir"
+
+#: src/video_cut/window.py:650
+msgid "No valid media files found"
+msgstr "Aucun fichier multimédia valide trouvé"
+
+#: src/video_cut/window.py:674
+#, python-brace-format
+msgid "Added '{name}' to timeline"
+msgstr "'{name}' ajouté à la timeline"
+
+#: src/video_cut/window.py:676
+#, python-brace-format
+msgid "Added {count} media clips to timeline"
+msgstr "{count} clips multimédias ajoutés à la timeline"
+
+#: src/video_cut/window.py:935
+msgid "Clipboard does not contain any video or image"
+msgstr "Le presse-papiers ne contient aucune vidéo ou image"
+
+#: src/video_cut/window.py:946
+msgid "Failed to read image from clipboard"
+msgstr "Échec de la lecture de l'image depuis le presse-papiers"
+
+
 #~ msgid "Advanced Export"
 #~ msgstr "Exportation Avancée"
 

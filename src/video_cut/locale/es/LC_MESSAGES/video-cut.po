@@ -664,6 +664,33 @@ msgstr " • Volteo V"
 msgid "Crop: {crop_w} × {crop_h} px ({preset}){rot_str}{flip_str}"
 msgstr "Recorte: {crop_w} × {crop_h} px ({preset}){rot_str}{flip_str}"
 
+#: src/video_cut/window.py:213
+msgid "Drag and drop videos or images here, paste from clipboard (Ctrl+V), or click to open"
+msgstr "Arrastra y suelta videos o imágenes aquí, pega desde el portapapeles (Ctrl+V) o haz clic para abrir"
+
+#: src/video_cut/window.py:650
+msgid "No valid media files found"
+msgstr "No se encontraron archivos multimedia válidos"
+
+#: src/video_cut/window.py:674
+#, python-brace-format
+msgid "Added '{name}' to timeline"
+msgstr "'{name}' agregado a la línea de tiempo"
+
+#: src/video_cut/window.py:676
+#, python-brace-format
+msgid "Added {count} media clips to timeline"
+msgstr "{count} clips multimedia agregados a la línea de tiempo"
+
+#: src/video_cut/window.py:935
+msgid "Clipboard does not contain any video or image"
+msgstr "El portapapeles no contiene ningún video o imagen"
+
+#: src/video_cut/window.py:946
+msgid "Failed to read image from clipboard"
+msgstr "Error al leer imagen del portapapeles"
+
+
 #~ msgid "Advanced Export"
 #~ msgstr "Exportación Avanzada"
 
