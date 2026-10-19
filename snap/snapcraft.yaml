@@ -19,7 +19,7 @@ apps:
     common-id: io.github.thomaz.videocut
     desktop: usr/share/applications/io.github.thomaz.videocut.desktop
     environment:
-      LD_LIBRARY_PATH: $SNAP/gnome-platform/usr/lib/x86_64-linux-gnu:$SNAP/gnome-platform/lib/x86_64-linux-gnu:$LD_LIBRARY_PATH
+      LD_LIBRARY_PATH: $SNAP/gnome-platform/usr/lib/x86_64-linux-gnu:$SNAP/gnome-platform/lib/x86_64-linux-gnu:$SNAP/usr/lib/x86_64-linux-gnu/blas:$SNAP/usr/lib/x86_64-linux-gnu/lapack:$LD_LIBRARY_PATH
       GST_PLUGIN_SYSTEM_PATH_1_0: $SNAP/gnome-platform/usr/lib/x86_64-linux-gnu/gstreamer-1.0:$SNAP/usr/lib/x86_64-linux-gnu/gstreamer-1.0
     plugs:
       - home
@@ -67,5 +67,15 @@ parts:
         if [ -f "src/video_cut/resources/icon_${size}.png" ]; then
           install -D -m 644 src/video_cut/resources/icon_${size}.png \
             ${CRAFT_PART_INSTALL}/usr/share/icons/hicolor/${size}x${size}/apps/io.github.thomaz.videocut.png
+        fi
+      done
+    override-prime: |
+      craftctl default
+      for arch in x86_64-linux-gnu aarch64-linux-gnu; do
+        if [ -d "${CRAFT_PRIME}/usr/lib/${arch}/blas" ]; then
+          ln -sf blas/libblas.so.3 "${CRAFT_PRIME}/usr/lib/${arch}/libblas.so.3"
+        fi
+        if [ -d "${CRAFT_PRIME}/usr/lib/${arch}/lapack" ]; then
+          ln -sf lapack/liblapack.so.3 "${CRAFT_PRIME}/usr/lib/${arch}/liblapack.so.3"
         fi
       done
