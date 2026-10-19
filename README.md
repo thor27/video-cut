@@ -7,7 +7,7 @@
 [![Latest Release](https://img.shields.io/github/v/release/thor27/video-cut?label=Latest%20Version&color=orange)](https://github.com/thor27/video-cut/releases/latest)
 [![Releases](https://img.shields.io/badge/Downloads-GitHub%20Releases-blue)](https://github.com/thor27/video-cut/releases)
 
-An easy-to-use, fast, and modern video editing tool to edit and cut videos, add images with custom duration and soundtracks, merge multiple videos together, crop, and rotate. Inspired by macOS Preview and QuickTime video editing.
+An easy-to-use, fast, and lightweight video editor to cut and merge videos, add images with soundtracks, crop, and rotate clips on an intuitive timeline. Inspired by macOS QuickTime and Preview.
 
 <p align="center">
   <img src="screenshot.png" alt="Video Cut Screenshot" width="850">

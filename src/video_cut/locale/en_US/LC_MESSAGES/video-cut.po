@@ -417,8 +417,8 @@ msgid "Unknown error"
 msgstr "Unknown error"
 
 #: src/video_cut/window.py:1041
-msgid "An easy-to-use tool to edit video, add images, merge multiple videos together, crop, and rotate"
-msgstr "An easy-to-use tool to edit video, add images, merge multiple videos together, crop, and rotate"
+msgid "An easy-to-use video editor to cut and merge videos, add images, crop, and rotate"
+msgstr "An easy-to-use video editor to cut and merge videos, add images, crop, and rotate"
 
 #: src/video_cut/window.py:1029
 #, python-brace-format

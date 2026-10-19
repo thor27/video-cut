@@ -1039,7 +1039,7 @@ class MainWindow(Adw.ApplicationWindow):
             developer_name="Thomaz",
             version=__version__,
             comments=_(
-                "An easy-to-use tool to edit video, add images, merge multiple videos together, crop, and rotate"
+                "An easy-to-use video editor to cut and merge videos, add images, crop, and rotate"
             ),
             issue_url="https://github.com/thor27/video-cut/issues",
             license_type=Gtk.License.GPL_3_0,

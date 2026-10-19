@@ -105,11 +105,12 @@ Architecture: ${ARCH}
 Depends: python3 (>= 3.10), python3-gi (>= 3.42.0), gir1.2-gtk-4.0, gir1.2-adw-1, gstreamer1.0-gtk4, gstreamer1.0-plugins-base, gstreamer1.0-plugins-good, gstreamer1.0-libav, ffmpeg
 Maintainer: Thomaz <thor27@gmail.com>
 Installed-Size: ${INSTALLED_SIZE}
-Description: Easy-to-use tool to edit, merge, crop, and rotate videos
+Homepage: https://github.com/thor27/video-cut
+Description: Easy-to-use tool to cut, merge, crop, and rotate videos
  Video Cut is an easy-to-use, fast, and lightweight video editor inspired by macOS
- QuickTime and Preview. It lets you cut and edit videos, add images with audio
- soundtracks, merge multiple videos together, crop, and rotate clips on an
- interactive filmstrip timeline with multi-format export.
+ QuickTime and Preview. It lets you cut and merge videos, add images with audio
+ soundtracks, crop, and rotate clips on an intuitive filmstrip timeline with
+ multi-format export.
 EOF
 chmod 644 "${PKG_DIR}/DEBIAN/control"
 

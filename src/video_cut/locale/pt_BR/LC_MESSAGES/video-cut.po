@@ -418,8 +418,8 @@ msgid "Unknown error"
 msgstr "Erro desconhecido"
 
 #: src/video_cut/window.py:1041
-msgid "An easy-to-use tool to edit video, add images, merge multiple videos together, crop, and rotate"
-msgstr "Uma ferramenta fácil de usar para editar vídeos, adicionar imagens, juntar múltiplos vídeos, cortar e girar"
+msgid "An easy-to-use video editor to cut and merge videos, add images, crop, and rotate"
+msgstr "Um editor de vídeo fácil de usar para cortar e juntar vídeos, adicionar imagens, enquadrar e girar"
 
 #: src/video_cut/window.py:1029
 #, python-brace-format

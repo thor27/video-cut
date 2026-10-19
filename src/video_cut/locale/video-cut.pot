@@ -420,7 +420,7 @@ msgid "Unknown error"
 msgstr ""
 
 #: src/video_cut/window.py:1041
-msgid "An easy-to-use tool to edit video, add images, merge multiple videos together, crop, and rotate"
+msgid "An easy-to-use video editor to cut and merge videos, add images, crop, and rotate"
 msgstr ""
 
 #: src/video_cut/window.py:1029

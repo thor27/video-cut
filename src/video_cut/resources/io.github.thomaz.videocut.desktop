@@ -1,6 +1,6 @@
 [Desktop Entry]
 Name=Video Cut
-Comment=Easy-to-use tool to edit video, add images, merge multiple videos together, crop, and rotate
+Comment=Easy-to-use tool to cut and merge videos, add images, crop, and rotate
 Exec=video-cut %U
 Icon=io.github.thomaz.videocut
 Terminal=false
