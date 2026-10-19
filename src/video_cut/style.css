@@ -110,23 +110,23 @@
 }
 
 .playhead-needle-knob {
-    background: radial-gradient(circle at 35% 35%, #ff8533, #ff5500);
+    background: radial-gradient(circle at 35% 35%, alpha(@accent_color, 0.85), @accent_color);
     min-width: 14px;
     min-height: 14px;
     border-radius: 50%;
-    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.6), 0 0 2px rgba(255, 85, 0, 0.8);
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.6), 0 0 2px alpha(@accent_color, 0.8);
     margin: 0;
 }
 
 .playhead-needle-knob:hover {
-    box-shadow: 0 1px 6px rgba(0, 0, 0, 0.7), 0 0 5px rgba(255, 119, 34, 0.9);
+    box-shadow: 0 1px 6px rgba(0, 0, 0, 0.7), 0 0 5px alpha(@accent_color, 0.9);
 }
 
 .playhead-needle-bar {
-    background-color: #ff5500;
+    background-color: @accent_color;
     min-width: 2px;
     border-radius: 1px;
-    box-shadow: 0 0 4px rgba(255, 85, 0, 0.8);
+    box-shadow: 0 0 4px alpha(@accent_color, 0.8);
     margin: 0;
 }
 
@@ -156,24 +156,32 @@ popover.playhead-split-popover > contents {
 }
 
 .playhead-split-btn:hover {
-    background-color: #ff5500;
-    border-color: #ff7722;
-    box-shadow: 0 4px 14px rgba(255, 85, 0, 0.5);
+    background-color: @accent_bg_color;
+    border-color: @accent_color;
+    color: @accent_fg_color;
+    box-shadow: 0 4px 14px alpha(@accent_color, 0.5);
 }
 
+.playhead-split-btn image.split-pill-icon,
+.playhead-split-btn .split-pill-icon,
 .split-pill-icon {
-    color: #ff8533;
+    color: @accent_color;
     transition: color 120ms ease-in-out;
 }
 
+.playhead-split-btn:hover image.split-pill-icon,
 .playhead-split-btn:hover .split-pill-icon {
-    color: #ffffff;
+    color: @accent_fg_color;
 }
 
 .split-pill-text {
     font-size: 10px;
     font-weight: 600;
     color: #ffffff;
+}
+
+.playhead-split-btn:hover .split-pill-text {
+    color: @accent_fg_color;
 }
 
 .add-segment-button {

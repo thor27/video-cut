@@ -784,8 +784,15 @@ class SegmentCard(Gtk.Box):
             cr.move_to(6, height - banner_h + 15)
             cr.show_text(text)
 
-            # 5. Orange accent border
-            cr.set_source_rgba(1.0, 0.33, 0.0, 0.95)
+            # 5. Accent border matching system accent color
+            accent_r, accent_g, accent_b = 0.21, 0.61, 1.0
+            try:
+                success, col = self.get_style_context().lookup_color("accent_color")
+                if success and col:
+                    accent_r, accent_g, accent_b = col.red, col.green, col.blue
+            except Exception:
+                pass
+            cr.set_source_rgba(accent_r, accent_g, accent_b, 0.95)
             cr.set_line_width(2.0)
             cr.rectangle(1, 1, width - 2, height - 2)
             cr.stroke()
