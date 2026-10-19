@@ -334,3 +334,27 @@ def test_crop_rotate_preset_i18n():
     assert get_preset_tooltip("Free") == "Freeform (unconstrained)"
 
 
+def test_preview_picture_dynamic_allocation():
+    try:
+        Gtk.init()
+    except Exception:
+        pass
+
+    parent = Gtk.Window()
+    seg = Segment(source_path=Path("/tmp/fake.mp4"), source_duration=5.0, crop=(0.0, 0.0, 1.0, 1.0))
+    dialog = CropRotateDialog(parent=parent, segment=seg, on_apply=lambda *a: None)
+
+    # Initial default render
+    dialog._render_preview(width=748, height=495)
+    rect1 = dialog._img_rect
+    assert rect1[2] > 0 and rect1[3] > 0
+
+    # Allocate larger size (e.g. 900x600) via PreviewPicture
+    dialog.preview_picture.do_size_allocate(900, 600, -1)
+    rect2 = dialog._img_rect
+    assert rect2 != rect1
+    assert rect2[2] >= rect1[2]
+    assert dialog.preview_picture.get_paintable() is not None
+
+
+

@@ -62,6 +62,22 @@ def get_preset_tooltip(preset: str) -> str:
     return preset
 
 
+class PreviewPicture(Gtk.Picture):
+    """Subclass of Gtk.Picture that accurately tracks layout size allocations."""
+
+    def __init__(self, on_allocate: Optional[Callable[[int, int], None]] = None) -> None:
+        super().__init__()
+        self.on_allocate = on_allocate
+        self._last_alloc: Tuple[int, int] = (0, 0)
+
+    def do_size_allocate(self, width: int, height: int, baseline: int) -> None:
+        Gtk.Picture.do_size_allocate(self, width, height, baseline)
+        if width > 50 and height > 50 and (width, height) != self._last_alloc:
+            self._last_alloc = (width, height)
+            if self.on_allocate:
+                self.on_allocate(width, height)
+
+
 class CropRotateDialog(Adw.Window):
     """Modal dialog allowing users to crop, rotate, and flip a video segment with live preview."""
 
@@ -234,20 +250,16 @@ class CropRotateDialog(Adw.Window):
         main_box.set_margin_bottom(16)
         toolbar_view.set_content(main_box)
 
-        # Interactive Picture preview (avoids PyGObject cairo.Context foreign converter bug)
-        self.preview_picture = Gtk.Picture()
+        # Interactive Picture preview (tracks real layout allocation)
+        self.preview_picture = PreviewPicture(on_allocate=lambda w, h: self._render_preview(w, h))
         self.preview_picture.set_vexpand(True)
         self.preview_picture.set_hexpand(True)
         self.preview_picture.set_can_shrink(True)
-        self.preview_picture.set_content_fit(Gtk.ContentFit.CONTAIN)
+        self.preview_picture.set_content_fit(Gtk.ContentFit.FILL)
 
         # Gestures on preview picture
         self._setup_preview_gestures()
         main_box.append(self.preview_picture)
-
-        # Re-render when widget size changes
-        self.preview_picture.connect("notify::width", lambda *a: self._render_preview())
-        self.preview_picture.connect("notify::height", lambda *a: self._render_preview())
 
         # Controls container
         controls_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
@@ -355,16 +367,23 @@ class CropRotateDialog(Adw.Window):
             flip_str=flip_str,
         ))
 
-    def _render_preview(self) -> None:
+    def _render_preview(self, width: Optional[int] = None, height: Optional[int] = None) -> None:
         """Render the composite preview image (transformed frame + shroud + crop box + handles)."""
         if not self._cairo_frame_surface:
             return
 
-        w = self.preview_picture.get_width()
-        h = self.preview_picture.get_height()
+        if width is not None and height is not None and width > 50 and height > 50:
+            w, h = width, height
+        else:
+            w = self.preview_picture.get_width()
+            h = self.preview_picture.get_height()
+
         if w <= 50 or h <= 50:
-            w = 740
-            h = 440
+            if hasattr(self.preview_picture, "_last_alloc") and self.preview_picture._last_alloc[0] > 50:
+                w, h = self.preview_picture._last_alloc
+            else:
+                w = 748
+                h = 500
 
         surf = cairo.ImageSurface(cairo.FORMAT_ARGB32, w, h)
         cr = cairo.Context(surf)
