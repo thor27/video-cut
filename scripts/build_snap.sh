@@ -67,9 +67,9 @@ cd "${REPO_ROOT}"
 
 # Run snapcraft (uses LXD / Multipass container or host if destructive mode configured)
 if [ "${DESTRUCTIVE_MODE:-0}" -eq 1 ]; then
-    snapcraft --destructive-mode
+    snapcraft pack --destructive-mode
 else
-    snapcraft
+    snapcraft pack
 fi
 
 # Move generated snap to dist
