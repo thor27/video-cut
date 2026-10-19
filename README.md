@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="video-cut-banner.jpg" alt="Video Cut Banner" width="100%">
+</p>
+
 # Video Cut 🎬
 
 [![Latest Release](https://img.shields.io/github/v/release/thor27/video-cut?label=Latest%20Version&color=orange)](https://github.com/thor27/video-cut/releases/latest)
