@@ -9,6 +9,7 @@ gi.require_version("Gdk", "4.0")
 gi.require_version("Adw", "1")
 gi.require_version("GdkPixbuf", "2.0")
 from gi.repository import Gtk, Gdk, Adw, GObject, GLib, GdkPixbuf
+import cairo
 
 from .models import Segment
 from .utils import format_time, clamp
@@ -741,47 +742,70 @@ class SegmentCard(Gtk.Box):
             self.show_split_pill()
 
     def _create_drag_preview_texture(self) -> Optional[Gdk.Texture]:
-        """Generate a sleek miniature preview card for drag-and-drop feedback."""
-        # 1. Try PIL first for the full card with badge, duration, and border
+        """Generate a sleek miniature preview card for drag-and-drop feedback using native Cairo."""
+        width, height = 120, 68
         try:
-            from PIL import Image, ImageDraw
+            surface = cairo.ImageSurface(cairo.FORMAT_ARGB32, width, height)
+            cr = cairo.Context(surface)
 
-            width, height = 120, 68
-            img = Image.new("RGBA", (width, height), (30, 30, 32, 245))
+            # 1. Base card background
+            cr.set_source_rgba(0.12, 0.12, 0.13, 0.96)
+            cr.paint()
 
-            # Paste first thumbnail if available
+            # 2. Draw thumbnail if available
             valid_thumbs = [p for p in self.segment.thumbnails if p.exists()]
             if valid_thumbs:
                 try:
-                    thumb = Image.open(valid_thumbs[0]).convert("RGBA")
-                    thumb = thumb.resize((width, height))
-                    img.paste(thumb, (0, 0))
+                    pixbuf = GdkPixbuf.Pixbuf.new_from_file_at_scale(str(valid_thumbs[0]), width, height, False)
+                    pixbuf = pixbuf.add_alpha(False, 0, 0, 0)
+                    pw, ph = pixbuf.get_width(), pixbuf.get_height()
+                    stride = pixbuf.get_rowstride()
+                    raw = bytearray(pixbuf.get_pixels())
+                    # Convert RGBA to Cairo's native little-endian ARGB32 (BGRA in memory)
+                    raw[0::4], raw[2::4] = raw[2::4], raw[0::4]
+                    thumb_surface = cairo.ImageSurface.create_for_data(raw, cairo.FORMAT_ARGB32, pw, ph, stride)
+                    cr.set_source_surface(thumb_surface, 0, 0)
+                    cr.paint()
                 except Exception:
                     pass
 
-            draw = ImageDraw.Draw(img)
-
-            # Dark badge overlay at bottom
+            # 3. Semi-transparent dark banner overlay at bottom
             banner_h = 22
-            draw.rectangle([(0, height - banner_h), (width, height)], fill=(0, 0, 0, 195))
+            cr.set_source_rgba(0.0, 0.0, 0.0, 0.78)
+            cr.rectangle(0, height - banner_h, width, banner_h)
+            cr.fill()
 
-            # Text: Clip index and duration
+            # 4. Text: Clip index and duration
             dur_str = format_time(self.segment.duration, show_millis=False)
             text = f"#{self.index + 1} • {dur_str}"
-            draw.text((6, height - banner_h + 4), text, fill=(255, 255, 255, 255))
+            cr.set_source_rgba(1.0, 1.0, 1.0, 1.0)
+            cr.select_font_face("Sans", cairo.FONT_SLANT_NORMAL, cairo.FONT_WEIGHT_BOLD)
+            cr.set_font_size(11)
+            cr.move_to(6, height - banner_h + 15)
+            cr.show_text(text)
 
-            # Orange accent border
-            draw.rectangle([(0, 0), (width - 1, height - 1)], outline=(255, 85, 0, 240), width=2)
+            # 5. Orange accent border
+            cr.set_source_rgba(1.0, 0.33, 0.0, 0.95)
+            cr.set_line_width(2.0)
+            cr.rectangle(1, 1, width - 2, height - 2)
+            cr.stroke()
 
-            raw_bytes = img.tobytes("raw", "RGBA")
-            glib_bytes = GLib.Bytes.new(raw_bytes)
-            return Gdk.MemoryTexture.new(width, height, Gdk.MemoryFormat.R8G8B8A8, glib_bytes, width * 4)
+            # 6. Convert Cairo surface to Gdk.MemoryTexture
+            data = surface.get_data()
+            glib_bytes = GLib.Bytes.new(data.tobytes())
+            return Gdk.MemoryTexture.new(
+                width,
+                height,
+                Gdk.MemoryFormat.B8G8R8A8_PREMULTIPLIED,
+                glib_bytes,
+                surface.get_stride(),
+            )
         except Exception:
-            # 2. Fallback to direct GdkPixbuf without PIL so thumbnail is always shown
+            # Fallback to direct GdkPixbuf without overlays if anything goes wrong
             try:
                 valid_thumbs = [p for p in self.segment.thumbnails if p.exists()]
                 if valid_thumbs:
-                    pixbuf = GdkPixbuf.Pixbuf.new_from_file_at_scale(str(valid_thumbs[0]), 120, 68, False)
+                    pixbuf = GdkPixbuf.Pixbuf.new_from_file_at_scale(str(valid_thumbs[0]), width, height, False)
                     return Gdk.Texture.new_for_pixbuf(pixbuf)
             except Exception:
                 pass
