@@ -9,3 +9,4 @@ Categories=AudioVideo;Video;AudioVideoEditing;
 MimeType=video/mp4;video/x-matroska;video/webm;video/quicktime;image/jpeg;image/png;
 StartupNotify=true
 StartupWMClass=io.github.thomaz.videocut
+Keywords=video;cut;video-cut;editor;trim;clip;movie;

@@ -58,16 +58,33 @@ cp "${REPO_ROOT}/src/video_cut/resources/io.github.thomaz.videocut.desktop" \
    "${PKG_DIR}/usr/share/applications/io.github.thomaz.videocut.desktop"
 chmod 644 "${PKG_DIR}/usr/share/applications/io.github.thomaz.videocut.desktop"
 
-# 5. Copy Icons
+# 5. Copy Icons and Pixmaps
+mkdir -p "${PKG_DIR}/usr/share/pixmaps"
+cp "${REPO_ROOT}/src/video_cut/resources/io.github.thomaz.videocut.svg" \
+   "${PKG_DIR}/usr/share/pixmaps/io.github.thomaz.videocut.svg"
+cp "${REPO_ROOT}/src/video_cut/resources/io.github.thomaz.videocut.svg" \
+   "${PKG_DIR}/usr/share/pixmaps/video-cut.svg"
+cp "${REPO_ROOT}/src/video_cut/resources/icon_512.png" \
+   "${PKG_DIR}/usr/share/pixmaps/io.github.thomaz.videocut.png"
+cp "${REPO_ROOT}/src/video_cut/resources/icon_512.png" \
+   "${PKG_DIR}/usr/share/pixmaps/video-cut.png"
+chmod 644 "${PKG_DIR}/usr/share/pixmaps/"*
+
+# Hicolor scalable
 cp "${REPO_ROOT}/src/video_cut/resources/io.github.thomaz.videocut.svg" \
    "${PKG_DIR}/usr/share/icons/hicolor/scalable/apps/io.github.thomaz.videocut.svg"
-chmod 644 "${PKG_DIR}/usr/share/icons/hicolor/scalable/apps/io.github.thomaz.videocut.svg"
+cp "${REPO_ROOT}/src/video_cut/resources/io.github.thomaz.videocut.svg" \
+   "${PKG_DIR}/usr/share/icons/hicolor/scalable/apps/video-cut.svg"
+chmod 644 "${PKG_DIR}/usr/share/icons/hicolor/scalable/apps/"*
 
+# Hicolor sized PNGs
 for size in 16 24 32 48 64 128 256 512; do
     if [ -f "${REPO_ROOT}/src/video_cut/resources/icon_${size}.png" ]; then
         cp "${REPO_ROOT}/src/video_cut/resources/icon_${size}.png" \
            "${PKG_DIR}/usr/share/icons/hicolor/${size}x${size}/apps/io.github.thomaz.videocut.png"
-        chmod 644 "${PKG_DIR}/usr/share/icons/hicolor/${size}x${size}/apps/io.github.thomaz.videocut.png"
+        cp "${REPO_ROOT}/src/video_cut/resources/icon_${size}.png" \
+           "${PKG_DIR}/usr/share/icons/hicolor/${size}x${size}/apps/video-cut.png"
+        chmod 644 "${PKG_DIR}/usr/share/icons/hicolor/${size}x${size}/apps/"*
     fi
 done
 
@@ -92,13 +109,26 @@ Description: Simple, fast, and modern video cutting and segment arranging tool
 EOF
 chmod 644 "${PKG_DIR}/DEBIAN/control"
 
-# 8. Generate Post-Install & Post-Remove Hooks
+# 8. Generate DEBIAN/triggers
+cat << 'EOF' > "${PKG_DIR}/DEBIAN/triggers"
+interest-noawait /usr/share/applications
+interest-noawait /usr/share/icons/hicolor
+EOF
+chmod 644 "${PKG_DIR}/DEBIAN/triggers"
+
+# 9. Generate Post-Install & Post-Remove Hooks
 cat << 'EOF' > "${PKG_DIR}/DEBIAN/postinst"
 #!/bin/sh
 set -e
 if [ "$1" = "configure" ]; then
+    # Clean up legacy/duplicate desktop file if present
+    rm -f /usr/share/applications/video-cut.desktop 2>/dev/null || true
+
     if command -v update-desktop-database >/dev/null 2>&1; then
-        update-desktop-database -q || true
+        update-desktop-database -q /usr/share/applications || true
+    fi
+    if command -v update-icon-caches >/dev/null 2>&1; then
+        update-icon-caches /usr/share/icons/hicolor || true
     fi
     if command -v gtk-update-icon-cache >/dev/null 2>&1; then
         gtk-update-icon-cache -q -t -f /usr/share/icons/hicolor || true
@@ -112,8 +142,13 @@ cat << 'EOF' > "${PKG_DIR}/DEBIAN/postrm"
 #!/bin/sh
 set -e
 if [ "$1" = "remove" ] || [ "$1" = "purge" ]; then
+    rm -f /usr/share/applications/video-cut.desktop 2>/dev/null || true
+
     if command -v update-desktop-database >/dev/null 2>&1; then
-        update-desktop-database -q || true
+        update-desktop-database -q /usr/share/applications || true
+    fi
+    if command -v update-icon-caches >/dev/null 2>&1; then
+        update-icon-caches /usr/share/icons/hicolor || true
     fi
     if command -v gtk-update-icon-cache >/dev/null 2>&1; then
         gtk-update-icon-cache -q -t -f /usr/share/icons/hicolor || true
