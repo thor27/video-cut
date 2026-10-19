@@ -17,7 +17,7 @@ dependencies = [
 video-cut = "video_cut.__main__:main"
 
 [tool.setuptools.package-data]
-video_cut = ["style.css", "resources/*", "locale/*/*/*"]
+video_cut = ["style.css", "resources/*", "resources/*/*/*/*", "locale/*/*/*"]
 
 [tool.setuptools.dynamic]
 version = {attr = "video_cut.__version__"}

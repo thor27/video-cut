@@ -71,6 +71,10 @@ cp "${REPO_ROOT}/src/video_cut/resources/icon_512.png" \
 chmod 644 "${PKG_DIR}/usr/share/pixmaps/"*
 
 # Hicolor scalable
+mkdir -p "${PKG_DIR}/usr/share/icons/hicolor/scalable/actions"
+cp "${REPO_ROOT}/src/video_cut/resources/video-split-symbolic.svg" \
+   "${PKG_DIR}/usr/share/icons/hicolor/scalable/actions/video-split-symbolic.svg"
+chmod 644 "${PKG_DIR}/usr/share/icons/hicolor/scalable/actions/"*
 cp "${REPO_ROOT}/src/video_cut/resources/io.github.thomaz.videocut.svg" \
    "${PKG_DIR}/usr/share/icons/hicolor/scalable/apps/io.github.thomaz.videocut.svg"
 cp "${REPO_ROOT}/src/video_cut/resources/io.github.thomaz.videocut.svg" \

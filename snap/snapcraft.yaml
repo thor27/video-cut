@@ -73,6 +73,8 @@ parts:
         ${CRAFT_PART_INSTALL}/usr/share/applications/io.github.thomaz.videocut.desktop
       install -D -m 644 src/video_cut/resources/io.github.thomaz.videocut.svg \
         ${CRAFT_PART_INSTALL}/usr/share/icons/hicolor/scalable/apps/io.github.thomaz.videocut.svg
+      install -D -m 644 src/video_cut/resources/video-split-symbolic.svg \
+        ${CRAFT_PART_INSTALL}/usr/share/icons/hicolor/scalable/actions/video-split-symbolic.svg
       install -D -m 644 src/video_cut/resources/icon_512.png \
         ${CRAFT_PART_INSTALL}/usr/share/pixmaps/video-cut.png
       install -D -m 644 src/video_cut/resources/icon_512.png \
