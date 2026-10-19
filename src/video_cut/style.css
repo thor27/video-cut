@@ -60,11 +60,6 @@
     background-color: alpha(@accent_color, 0.12);
 }
 
-.window-drop-active {
-    outline: 3px dashed @accent_color;
-    outline-offset: -3px;
-    background-color: alpha(@accent_color, 0.06);
-}
 
 .segment-header {
     padding: 2px 4px 4px 4px;
@@ -202,9 +197,25 @@ popover.playhead-split-popover > contents {
     line-height: 1.25;
 }
 
-.add-segment-button:hover {
+.add-segment-button:hover,
+.add-segment-button.drop-target-active {
     border-color: @accent_color;
-    background-color: alpha(@accent_color, 0.06);
+    border-style: dashed;
+    border-width: 2px;
+    background-color: alpha(@accent_color, 0.14);
+}
+
+.add-segment-button.drop-target-active {
+    box-shadow: 0 0 0 3px alpha(@accent_color, 0.55);
+}
+
+.add-segment-button.drop-target-active image,
+.add-segment-button.drop-target-active label {
+    color: @accent_color;
+}
+
+button.pill.drop-target-active {
+    box-shadow: 0 0 0 4px alpha(@accent_color, 0.55);
 }
 
 .transport-box {

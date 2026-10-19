@@ -213,12 +213,12 @@ class MainWindow(Adw.ApplicationWindow):
         self.empty_status.set_description(
             _("Drag and drop videos or images here, paste from clipboard (Ctrl+V), or click to open")
         )
-        btn_open_empty = Gtk.Button(label=_("Open Video or Image"))
-        btn_open_empty.add_css_class("suggested-action")
-        btn_open_empty.add_css_class("pill")
-        btn_open_empty.set_halign(Gtk.Align.CENTER)
-        btn_open_empty.connect("clicked", lambda _: self._open_video_dialog())
-        self.empty_status.set_child(btn_open_empty)
+        self.btn_open_empty = Gtk.Button(label=_("Open Video or Image"))
+        self.btn_open_empty.add_css_class("suggested-action")
+        self.btn_open_empty.add_css_class("pill")
+        self.btn_open_empty.set_halign(Gtk.Align.CENTER)
+        self.btn_open_empty.connect("clicked", lambda _: self._open_video_dialog())
+        self.empty_status.set_child(self.btn_open_empty)
         self.player_stack.add_named(self.empty_status, "empty")
 
         # Video Picture page
@@ -669,15 +669,25 @@ class MainWindow(Adw.ApplicationWindow):
         drop_target.connect("drop", self._on_window_drop)
         self.add_controller(drop_target)
 
+    def _set_drop_highlight(self, active: bool) -> None:
+        """Mark or unmark the '+ Add Video or Image' box when dragging media over the window."""
+        if hasattr(self, "timeline_widget") and self.timeline_widget:
+            self.timeline_widget.set_drop_active(active)
+        if hasattr(self, "btn_open_empty") and self.btn_open_empty:
+            if active:
+                self.btn_open_empty.add_css_class("drop-target-active")
+            else:
+                self.btn_open_empty.remove_css_class("drop-target-active")
+
     def _on_window_drag_enter(self, target: Gtk.DropTarget, x: float, y: float) -> Gdk.DragAction:
-        self.add_css_class("window-drop-active")
+        self._set_drop_highlight(True)
         return Gdk.DragAction.COPY
 
     def _on_window_drag_leave(self, target: Gtk.DropTarget) -> None:
-        self.remove_css_class("window-drop-active")
+        self._set_drop_highlight(False)
 
     def _on_window_drop(self, target: Gtk.DropTarget, value, x: float, y: float) -> bool:
-        self.remove_css_class("window-drop-active")
+        self._set_drop_highlight(False)
         paths: List[Path] = []
 
         if isinstance(value, Gdk.FileList):

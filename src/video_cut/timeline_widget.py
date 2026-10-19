@@ -119,6 +119,7 @@ class TimelineWidget(Gtk.Box):
         self.get_segment_thumbnails = get_segment_thumbnails
         self._can_paste = False
         self.btn_add: Optional[Gtk.Button] = None
+        self._is_drop_active: bool = False
 
         self._cards: Dict[str, SegmentCard] = {}
         self._current_time = 0.0
@@ -501,6 +502,8 @@ class TimelineWidget(Gtk.Box):
         self.btn_add.set_focusable(False)
         self.btn_add.add_css_class("card")
         self.btn_add.add_css_class("add-segment-button")
+        if self._is_drop_active:
+            self.btn_add.add_css_class("drop-target-active")
         self.btn_add.set_size_request(85, -1)
         self.btn_add.set_hexpand(False)
         btn_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4)
@@ -828,3 +831,13 @@ class TimelineWidget(Gtk.Box):
             if self.timeline.reorder(from_idx, to_idx):
                 self.rebuild_filmstrip()
                 self.on_structure_changed()
+
+    def set_drop_active(self, active: bool) -> None:
+        """Mark or unmark the '+ Add Video or Image' card as an active drop target."""
+        self._is_drop_active = active
+        if hasattr(self, "btn_add") and self.btn_add:
+            if active:
+                self.btn_add.add_css_class("drop-target-active")
+            else:
+                self.btn_add.remove_css_class("drop-target-active")
+

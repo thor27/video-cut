@@ -56,14 +56,17 @@ def test_desktop_drag_and_drop(tmp_path):
         try:
             win = MainWindow(application=app)
 
-            # 1. Test drag enter / leave CSS classes
+            # 1. Test drag enter / leave highlights add button (and not the entire window)
             assert not win.has_css_class("window-drop-active")
+            assert not win.timeline_widget.btn_add.has_css_class("drop-target-active")
             action = win._on_window_drag_enter(None, 100.0, 100.0)
             assert action == Gdk.DragAction.COPY
-            assert win.has_css_class("window-drop-active")
+            assert not win.has_css_class("window-drop-active")
+            assert win.timeline_widget.btn_add.has_css_class("drop-target-active")
 
             win._on_window_drag_leave(None)
             assert not win.has_css_class("window-drop-active")
+            assert not win.timeline_widget.btn_add.has_css_class("drop-target-active")
 
             # 2. Test drop rejection for internal segment strings
             assert win._on_window_drop(None, "video-cut-segment:seg-1", 0, 0) is False
