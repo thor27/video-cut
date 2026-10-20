@@ -127,14 +127,6 @@ class MainWindow(Adw.ApplicationWindow):
         self.header_bar.pack_start(self.btn_fullscreen)
         self.connect("notify::fullscreened", self._on_fullscreened_changed)
 
-        btn_open = Gtk.Button()
-        open_content = Adw.ButtonContent(icon_name="document-open-symbolic", label=_("Open"))
-        btn_open.set_child(open_content)
-        btn_open.set_tooltip_text(_("Open video or image (Ctrl+O)"))
-        btn_open.set_focusable(False)
-        btn_open.connect("clicked", lambda _: self._open_video_dialog())
-        self.header_bar.pack_start(btn_open)
-
         # Actions for sandwich menu
         self.action_new_window = Gio.SimpleAction.new("new_window", None)
         self.action_new_window.connect("activate", lambda *_: self._create_new_window())

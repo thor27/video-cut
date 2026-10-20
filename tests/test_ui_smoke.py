@@ -22,12 +22,12 @@ def test_ui_smoke():
             assert win.player_stack.get_visible_child_name() == "empty"
             assert win.timeline.is_empty is True
 
-            # Verify top bar contains ONLY Open and Export buttons
+            # Verify top bar contains Fullscreen, Export, and Menu, but NO Open button
             header_buttons = []
             child = win.header_bar.get_first_child()
             while child:
                 def collect_buttons(w):
-                    if isinstance(w, Gtk.Button):
+                    if isinstance(w, (Gtk.Button, Gtk.MenuButton)):
                         header_buttons.append(w)
                     c = w.get_first_child() if hasattr(w, "get_first_child") else None
                     while c:
@@ -36,8 +36,12 @@ def test_ui_smoke():
                 collect_buttons(child)
                 child = child.get_next_sibling()
 
-            action_buttons = [b for b in header_buttons if b in (win.btn_export,) or "open" in (b.get_tooltip_text() or "").lower()]
-            assert len(action_buttons) == 2, f"Expected only Open and Export buttons in header, found: {action_buttons}"
+            # Ensure Open button is removed from header bar
+            open_header_buttons = [b for b in header_buttons if "open video or image" in (b.get_tooltip_text() or "").lower()]
+            assert len(open_header_buttons) == 0, f"Open button should not be in header bar: {open_header_buttons}"
+            assert win.btn_export in header_buttons
+            assert win.btn_fullscreen in header_buttons
+            assert win.btn_menu in header_buttons
 
             # Verify bottom timeline bar has the edit buttons and NO 'Timeline' label
             time_bar_labels = []
