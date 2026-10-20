@@ -30,8 +30,23 @@ ASPECT_PRESETS = [
     ("9:16", 9.0 / 16.0),
     ("1:1", 1.0),
     ("4:3", 4.0 / 3.0),
+    ("3:4", 3.0 / 4.0),
     ("21:9", 21.0 / 9.0),
+    ("9:21", 9.0 / 21.0),
 ]
+
+# Mapping of presets to their inverse aspect ratio on 90 degree rotation
+INVERSE_ASPECT_RATIOS = {
+    "16:9": "9:16",
+    "9:16": "16:9",
+    "4:3": "3:4",
+    "3:4": "4:3",
+    "21:9": "9:21",
+    "9:21": "21:9",
+    "1:1": "1:1",
+    "Free": "Free",
+    "Original": "Original",
+}
 
 
 def get_preset_label(preset: str) -> str:
@@ -57,8 +72,12 @@ def get_preset_tooltip(preset: str) -> str:
         return _("1:1 Square")
     elif preset == "4:3":
         return _("4:3 Standard")
+    elif preset == "3:4":
+        return _("3:4 Vertical Standard")
     elif preset == "21:9":
         return _("21:9 Ultrawide")
+    elif preset == "9:21":
+        return _("9:21 Vertical Ultrawide")
     return preset
 
 
@@ -106,6 +125,7 @@ class CropRotateDialog(Adw.Window):
             segment.crop if segment.crop is not None else (0.0, 0.0, 1.0, 1.0)
         )
         self.selected_preset: str = "Free"
+        self._is_updating_preset_ui: bool = False
 
         # Frame pixbufs and surfaces
         self.base_pixbuf: Optional[GdkPixbuf.Pixbuf] = None
@@ -296,13 +316,7 @@ class CropRotateDialog(Adw.Window):
         row1.append(tf_group)
 
         # Reset button
-        btn_reset = Gtk.Button()
-        reset_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
-        reset_icon = Gtk.Image.new_from_icon_name("view-refresh-symbolic")
-        reset_lbl = Gtk.Label(label=_("Reset"))
-        reset_box.append(reset_icon)
-        reset_box.append(reset_lbl)
-        btn_reset.set_child(reset_box)
+        btn_reset = Gtk.Button(label=_("Reset"))
         btn_reset.set_tooltip_text(_("Reset crop, rotation, and flip"))
         btn_reset.connect("clicked", lambda _: self._reset_transforms())
         row1.append(btn_reset)
@@ -542,27 +556,33 @@ class CropRotateDialog(Adw.Window):
         bw = cw * dest_w
         bh = ch * dest_h
 
-        thresh = 14.0
+        # Corner zone size (proportional if crop box is very small)
+        corner_size = min(14.0, bw * 0.3, bh * 0.3)
+        edge_thresh = 10.0
 
-        # Corners
-        if abs(mx - bx) <= thresh and abs(my - by) <= thresh:
+        # Corners take priority when within corner_size
+        if abs(mx - bx) <= corner_size and abs(my - by) <= corner_size:
             return "RESIZE_NW"
-        if abs(mx - (bx + bw)) <= thresh and abs(my - by) <= thresh:
+        if abs(mx - (bx + bw)) <= corner_size and abs(my - by) <= corner_size:
             return "RESIZE_NE"
-        if abs(mx - bx) <= thresh and abs(my - (by + bh)) <= thresh:
+        if abs(mx - bx) <= corner_size and abs(my - (by + bh)) <= corner_size:
             return "RESIZE_SW"
-        if abs(mx - (bx + bw)) <= thresh and abs(my - (by + bh)) <= thresh:
+        if abs(mx - (bx + bw)) <= corner_size and abs(my - (by + bh)) <= corner_size:
             return "RESIZE_SE"
 
-        # Edges
-        if abs(mx - bx) <= thresh and by <= my <= by + bh:
-            return "RESIZE_W"
-        if abs(mx - (bx + bw)) <= thresh and by <= my <= by + bh:
-            return "RESIZE_E"
-        if abs(my - by) <= thresh and bx <= mx <= bx + bw:
+        # Edges outside corner zones:
+        # Top edge (N)
+        if abs(my - by) <= edge_thresh and (bx - edge_thresh) <= mx <= (bx + bw + edge_thresh):
             return "RESIZE_N"
-        if abs(my - (by + bh)) <= thresh and bx <= mx <= bx + bw:
+        # Bottom edge (S)
+        if abs(my - (by + bh)) <= edge_thresh and (bx - edge_thresh) <= mx <= (bx + bw + edge_thresh):
             return "RESIZE_S"
+        # Left edge (W)
+        if abs(mx - bx) <= edge_thresh and (by - edge_thresh) <= my <= (by + bh + edge_thresh):
+            return "RESIZE_W"
+        # Right edge (E)
+        if abs(mx - (bx + bw)) <= edge_thresh and (by - edge_thresh) <= my <= (by + bh + edge_thresh):
+            return "RESIZE_E"
 
         # Inside crop box
         if bx < mx < bx + bw and by < my < by + bh:
@@ -621,19 +641,20 @@ class CropRotateDialog(Adw.Window):
             # Resizing
             target_ratio = self._get_current_aspect_ratio()
             nx, ny, nw, nh = init_x, init_y, init_w, init_h
+            dir_code = self._drag_mode.replace("RESIZE_", "")
 
-            if "W" in self._drag_mode:
+            if "W" in dir_code:
                 max_w = init_x + init_w
                 nw = clamp(init_w - ndx, min_dim, max_w)
                 nx = init_x + (init_w - nw)
-            elif "E" in self._drag_mode:
+            elif "E" in dir_code:
                 nw = clamp(init_w + ndx, min_dim, 1.0 - init_x)
 
-            if "N" in self._drag_mode:
+            if "N" in dir_code:
                 max_h = init_y + init_h
                 nh = clamp(init_h - ndy, min_dim, max_h)
                 ny = init_y + (init_h - nh)
-            elif "S" in self._drag_mode:
+            elif "S" in dir_code:
                 nh = clamp(init_h + ndy, min_dim, 1.0 - init_y)
 
             # Apply aspect ratio constraint if active
@@ -642,10 +663,10 @@ class CropRotateDialog(Adw.Window):
                 # Desired (nw / nh) in normalized coordinates: target_ratio / img_pixel_ratio
                 norm_ratio = target_ratio / img_pixel_ratio
 
-                if self._drag_mode in ("RESIZE_W", "RESIZE_E"):
+                if dir_code in ("W", "E"):
                     nh = clamp(nw / norm_ratio, min_dim, 1.0)
                     ny = clamp(init_y + (init_h - nh) / 2.0, 0.0, 1.0 - nh)
-                elif self._drag_mode in ("RESIZE_N", "RESIZE_S"):
+                elif dir_code in ("N", "S"):
                     nw = clamp(nh * norm_ratio, min_dim, 1.0)
                     nx = clamp(init_x + (init_w - nw) / 2.0, 0.0, 1.0 - nw)
                 else:
@@ -657,9 +678,9 @@ class CropRotateDialog(Adw.Window):
                         nh = 1.0
                         nw = nh * norm_ratio
 
-                    if "N" in self._drag_mode:
+                    if "N" in dir_code:
                         ny = clamp(init_y + (init_h - nh), 0.0, 1.0 - nh)
-                    if "W" in self._drag_mode:
+                    if "W" in dir_code:
                         nx = clamp(init_x + (init_w - nw), 0.0, 1.0 - nw)
 
             # Bound checks
@@ -686,38 +707,53 @@ class CropRotateDialog(Adw.Window):
                 return ratio
         return None
 
+    def _set_active_preset(self, preset_label: str, reset_crop: bool = True) -> None:
+        """Set the active preset and update toggle buttons. Optionally resets crop geometry."""
+        self.selected_preset = preset_label
+        self._is_updating_preset_ui = True
+        try:
+            for name, other_btn in self._preset_buttons.items():
+                if name != preset_label and other_btn.get_active():
+                    other_btn.set_active(False)
+            if preset_label in self._preset_buttons and not self._preset_buttons[preset_label].get_active():
+                self._preset_buttons[preset_label].set_active(True)
+        finally:
+            self._is_updating_preset_ui = False
+
+        if reset_crop:
+            ratio = self._get_current_aspect_ratio()
+            if ratio is not None and self._transformed_pixbuf:
+                img_pixel_ratio = self._transformed_pixbuf.get_width() / float(self._transformed_pixbuf.get_height())
+                norm_ratio = ratio / img_pixel_ratio
+
+                if norm_ratio >= 1.0:
+                    cw = 1.0
+                    ch = 1.0 / norm_ratio
+                else:
+                    ch = 1.0
+                    cw = norm_ratio
+
+                cx = (1.0 - cw) / 2.0
+                cy = (1.0 - ch) / 2.0
+                self.crop = (cx, cy, cw, ch)
+            elif preset_label == "Free":
+                pass
+
+            self._update_readout_label()
+            self._render_preview()
+        else:
+            self._update_readout_label()
+
     def _on_preset_toggled(self, btn: Gtk.ToggleButton, preset_label: str) -> None:
+        if self._is_updating_preset_ui:
+            return
         if not btn.get_active():
             # Keep at least one button selected
             if self.selected_preset == preset_label:
                 btn.set_active(True)
             return
 
-        self.selected_preset = preset_label
-        for name, other_btn in self._preset_buttons.items():
-            if name != preset_label and other_btn.get_active():
-                other_btn.set_active(False)
-
-        ratio = self._get_current_aspect_ratio()
-        if ratio is not None and self._transformed_pixbuf:
-            img_pixel_ratio = self._transformed_pixbuf.get_width() / float(self._transformed_pixbuf.get_height())
-            norm_ratio = ratio / img_pixel_ratio
-
-            if norm_ratio >= 1.0:
-                cw = 1.0
-                ch = 1.0 / norm_ratio
-            else:
-                ch = 1.0
-                cw = norm_ratio
-
-            cx = (1.0 - cw) / 2.0
-            cy = (1.0 - ch) / 2.0
-            self.crop = (cx, cy, cw, ch)
-        elif preset_label == "Free":
-            pass
-
-        self._update_readout_label()
-        self._render_preview()
+        self._set_active_preset(preset_label, reset_crop=True)
 
     def _rotate_cw(self) -> None:
         """Rotate 90 degrees clockwise."""
@@ -729,6 +765,13 @@ class CropRotateDialog(Adw.Window):
         nw = oh
         nh = ow
         self.crop = (clamp(nx, 0.0, 1.0), clamp(ny, 0.0, 1.0), clamp(nw, 0.01, 1.0), clamp(nh, 0.01, 1.0))
+
+        # Invert preset if applicable without resetting crop geometry
+        if self.selected_preset in INVERSE_ASPECT_RATIOS:
+            new_preset = INVERSE_ASPECT_RATIOS[self.selected_preset]
+            if new_preset != self.selected_preset:
+                self._set_active_preset(new_preset, reset_crop=False)
+
         self._update_transformed_pixbuf()
 
     def _rotate_ccw(self) -> None:
@@ -741,6 +784,13 @@ class CropRotateDialog(Adw.Window):
         nw = oh
         nh = ow
         self.crop = (clamp(nx, 0.0, 1.0), clamp(ny, 0.0, 1.0), clamp(nw, 0.01, 1.0), clamp(nh, 0.01, 1.0))
+
+        # Invert preset if applicable without resetting crop geometry
+        if self.selected_preset in INVERSE_ASPECT_RATIOS:
+            new_preset = INVERSE_ASPECT_RATIOS[self.selected_preset]
+            if new_preset != self.selected_preset:
+                self._set_active_preset(new_preset, reset_crop=False)
+
         self._update_transformed_pixbuf()
 
     def _toggle_hflip(self) -> None:
@@ -765,9 +815,7 @@ class CropRotateDialog(Adw.Window):
         self.hflip = False
         self.vflip = False
         self.crop = (0.0, 0.0, 1.0, 1.0)
-        self.selected_preset = "Free"
-        for name, btn in self._preset_buttons.items():
-            btn.set_active(name == "Free")
+        self._set_active_preset("Free", reset_crop=False)
         self._update_transformed_pixbuf()
 
     def _on_apply_clicked(self, _btn: Gtk.Button) -> None:

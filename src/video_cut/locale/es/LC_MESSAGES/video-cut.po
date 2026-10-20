@@ -195,8 +195,16 @@ msgid "4:3 Standard"
 msgstr "4:3 Estándar"
 
 #: src/video_cut/crop_rotate_dialog.py:61
+msgid "3:4 Vertical Standard"
+msgstr "3:4 Vertical Estándar"
+
+#: src/video_cut/crop_rotate_dialog.py:63
 msgid "21:9 Ultrawide"
 msgstr "21:9 Ultrawide"
+
+#: src/video_cut/crop_rotate_dialog.py:65
+msgid "9:21 Vertical Ultrawide"
+msgstr "9:21 Ultrawide Vertical"
 
 #: src/video_cut/crop_rotate_dialog.py:123
 #, python-brace-format

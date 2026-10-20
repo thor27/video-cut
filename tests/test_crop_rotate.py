@@ -14,6 +14,7 @@ from gi.repository import Gtk, Gdk, Adw, GdkPixbuf
 from video_cut.models import Segment, ProjectTimeline
 from video_cut.services.export_service import ExportService
 from video_cut.crop_rotate_dialog import CropRotateDialog, ASPECT_PRESETS
+from video_cut.i18n import _
 
 
 def test_segment_transform_defaults():
@@ -355,6 +356,208 @@ def test_preview_picture_dynamic_allocation():
     assert rect2 != rect1
     assert rect2[2] >= rect1[2]
     assert dialog.preview_picture.get_paintable() is not None
+
+
+def test_aspect_presets_include_3_4_and_9_21():
+    preset_dict = dict(ASPECT_PRESETS)
+    assert "3:4" in preset_dict
+    assert abs(preset_dict["3:4"] - (3.0 / 4.0)) < 1e-6
+    assert "9:21" in preset_dict
+    assert abs(preset_dict["9:21"] - (9.0 / 21.0)) < 1e-6
+
+    labels = [label for label, _ in ASPECT_PRESETS]
+    expected_order = ["Free", "Original", "16:9", "9:16", "1:1", "4:3", "3:4", "21:9", "9:21"]
+    assert labels == expected_order
+
+
+def test_crop_rotate_dialog_reset_button_has_no_icon():
+    try:
+        Gtk.init()
+    except Exception:
+        pass
+    parent = Gtk.Window()
+    seg = Segment(source_path=Path("/tmp/fake.mp4"), source_duration=5.0)
+    dialog = CropRotateDialog(parent=parent, segment=seg, on_apply=lambda *a: None)
+
+    def find_buttons(widget):
+        btns = []
+        if isinstance(widget, Gtk.Button):
+            btns.append(widget)
+        child = widget.get_first_child() if hasattr(widget, "get_first_child") else None
+        while child:
+            btns.extend(find_buttons(child))
+            child = child.get_next_sibling()
+        return btns
+
+    buttons = find_buttons(dialog)
+    reset_btns = [b for b in buttons if b.get_label() == _("Reset")]
+    assert len(reset_btns) == 1
+    # Verify child is not a Gtk.Box with an icon
+    assert not isinstance(reset_btns[0].get_child(), Gtk.Box)
+
+
+def test_crop_rotate_dialog_hit_testing():
+    try:
+        Gtk.init()
+    except Exception:
+        pass
+    parent = Gtk.Window()
+    seg = Segment(source_path=Path("/tmp/fake.mp4"), source_duration=5.0)
+    dialog = CropRotateDialog(parent=parent, segment=seg, on_apply=lambda *a: None)
+
+    dialog._img_rect = (100, 100, 400, 300)
+    dialog.crop = (0.2, 0.2, 0.6, 0.6)
+    # bx = 180, by = 160, bw = 240, bh = 180
+    bx, by, bw, bh = 180, 160, 240, 180
+
+    # Corners (within 14px of corner points)
+    assert dialog._hit_test(bx + 2, by + 2) == "RESIZE_NW"
+    assert dialog._hit_test(bx + bw - 2, by + 2) == "RESIZE_NE"
+    assert dialog._hit_test(bx + 2, by + bh - 2) == "RESIZE_SW"
+    assert dialog._hit_test(bx + bw - 2, by + bh - 2) == "RESIZE_SE"
+
+    # Edges (outside corners, within 10px of border)
+    assert dialog._hit_test(bx + bw / 2, by) == "RESIZE_N"
+    assert dialog._hit_test(bx + 30, by + 2) == "RESIZE_N"
+    assert dialog._hit_test(bx + bw / 2, by + bh) == "RESIZE_S"
+    assert dialog._hit_test(bx + 30, by + bh - 2) == "RESIZE_S"
+    assert dialog._hit_test(bx, by + bh / 2) == "RESIZE_W"
+    assert dialog._hit_test(bx + 2, by + 30) == "RESIZE_W"
+    assert dialog._hit_test(bx + bw, by + bh / 2) == "RESIZE_E"
+    assert dialog._hit_test(bx + bw - 2, by + 30) == "RESIZE_E"
+
+    # Inside (move)
+    assert dialog._hit_test(bx + bw / 2, by + bh / 2) == "MOVE"
+
+    # Outside
+    assert dialog._hit_test(bx - 30, by - 30) == "OUTSIDE"
+    assert dialog._hit_test(bx + bw + 30, by + bh + 30) == "OUTSIDE"
+
+
+def test_free_proportion_resizing_respects_edges_and_corners():
+    try:
+        Gtk.init()
+    except Exception:
+        pass
+    parent = Gtk.Window()
+    seg = Segment(source_path=Path("/tmp/fake.mp4"), source_duration=5.0)
+    dialog = CropRotateDialog(parent=parent, segment=seg, on_apply=lambda *a: None)
+
+    dialog.selected_preset = "Free"
+    dialog._render_preview = MagicMock()
+    dialog._img_rect = (0, 0, 1000, 1000)
+    dialog.crop = (0.2, 0.2, 0.5, 0.5)
+
+    gesture = MagicMock()
+
+    # 1. Drag N edge: MUST only modify ny and nh, leaving nx and nw completely unchanged
+    dialog._drag_mode = "RESIZE_N"
+    dialog._crop_at_drag_start = (0.2, 0.2, 0.5, 0.5)
+    dialog._on_drag_update(gesture, offset_x=100, offset_y=-50)
+    nx, ny, nw, nh = dialog.crop
+    assert nx == 0.2  # Unchanged horizontally!
+    assert nw == 0.5  # Unchanged horizontally!
+    assert abs(ny - 0.15) < 1e-4  # Moved up
+    assert abs(nh - 0.55) < 1e-4  # Height expanded
+
+    # 2. Drag S edge: MUST only modify nh, leaving nx, ny, nw completely unchanged
+    dialog._drag_mode = "RESIZE_S"
+    dialog._crop_at_drag_start = (0.2, 0.2, 0.5, 0.5)
+    dialog._on_drag_update(gesture, offset_x=80, offset_y=40)
+    nx, ny, nw, nh = dialog.crop
+    assert nx == 0.2  # Unchanged
+    assert ny == 0.2  # Unchanged
+    assert nw == 0.5  # Unchanged
+    assert abs(nh - 0.54) < 1e-4  # Height expanded down
+
+    # 3. Drag W edge: MUST only modify nx and nw, leaving ny and nh completely unchanged
+    dialog._drag_mode = "RESIZE_W"
+    dialog._crop_at_drag_start = (0.2, 0.2, 0.5, 0.5)
+    dialog._on_drag_update(gesture, offset_x=-60, offset_y=70)
+    nx, ny, nw, nh = dialog.crop
+    assert ny == 0.2  # Unchanged vertically!
+    assert nh == 0.5  # Unchanged vertically!
+    assert abs(nx - 0.14) < 1e-4  # Moved left
+    assert abs(nw - 0.56) < 1e-4  # Width expanded
+
+    # 4. Drag E edge: MUST only modify nw, leaving nx, ny, nh completely unchanged
+    dialog._drag_mode = "RESIZE_E"
+    dialog._crop_at_drag_start = (0.2, 0.2, 0.5, 0.5)
+    dialog._on_drag_update(gesture, offset_x=50, offset_y=90)
+    nx, ny, nw, nh = dialog.crop
+    assert nx == 0.2  # Unchanged
+    assert ny == 0.2  # Unchanged
+    assert nh == 0.5  # Unchanged
+    assert abs(nw - 0.55) < 1e-4  # Width expanded
+
+    # 5. Drag Corner NW: modifies both axes
+    dialog._drag_mode = "RESIZE_NW"
+    dialog._crop_at_drag_start = (0.2, 0.2, 0.5, 0.5)
+    dialog._on_drag_update(gesture, offset_x=-50, offset_y=-50)
+    nx, ny, nw, nh = dialog.crop
+    assert abs(nx - 0.15) < 1e-4
+    assert abs(ny - 0.15) < 1e-4
+    assert abs(nw - 0.55) < 1e-4
+    assert abs(nh - 0.55) < 1e-4
+
+
+def test_rotation_inverts_preset_without_resetting_crop():
+    try:
+        Gtk.init()
+    except Exception:
+        pass
+    parent = Gtk.Window()
+    seg = Segment(source_path=Path("/tmp/fake.mp4"), source_duration=5.0)
+    dialog = CropRotateDialog(parent=parent, segment=seg, on_apply=lambda *a: None)
+
+    # 1. Select 4:3 preset
+    btn_4_3 = dialog._preset_buttons["4:3"]
+    btn_4_3.set_active(True)
+    assert dialog.selected_preset == "4:3"
+    crop_before = dialog.crop
+
+    # 2. Rotate CW
+    dialog._rotate_cw()
+    assert dialog.rotation == 90
+    assert dialog.selected_preset == "3:4"
+    assert dialog._preset_buttons["3:4"].get_active() is True
+    assert dialog._preset_buttons["4:3"].get_active() is False
+    # Verify crop was rotated (ox, oy, ow, oh) -> (1-(oy+oh), ox, oh, ow)
+    ox, oy, ow, oh = crop_before
+    expected_crop = (1.0 - (oy + oh), ox, oh, ow)
+    assert abs(dialog.crop[0] - expected_crop[0]) < 1e-4
+    assert abs(dialog.crop[1] - expected_crop[1]) < 1e-4
+    assert abs(dialog.crop[2] - expected_crop[2]) < 1e-4
+    assert abs(dialog.crop[3] - expected_crop[3]) < 1e-4
+
+    # 3. Rotate CW again -> inverts back to 4:3
+    dialog._rotate_cw()
+    assert dialog.rotation == 180
+    assert dialog.selected_preset == "4:3"
+    assert dialog._preset_buttons["4:3"].get_active() is True
+
+    # 4. Select 16:9 and rotate CCW -> inverts to 9:16
+    btn_16_9 = dialog._preset_buttons["16:9"]
+    btn_16_9.set_active(True)
+    assert dialog.selected_preset == "16:9"
+    dialog._rotate_ccw()
+    assert dialog.selected_preset == "9:16"
+    assert dialog._preset_buttons["9:16"].get_active() is True
+
+    # 5. Select 21:9 and rotate CW -> inverts to 9:21
+    btn_21_9 = dialog._preset_buttons["21:9"]
+    btn_21_9.set_active(True)
+    assert dialog.selected_preset == "21:9"
+    dialog._rotate_cw()
+    assert dialog.selected_preset == "9:21"
+    assert dialog._preset_buttons["9:21"].get_active() is True
+
+    # 6. Free preset remains Free on rotation
+    dialog._preset_buttons["Free"].set_active(True)
+    assert dialog.selected_preset == "Free"
+    dialog._rotate_cw()
+    assert dialog.selected_preset == "Free"
+    assert dialog._preset_buttons["Free"].get_active() is True
 
 
 

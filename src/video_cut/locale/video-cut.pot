@@ -204,7 +204,15 @@ msgid "4:3 Standard"
 msgstr ""
 
 #: src/video_cut/crop_rotate_dialog.py:61
+msgid "3:4 Vertical Standard"
+msgstr ""
+
+#: src/video_cut/crop_rotate_dialog.py:63
 msgid "21:9 Ultrawide"
+msgstr ""
+
+#: src/video_cut/crop_rotate_dialog.py:65
+msgid "9:21 Vertical Ultrawide"
 msgstr ""
 
 #: src/video_cut/crop_rotate_dialog.py:123
