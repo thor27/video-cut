@@ -166,7 +166,7 @@ class SegmentCard(Gtk.Box):
         self._standalone_split_pill.set_cursor_from_name("pointer")
         self._standalone_split_pill.set_tooltip_text(_("Split clip at cursor"))
         self._standalone_split_pill.set_focusable(False)
-        self._standalone_split_pill.set_size_request(50, 24)
+        self._standalone_split_pill.set_size_request(-1, 24)
         self._standalone_split_pill.set_visible(False)
 
         pill_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=4)
@@ -660,7 +660,16 @@ class SegmentCard(Gtk.Box):
         self.needle.set_visible(True)
 
         needle_center_x = margin_x + 7
-        pill_w = 50
+        target_pill = self.split_pill
+        was_visible = target_pill.get_visible()
+        if not was_visible:
+            target_pill.set_visible(True)
+        _, pill_w, _, _ = target_pill.measure(Gtk.Orientation.HORIZONTAL, -1)
+        if not was_visible:
+            target_pill.set_visible(False)
+        if pill_w <= 0:
+            pill_w = 50
+
         # Always perfectly centered over the cursor needle, never constrained by segment borders
         pill_x = int(round(needle_center_x - (pill_w / 2.0)))
         self._split_pill_x = pill_x

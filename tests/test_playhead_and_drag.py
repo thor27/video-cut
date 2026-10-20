@@ -439,7 +439,7 @@ def test_split_pill_hover_and_context_menu_top_left():
             card.show_split_pill()
             needle_x_start = card.needle.get_margin_start() + 7
             pill_x_start = card.split_pill.get_margin_start()
-            pill_w = 50.0
+            _, pill_w, _, _ = card.split_pill.measure(Gtk.Orientation.HORIZONTAL, -1)
             assert abs((pill_x_start + pill_w / 2.0) - needle_x_start) <= 2
             # Verify split pill container has overflow visible so it is never clipped
             assert card.split_fixed.get_overflow() == Gtk.Overflow.VISIBLE
@@ -499,6 +499,54 @@ def test_split_pill_left_boundary_not_clipped_in_timeline():
     app.run(["test"])
     if err:
         raise err[0]
+
+
+def test_split_pill_centralization_across_languages():
+    """Verify split pill is dynamically centered over the orange playhead needle regardless of language and text length."""
+    from video_cut.window import MainWindow
+    from video_cut.i18n import init_i18n
+
+    for lang in ["en_US", "pt_BR", "fr"]:
+        app = Adw.Application(application_id=f"io.github.thomaz.videocut.test.pill_center_{lang}")
+        err = []
+
+        def run_test(app, target_lang=lang):
+            win = None
+            try:
+                init_i18n(target_lang)
+                win = MainWindow(application=app)
+                win.load_video(Path("/tmp/test_video.mp4"))
+                win.present()
+
+                tw = win.timeline_widget
+                card = list(tw._cards.values())[0]
+                card.set_needle_ratio(0.5)
+                tw.show_split_pill()
+
+                ctx = GLib.MainContext.default()
+                for _ in range(50):
+                    ctx.iteration(False)
+
+                _, b_needle = card.needle.compute_bounds(tw.filmstrip_overlay)
+                _, b_pill = tw.split_pill.compute_bounds(tw.filmstrip_overlay)
+
+                needle_center = b_needle.get_x() + 7.0
+                pill_center = b_pill.get_x() + (b_pill.get_width() / 2.0)
+                diff = abs(pill_center - needle_center)
+
+                assert diff <= 1.0, f"In {target_lang}, split pill center ({pill_center}) deviated from needle center ({needle_center}) by {diff}px"
+            except Exception as e:
+                err.append(e)
+            finally:
+                if win:
+                    win.close()
+                app.quit()
+
+        app.connect("activate", run_test)
+        app.run(["test"])
+        if err:
+            raise err[0]
+
 
 
 

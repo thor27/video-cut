@@ -358,7 +358,7 @@ class TimelineWidget(Gtk.Box):
         self.split_pill.set_visible(False)
         self.split_pill.set_halign(Gtk.Align.START)
         self.split_pill.set_valign(Gtk.Align.START)
-        self.split_pill.set_size_request(50, 24)
+        self.split_pill.set_size_request(-1, 24)
 
         pill_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=4)
         split_icon = Gtk.Image.new_from_icon_name("video-split-symbolic")
@@ -594,9 +594,9 @@ class TimelineWidget(Gtk.Box):
 
     def show_split_pill(self) -> None:
         self._cancel_split_timer()
-        self._update_split_pill_position()
         if not self.split_pill.get_visible():
             self.split_pill.set_visible(True)
+        self._update_split_pill_position()
 
     def hide_split_pill(self) -> None:
         self._cancel_split_timer()
@@ -606,6 +606,17 @@ class TimelineWidget(Gtk.Box):
         self._cancel_split_timer()
         self.split_pill.set_visible(False)
         self.on_split_requested()
+
+    def _get_split_pill_dimensions(self) -> tuple[int, int]:
+        """Measure natural dimensions of the split pill button dynamically based on localized text and font size."""
+        was_visible = self.split_pill.get_visible()
+        if not was_visible:
+            self.split_pill.set_visible(True)
+        _, w, _, _ = self.split_pill.measure(Gtk.Orientation.HORIZONTAL, -1)
+        _, h, _, _ = self.split_pill.measure(Gtk.Orientation.VERTICAL, -1)
+        if not was_visible:
+            self.split_pill.set_visible(False)
+        return (w if w > 0 else 50, h if h > 0 else 24)
 
     def _update_split_pill_position(self) -> None:
         active_card = None
@@ -636,11 +647,10 @@ class TimelineWidget(Gtk.Box):
         needle_x = fs_x + active_card.needle.get_margin_start()
         needle_center_x = needle_x + 7
 
-        PILL_WIDTH = 50
-        PILL_HEIGHT = 24
+        pill_w, pill_h = self._get_split_pill_dimensions()
 
-        pill_x = max(0, int(round(needle_center_x - (PILL_WIDTH / 2.0))))
-        pill_y = max(4, int(round(fs_y - PILL_HEIGHT - 4)))
+        pill_x = max(0, int(round(needle_center_x - (pill_w / 2.0))))
+        pill_y = max(4, int(round(fs_y - pill_h - 4)))
 
         self._split_pill_x = pill_x
         self.split_pill.set_margin_start(pill_x)
