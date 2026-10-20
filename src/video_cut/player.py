@@ -172,26 +172,49 @@ class VideoPlayerController:
         self.current_media_file: Optional[Gtk.MediaFile] = None
         self.current_transformed_paintable: Optional[TransformedPaintable] = None
         self.current_source_path: Optional[Path] = None
+        self.current_segment_id: Optional[str] = None
         self.current_global_time: float = 0.0
 
         self._is_playing: bool = False
         self._tick_timer_id: Optional[int] = None
         self._last_tick_time: float = 0.0
 
+        self._is_seeking: bool = False
+        self._last_seek_time: float = 0.0
+        self._play_on_seek_done: bool = False
+        self._media_file_handlers: list[int] = []
+
     @property
     def is_playing(self) -> bool:
         return self._is_playing
+
+    def _cleanup_media_file(self) -> None:
+        """Safely disconnect signal handlers and release media file."""
+        if self.current_media_file:
+            for hid in self._media_file_handlers:
+                try:
+                    self.current_media_file.disconnect(hid)
+                except Exception:
+                    pass
+            self._media_file_handlers.clear()
+            try:
+                self.current_media_file.pause()
+            except Exception:
+                pass
+            self.current_media_file = None
 
     def clear(self) -> None:
         """Clear playback and reset picture paintable."""
         self.pause()
         self.current_global_time = 0.0
         self.current_source_path = None
+        self.current_segment_id = None
+        self._is_seeking = False
+        self._play_on_seek_done = False
         if self.current_transformed_paintable:
             self.current_transformed_paintable.detach()
             self.current_transformed_paintable = None
-        if self.current_media_file:
-            self.current_media_file = None
+        self._cleanup_media_file()
         if self.video_picture and self.video_picture.get_paintable() is not None:
             self.video_picture.set_paintable(None)
 
@@ -263,8 +286,9 @@ class VideoPlayerController:
             return
         try:
             idx, seg, source_ts = self.timeline.map_global_time(self.current_global_time)
+            self.current_segment_id = seg.id
             self._apply_segment_transform(seg, force=True)
-            self._seek_media_file(source_ts)
+            self._seek_media_file(source_ts, force=True)
             self.on_time_update(self.current_global_time)
         except ValueError:
             pass
@@ -282,11 +306,13 @@ class VideoPlayerController:
         except ValueError:
             return
 
+        self.current_segment_id = seg.id
+
         if self.current_source_path != seg.source_path or self.current_media_file is None:
             self._load_file_and_seek(seg.source_path, source_ts, and_play=self._is_playing, seg=seg)
         else:
             self._apply_segment_transform(seg)
-            self._seek_media_file(source_ts)
+            self._seek_media_file(source_ts, force=True)
 
         self.on_time_update(self.current_global_time)
 
@@ -298,27 +324,51 @@ class VideoPlayerController:
         seg: Optional[Segment] = None,
     ) -> None:
         """Load a video file into Gtk.MediaFile and attach to Gtk.Picture."""
-        if self.current_media_file:
-            self.current_media_file.pause()
+        self._cleanup_media_file()
 
         self.current_source_path = path
+        if seg:
+            self.current_segment_id = seg.id
+
         mf = Gtk.MediaFile.new_for_filename(str(path))
         self.current_media_file = mf
         self._apply_segment_transform(seg)
 
         def on_prepared(obj, pspec):
             if obj.is_prepared():
-                self._seek_media_file(source_ts)
+                self._seek_media_file(source_ts, force=True)
                 self.on_time_update(self.current_global_time)
                 if and_play and self._is_playing:
-                    obj.play()
+                    if obj.get_property("seeking"):
+                        self._play_on_seek_done = True
+                    else:
+                        obj.play()
 
-        mf.connect("notify::prepared", on_prepared)
+        def on_seeking_changed(obj, pspec):
+            is_seeking = obj.get_property("seeking")
+            if not is_seeking:
+                self._is_seeking = False
+                if self._play_on_seek_done:
+                    self._play_on_seek_done = False
+                    if self._is_playing and not obj.get_playing():
+                        obj.play()
 
-    def _seek_media_file(self, source_ts: float) -> None:
-        if self.current_media_file:
-            us = int(source_ts * 1_000_000)
-            self.current_media_file.seek(us)
+        h_prep = mf.connect("notify::prepared", on_prepared)
+        h_seek = mf.connect("notify::seeking", on_seeking_changed)
+        self._media_file_handlers = [h_prep, h_seek]
+
+    def _seek_media_file(self, source_ts: float, force: bool = False) -> None:
+        if not self.current_media_file or not self.current_media_file.is_prepared():
+            return
+
+        # Do not spam seek if already seeking, unless forced (e.g. user seek or segment boundary)
+        if not force and (self._is_seeking or self.current_media_file.get_property("seeking")):
+            return
+
+        self._is_seeking = True
+        self._last_seek_time = time.monotonic()
+        us = int(source_ts * 1_000_000)
+        self.current_media_file.seek(us)
 
     def play(self) -> None:
         """Start playback."""
@@ -336,12 +386,28 @@ class VideoPlayerController:
         # Ensure correct media file and position
         try:
             idx, seg, source_ts = self.timeline.map_global_time(self.current_global_time)
+            self.current_segment_id = seg.id
             if self.current_source_path != seg.source_path or self.current_media_file is None:
                 self._load_file_and_seek(seg.source_path, source_ts, and_play=True, seg=seg)
             else:
                 self._apply_segment_transform(seg)
-                self._seek_media_file(source_ts)
-                self.current_media_file.play()
+                if self.current_media_file.is_prepared():
+                    cur_stream_ts = self.current_media_file.get_timestamp() / 1_000_000.0
+                    is_ended = self.current_media_file.get_ended()
+
+                    # ONLY seek if position has drifted significantly (> 0.2s) or if stream hit EOS (ended)
+                    if is_ended or abs(cur_stream_ts - source_ts) > 0.2:
+                        if is_ended:
+                            self._play_on_seek_done = True
+                            self._seek_media_file(source_ts, force=True)
+                        else:
+                            self._seek_media_file(source_ts)
+                            self.current_media_file.play()
+                    else:
+                        if not self.current_media_file.get_playing():
+                            self.current_media_file.play()
+                else:
+                    self._play_on_seek_done = True
         except ValueError:
             pass
 
@@ -353,6 +419,7 @@ class VideoPlayerController:
     def pause(self) -> None:
         """Pause playback."""
         self._is_playing = False
+        self._play_on_seek_done = False
         if self._tick_timer_id is not None:
             GLib.source_remove(self._tick_timer_id)
             self._tick_timer_id = None
@@ -377,12 +444,13 @@ class VideoPlayerController:
         if not self.timeline.is_empty:
             try:
                 idx, seg, source_ts = self.timeline.map_global_time(self.current_global_time)
+                self.current_segment_id = seg.id
                 if self.current_source_path != seg.source_path or self.current_media_file is None:
                     self._load_file_and_seek(seg.source_path, source_ts, and_play=was_playing, seg=seg)
                 else:
                     self._apply_segment_transform(seg)
-                    self._seek_media_file(source_ts)
-                    if was_playing:
+                    self._seek_media_file(source_ts, force=True)
+                    if was_playing and not self.current_media_file.get_ended():
                         self.current_media_file.play()
             except ValueError:
                 pass
@@ -413,19 +481,56 @@ class VideoPlayerController:
         try:
             idx, seg, source_ts = self.timeline.map_global_time(self.current_global_time)
 
-            # Check if source video file needs to change
-            if seg.source_path != self.current_source_path:
-                self._load_file_and_seek(seg.source_path, source_ts, and_play=True, seg=seg)
-            elif self.current_media_file:
+            # Check if active segment has changed
+            if seg.id != self.current_segment_id:
+                prev_id = self.current_segment_id
+                self.current_segment_id = seg.id
                 self._apply_segment_transform(seg)
-                # Ensure media file is playing
-                if not self.current_media_file.get_playing():
-                    self.current_media_file.play()
 
-                # Correct any drift > 0.3s (e.g. across split segments in same file)
-                cur_stream_ts = self.current_media_file.get_timestamp() / 1_000_000.0
-                if abs(cur_stream_ts - source_ts) > 0.35:
-                    self._seek_media_file(source_ts)
+                if seg.source_path != self.current_source_path:
+                    # Switch to different source file
+                    self._load_file_and_seek(seg.source_path, source_ts, and_play=True, seg=seg)
+                else:
+                    # Same source file: check whether playback is contiguous
+                    prev_seg = self.timeline.get_segment(prev_id) if prev_id else None
+                    is_contiguous = (
+                        prev_seg is not None
+                        and prev_seg.source_path == seg.source_path
+                        and abs(prev_seg.end_time - seg.start_time) < 0.05
+                    )
+
+                    if not is_contiguous:
+                        is_ended = (
+                            self.current_media_file is not None
+                            and self.current_media_file.get_ended()
+                        )
+                        if is_ended:
+                            self._play_on_seek_done = True
+                            self._seek_media_file(source_ts, force=True)
+                        else:
+                            self._seek_media_file(source_ts, force=True)
+                            if (
+                                self.current_media_file
+                                and not self.current_media_file.get_playing()
+                            ):
+                                self.current_media_file.play()
+
+            elif self.current_media_file and self.current_media_file.is_prepared():
+                self._apply_segment_transform(seg)
+
+                # Only monitor drift if not currently seeking and past seek cooldown
+                is_stream_seeking = (
+                    self._is_seeking
+                    or self.current_media_file.get_property("seeking")
+                )
+                if not is_stream_seeking and (now - self._last_seek_time > 0.35):
+                    if not self.current_media_file.get_playing() and not self.current_media_file.get_ended():
+                        self.current_media_file.play()
+
+                    # Correct any drift > 0.4s
+                    cur_stream_ts = self.current_media_file.get_timestamp() / 1_000_000.0
+                    if abs(cur_stream_ts - source_ts) > 0.4:
+                        self._seek_media_file(source_ts)
 
             self.on_time_update(self.current_global_time)
         except ValueError:

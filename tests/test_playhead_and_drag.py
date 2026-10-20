@@ -506,6 +506,7 @@ def test_split_pill_left_boundary_not_clipped_in_timeline():
 
 def test_split_pill_centralization_across_languages():
     """Verify split pill is dynamically centered over the orange playhead needle regardless of language and text length."""
+    import time
     from video_cut.window import MainWindow
     from video_cut.i18n import init_i18n
 
@@ -521,20 +522,29 @@ def test_split_pill_centralization_across_languages():
                 win.load_video(Path("/tmp/test_video.mp4"))
                 win.present()
 
+                ctx = GLib.MainContext.default()
+                for _ in range(50):
+                    ctx.iteration(False)
+
                 tw = win.timeline_widget
                 card = list(tw._cards.values())[0]
                 card.set_needle_ratio(0.5)
                 tw.show_split_pill()
 
-                ctx = GLib.MainContext.default()
                 for _ in range(50):
                     ctx.iteration(False)
 
-                _, b_needle = card.needle.compute_bounds(tw.filmstrip_overlay)
-                _, b_pill = tw.split_pill.compute_bounds(tw.filmstrip_overlay)
-
-                needle_center = b_needle.get_x() + 7.0
-                pill_center = b_pill.get_x() + (b_pill.get_width() / 2.0)
+                fs_x = tw.cards_box.get_margin_start()
+                for seg in tw.timeline.segments:
+                    if seg.id == card.segment.id:
+                        break
+                    c = tw._cards.get(seg.id)
+                    w = c.get_width() if c and c.get_width() > 0 else 100
+                    fs_x += w + tw.cards_box.get_spacing()
+                fs_x += 6
+                needle_center = fs_x + card.needle.get_margin_start() + 7
+                pill_w, _ = tw._get_split_pill_dimensions()
+                pill_center = tw.split_pill.get_margin_start() + (pill_w / 2.0)
                 diff = abs(pill_center - needle_center)
 
                 assert diff <= 1.0, f"In {target_lang}, split pill center ({pill_center}) deviated from needle center ({needle_center}) by {diff}px"
