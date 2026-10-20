@@ -372,6 +372,10 @@ msgstr "Reproduce {start} → {duration} (rellenado con silencio hasta {total})"
 msgid "Plays {start} → {end} ({duration:.1f}s)"
 msgstr "Reproduce {start} → {end} ({duration:.1f}s)"
 
+#: src/video_cut/segment_card.py:113
+msgid "Drag header to reorder clip"
+msgstr "Arrastre el encabezado para reordenar el clip"
+
 #: src/video_cut/segment_card.py:143
 msgid "Move clip left (Alt+Left)"
 msgstr "Mover clip a la izquierda (Alt+Izquierda)"

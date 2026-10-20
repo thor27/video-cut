@@ -529,9 +529,6 @@ def test_split_pill_centralization_across_languages():
                 ctx = GLib.MainContext.default()
                 for _ in range(50):
                     ctx.iteration(False)
-                tw._center_split_pill(card)
-                for _ in range(50):
-                    ctx.iteration(False)
 
                 _, b_needle = card.needle.compute_bounds(tw.filmstrip_overlay)
                 _, b_pill = tw.split_pill.compute_bounds(tw.filmstrip_overlay)

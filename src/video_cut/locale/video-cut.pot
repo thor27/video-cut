@@ -379,6 +379,10 @@ msgstr ""
 msgid "Plays {start} → {end} ({duration:.1f}s)"
 msgstr ""
 
+#: src/video_cut/segment_card.py:113
+msgid "Drag header to reorder clip"
+msgstr ""
+
 #: src/video_cut/segment_card.py:143
 msgid "Move clip left (Alt+Left)"
 msgstr ""

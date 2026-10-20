@@ -80,6 +80,7 @@ def test_translations_pt_br():
     assert _("Export Video") == "Exportar vídeo"
     assert _("Import") == "Importar"
     assert _("Video will be generated with no audio") == "O vídeo será gerado sem áudio"
+    assert _("Drag header to reorder clip") == "Arraste o cabeçalho para reordenar o clipe"
 
 
 def test_translations_es():
@@ -109,6 +110,7 @@ def test_translations_es():
     assert _("Export Video") == "Exportar video"
     assert _("Import") == "Importar"
     assert _("Video will be generated with no audio") == "El video se generará sin audio"
+    assert _("Drag header to reorder clip") == "Arrastre el encabezado para reordenar el clip"
 
 
 def test_translations_fr():
@@ -138,6 +140,7 @@ def test_translations_fr():
     assert _("Export Video") == "Exporter la vidéo"
     assert _("Import") == "Importer"
     assert _("Video will be generated with no audio") == "La vidéo sera générée sans audio"
+    assert _("Drag header to reorder clip") == "Glissez l'en-tête pour réorganiser le clip"
 
 
 def test_translations_en_us():
@@ -162,6 +165,7 @@ def test_translations_en_us():
     assert _("Export Video") == "Export Video"
     assert _("Import") == "Import"
     assert _("Video will be generated with no audio") == "Video will be generated with no audio"
+    assert _("Drag header to reorder clip") == "Drag header to reorder clip"
 
 
 def test_fallback_unsupported_language():

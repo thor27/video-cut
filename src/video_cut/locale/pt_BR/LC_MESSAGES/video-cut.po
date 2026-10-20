@@ -372,6 +372,10 @@ msgstr "Toca {start} → {duration} (preenchido com silêncio até {total})"
 msgid "Plays {start} → {end} ({duration:.1f}s)"
 msgstr "Toca {start} → {end} ({duration:.1f}s)"
 
+#: src/video_cut/segment_card.py:113
+msgid "Drag header to reorder clip"
+msgstr "Arraste o cabeçalho para reordenar o clipe"
+
 #: src/video_cut/segment_card.py:143
 msgid "Move clip left (Alt+Left)"
 msgstr "Mover clipe para a esquerda (Alt+Esquerda)"

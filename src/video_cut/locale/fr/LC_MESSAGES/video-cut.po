@@ -372,6 +372,10 @@ msgstr "Lecture {start} → {duration} (complété par du silence jusqu'à {tota
 msgid "Plays {start} → {end} ({duration:.1f}s)"
 msgstr "Lecture {start} → {end} ({duration:.1f}s)"
 
+#: src/video_cut/segment_card.py:113
+msgid "Drag header to reorder clip"
+msgstr "Glissez l'en-tête pour réorganiser le clip"
+
 #: src/video_cut/segment_card.py:143
 msgid "Move clip left (Alt+Left)"
 msgstr "Déplacer le clip vers la gauche (Alt+Gauche)"

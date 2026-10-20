@@ -110,7 +110,7 @@ class SegmentCard(Gtk.Box):
         self.header.add_css_class("segment-header")
         self.header.set_overflow(Gtk.Overflow.VISIBLE)
         self.header.set_cursor_from_name("grab")
-        self.header.set_tooltip_text("Drag header to reorder clip")
+        self.header.set_tooltip_text(_("Drag header to reorder clip"))
         self.header.set_size_request(-1, 34)
 
         # Visual drag handle indicator
