@@ -267,7 +267,15 @@ msgid "Open Image"
 msgstr ""
 
 #: src/video_cut/image_import_dialog.py:111
+msgid "Import Image"
+msgstr ""
+
+#: src/video_cut/image_import_dialog.py:111
 msgid "Import Image as Segment"
+msgstr ""
+
+#: src/video_cut/image_import_dialog.py:138
+msgid "Import"
 msgstr ""
 
 #: src/video_cut/image_import_dialog.py:138
@@ -318,6 +326,10 @@ msgstr ""
 
 #: src/video_cut/image_import_dialog.py:266
 msgid "Video will be generated with silent audio"
+msgstr ""
+
+#: src/video_cut/image_import_dialog.py:317
+msgid "Video will be generated with no audio"
 msgstr ""
 
 #: src/video_cut/image_import_dialog.py:270

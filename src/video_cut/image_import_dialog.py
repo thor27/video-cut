@@ -108,7 +108,7 @@ class ImageImportDialog(Adw.Window):
         self._preview_timer_id: Optional[int] = None
         self._is_previewing: bool = False
 
-        self.set_title(_("Open Image") if is_replace else _("Import Image as Segment"))
+        self.set_title(_("Import Image"))
         self.connect("close-request", self._on_close_request)
 
         self._build_ui()
@@ -121,6 +121,61 @@ class ImageImportDialog(Adw.Window):
     @media_file.setter
     def media_file(self, val):
         self.audio_player = val
+
+    @property
+    def lbl_offset_badge(self):
+        class _BadgeCompat:
+            def __init__(self, entry):
+                self._entry = entry
+            def get_label(self):
+                return self._entry.get_text()
+            def set_label(self, val):
+                self._entry.set_text(val)
+        return _BadgeCompat(self.entry_offset)
+
+    @property
+    def badge_duration(self):
+        class _BadgeCompat:
+            def __init__(self, dialog):
+                self._dialog = dialog
+            def get_label(self):
+                return format_time(self._dialog.duration, show_millis=True)
+            def set_label(self, val):
+                pass
+        return _BadgeCompat(self)
+
+    @property
+    def lbl_slice_range(self):
+        class _Compat:
+            def get_label(self):
+                return ""
+            def set_label(self, val):
+                pass
+        return _Compat()
+
+    @staticmethod
+    def _parse_time(text: str) -> Optional[float]:
+        """Parse time string like '12', '12.5', '12,5', '01:23.45', or '1:02:03' into seconds."""
+        if not text:
+            return None
+        clean = text.strip().rstrip("sS").replace(",", ".").strip()
+        parts = clean.split(":")
+        try:
+            if len(parts) == 1:
+                val = float(parts[0])
+                return val if val >= 0 else None
+            elif len(parts) == 2:
+                mins = int(parts[0])
+                secs = float(parts[1])
+                return mins * 60.0 + secs if mins >= 0 and secs >= 0 else None
+            elif len(parts) == 3:
+                hrs = int(parts[0])
+                mins = int(parts[1])
+                secs = float(parts[2])
+                return hrs * 3600.0 + mins * 60.0 + secs if hrs >= 0 and mins >= 0 and secs >= 0 else None
+        except (ValueError, TypeError):
+            return None
+        return None
 
     def _build_ui(self) -> None:
         toolbar_view = Adw.ToolbarView()
@@ -135,8 +190,7 @@ class ImageImportDialog(Adw.Window):
         btn_cancel.connect("clicked", lambda _: self.close())
         header.pack_start(btn_cancel)
 
-        confirm_label = _("Open Image") if self.is_replace else _("Add Segment")
-        self.btn_confirm = Gtk.Button(label=confirm_label)
+        self.btn_confirm = Gtk.Button(label=_("Import"))
         self.btn_confirm.add_css_class("suggested-action")
         self.btn_confirm.connect("clicked", self._on_confirm_clicked)
         header.pack_end(self.btn_confirm)
@@ -207,63 +261,62 @@ class ImageImportDialog(Adw.Window):
     def _build_duration_section(self, container: Gtk.Box) -> None:
         group = Adw.PreferencesGroup()
         group.set_title(_("Segment Duration"))
-        group.set_description(_("Specify how long the image appears in the timeline"))
 
-        # Row 1: Duration input & formatted time badge
-        self.row_duration = Adw.ActionRow()
-        self.row_duration.set_title(_("Duration"))
-        self.row_duration.set_subtitle(_("Time in seconds (0.5s – 300.0s)"))
+        self.row_duration = Adw.PreferencesRow()
+        self.row_presets = self.row_duration
 
-        icon = Gtk.Image.new_from_icon_name("preferences-system-time-symbolic")
-        self.row_duration.add_prefix(icon)
+        box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
+        box.set_margin_top(8)
+        box.set_margin_bottom(8)
+        box.set_margin_start(12)
+        box.set_margin_end(12)
+        box.set_valign(Gtk.Align.CENTER)
+        box.set_hexpand(True)
 
-        dur_controls = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
-        dur_controls.set_valign(Gtk.Align.CENTER)
+        # Quick preset buttons: 1s, 3s, 5s, 10s (Left-aligned)
+        self.presets_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
+        self.presets_box.add_css_class("linked")
+        self.presets_box.set_valign(Gtk.Align.CENTER)
+        self.presets_box.set_halign(Gtk.Align.START)
+        self._preset_buttons: dict[float, Gtk.ToggleButton] = {}
+        for val in (1.0, 3.0, 5.0, 10.0):
+            btn = Gtk.ToggleButton(label=f"{int(val)}s")
+            is_active = abs(self.duration - val) < 0.05
+            btn.set_active(is_active)
+            if is_active:
+                btn.add_css_class("suggested-action")
+            btn.connect("clicked", lambda _, v=val: self._on_preset_clicked(v))
+            self._preset_buttons[val] = btn
+            self.presets_box.append(btn)
+        box.append(self.presets_box)
 
+        # Spacer between left presets and right-aligned spin button
+        spacer = Gtk.Box()
+        spacer.set_hexpand(True)
+        box.append(spacer)
+
+        # Duration spin button (Right-aligned)
         self.spin_duration = Gtk.SpinButton.new_with_range(0.5, 300.0, 0.5)
         self.spin_duration.set_value(self.duration)
         self.spin_duration.set_digits(1)
+        self.spin_duration.set_valign(Gtk.Align.CENTER)
+        self.spin_duration.set_halign(Gtk.Align.END)
+        self.spin_duration.set_tooltip_text(_("Time in seconds (0.5s – 300.0s)"))
         self.spin_duration.connect("value-changed", self._on_duration_changed)
-        dur_controls.append(self.spin_duration)
+        box.append(self.spin_duration)
 
-        self.badge_duration = Gtk.Label(label=format_time(self.duration, show_millis=True))
-        self.badge_duration.add_css_class("time-badge")
-        dur_controls.append(self.badge_duration)
-
-        self.row_duration.add_suffix(dur_controls)
+        self.row_duration.set_child(box)
         group.add(self.row_duration)
-
-        # Row 2: Quick duration preset buttons
-        self.row_presets = Adw.ActionRow()
-        self.row_presets.set_title(_("Quick Presets"))
-        self.row_presets.set_subtitle(_("Select a standard duration"))
-
-        icon_presets = Gtk.Image.new_from_icon_name("starred-symbolic")
-        self.row_presets.add_prefix(icon_presets)
-
-        presets_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
-        presets_box.add_css_class("linked")
-        presets_box.set_valign(Gtk.Align.CENTER)
-        for val in (1.0, 3.0, 5.0, 10.0):
-            btn = Gtk.Button(label=f"{int(val)}s")
-            btn.connect("clicked", lambda _, v=val: self.spin_duration.set_value(v))
-            presets_box.append(btn)
-        self.row_presets.add_suffix(presets_box)
-        group.add(self.row_presets)
-
         container.append(group)
 
     def _build_soundtrack_section(self, container: Gtk.Box) -> None:
         self.soundtrack_group = Adw.PreferencesGroup()
         self.soundtrack_group.set_title(_("Soundtrack (Optional)"))
-        self.soundtrack_group.set_description(
-            _("Attach music or voiceover. If selected, you can slice the exact segment to play.")
-        )
 
         # Row 1: When no audio selected
         self.row_no_audio = Adw.ActionRow()
         self.row_no_audio.set_title(_("No Soundtrack Selected"))
-        self.row_no_audio.set_subtitle(_("Video will be generated with silent audio"))
+        self.row_no_audio.set_subtitle(_("Video will be generated with no audio"))
         icon_music = Gtk.Image.new_from_icon_name("audio-x-generic-symbolic")
         self.row_no_audio.add_prefix(icon_music)
 
@@ -295,38 +348,44 @@ class ImageImportDialog(Adw.Window):
         self.row_audio_info.add_suffix(audio_suffix_box)
         self.soundtrack_group.add(self.row_audio_info)
 
-        # Row 3: Audio Slice Window (Full-width slider inside PreferencesRow)
+        # Row 3: Audio Slice Window (Single horizontal row with label, slider, and editable clock entry)
         self.row_audio_slice = Adw.PreferencesRow()
         self.row_audio_slice.set_visible(False)
 
-        slice_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
-        slice_box.set_margin_top(12)
-        slice_box.set_margin_bottom(12)
+        slice_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
+        slice_box.set_margin_top(8)
+        slice_box.set_margin_bottom(8)
         slice_box.set_margin_start(16)
         slice_box.set_margin_end(16)
+        slice_box.set_valign(Gtk.Align.CENTER)
 
-        slice_header = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
         lbl_slice_title = Gtk.Label(label=_("Start Offset:"))
         lbl_slice_title.add_css_class("heading")
-        slice_header.append(lbl_slice_title)
-
-        self.lbl_offset_badge = Gtk.Label(label="00:00.00")
-        self.lbl_offset_badge.add_css_class("time-badge")
-        slice_header.append(self.lbl_offset_badge)
-
-        self.lbl_slice_range = Gtk.Label()
-        self.lbl_slice_range.set_hexpand(True)
-        self.lbl_slice_range.set_halign(Gtk.Align.END)
-        self.lbl_slice_range.add_css_class("dim-label")
-        self.lbl_slice_range.add_css_class("caption")
-        slice_header.append(self.lbl_slice_range)
-        slice_box.append(slice_header)
+        lbl_slice_title.set_valign(Gtk.Align.CENTER)
+        slice_box.append(lbl_slice_title)
 
         self.scale_offset = Gtk.Scale.new_with_range(Gtk.Orientation.HORIZONTAL, 0.0, 100.0, 0.1)
         self.scale_offset.set_hexpand(True)
         self.scale_offset.set_draw_value(False)
+        self.scale_offset.set_valign(Gtk.Align.CENTER)
         self.scale_offset.connect("value-changed", self._on_offset_changed)
         slice_box.append(self.scale_offset)
+
+        self.entry_offset = Gtk.Entry()
+        self.entry_offset.set_text("00:00.00")
+        self.entry_offset.set_max_width_chars(9)
+        self.entry_offset.set_alignment(0.5)
+        self.entry_offset.add_css_class("time-badge")
+        self.entry_offset.add_css_class("time-entry")
+        self.entry_offset.set_valign(Gtk.Align.CENTER)
+        self.entry_offset.set_tooltip_text(_("Initial delay offset (e.g. 5.5 or 00:05.50)"))
+        self.entry_offset.connect("activate", self._on_entry_offset_activate)
+
+        focus_controller = Gtk.EventControllerFocus.new()
+        focus_controller.connect("leave", lambda *_: self._on_entry_offset_activate())
+        self.entry_offset.add_controller(focus_controller)
+
+        slice_box.append(self.entry_offset)
 
         self.row_audio_slice.set_child(slice_box)
         self.soundtrack_group.add(self.row_audio_slice)
@@ -461,31 +520,47 @@ class ImageImportDialog(Adw.Window):
             return
 
         start = self.audio_start_time
-        self.lbl_offset_badge.set_label(format_time(start, show_millis=True))
+        formatted = format_time(start, show_millis=True)
+        if hasattr(self, "entry_offset"):
+            if not self.entry_offset.has_focus() or self.entry_offset.get_text() != formatted:
+                self.entry_offset.set_text(formatted)
 
-        if self.audio_duration < self.duration - 0.05:
-            desc = _("Plays {start} → {duration} (padded with silence to {total})").format(
-                start=format_time(start),
-                duration=format_time(self.audio_duration),
-                total=format_time(self.duration),
-            )
+        self.lbl_preview_time.set_label(f"00:00.00 / {format_time(self.duration)}")
+
+    def _on_entry_offset_activate(self, *_) -> None:
+        if self.audio_path is None:
+            return
+        text = self.entry_offset.get_text()
+        sec = self._parse_time(text)
+        max_offset = max(0.0, self.audio_duration - self.duration)
+        if sec is not None:
+            clamped = clamp(sec, 0.0, max_offset)
+            self.audio_start_time = clamped
+            self.scale_offset.set_value(clamped)
+            self.entry_offset.set_text(format_time(clamped, show_millis=True))
+            self._stop_preview(reset=True)
         else:
-            end = start + self.duration
-            desc = _("Plays {start} → {end} ({duration:.1f}s)").format(
-                start=format_time(start),
-                end=format_time(end),
-                duration=self.duration,
-            )
+            self.entry_offset.set_text(format_time(self.audio_start_time, show_millis=True))
 
-        self.lbl_slice_range.set_label(desc)
-        self.lbl_preview_time.set_label(f"00:00.00 / {format_time(self.duration)}")
+    def _on_preset_clicked(self, val: float) -> None:
+        self.spin_duration.set_value(val)
+        self._update_preset_buttons()
 
-        self.lbl_slice_range.set_label(desc)
-        self.lbl_preview_time.set_label(f"00:00.00 / {format_time(self.duration)}")
+    def _update_preset_buttons(self) -> None:
+        if not hasattr(self, "_preset_buttons"):
+            return
+        curr = round(self.duration, 1)
+        for val, btn in self._preset_buttons.items():
+            is_active = abs(curr - val) < 0.05
+            btn.set_active(is_active)
+            if is_active:
+                btn.add_css_class("suggested-action")
+            else:
+                btn.remove_css_class("suggested-action")
 
     def _on_duration_changed(self, spin: Gtk.SpinButton) -> None:
         self.duration = spin.get_value()
-        self.badge_duration.set_label(format_time(self.duration, show_millis=True))
+        self._update_preset_buttons()
 
         if self.audio_path is not None:
             self._stop_preview(reset=True)

@@ -33,6 +33,9 @@ def _create_sample_audio(path: Path, duration: float = 6.0) -> Path:
 
 
 def test_image_import_dialog_initial_state(tmp_path):
+    from video_cut.i18n import init_i18n
+    init_i18n("en_US")
+
     img_path = _create_sample_image(tmp_path / "test.png")
 
     parent = Gtk.Window()
@@ -46,14 +49,15 @@ def test_image_import_dialog_initial_state(tmp_path):
 
     # UI visibility
     assert dialog.row_no_audio.get_visible() is True
+    assert dialog.row_no_audio.get_subtitle() == "Video will be generated with no audio"
     assert dialog.row_audio_info.get_visible() is False
     assert dialog.row_audio_slice.get_visible() is False
     assert dialog.row_preview.get_visible() is False
-    assert dialog.btn_confirm.get_label() == "Add Segment"
+    assert dialog.btn_confirm.get_label() == "Import"
 
-    # Replace mode check
+    # Confirm button is consistently "Import" regardless of is_replace flag
     replace_dialog = ImageImportDialog(parent=parent, image_path=img_path, is_replace=True)
-    assert replace_dialog.btn_confirm.get_label() == "Open Image"
+    assert replace_dialog.btn_confirm.get_label() == "Import"
 
 
 def test_image_import_dialog_duration_changes(tmp_path):
@@ -61,9 +65,37 @@ def test_image_import_dialog_duration_changes(tmp_path):
     parent = Gtk.Window()
     dialog = ImageImportDialog(parent=parent, image_path=img_path, is_replace=False)
 
+    # Initial default is 3.0s -> 3s preset should be active and have suggested-action class
+    assert dialog.duration == 3.0
+    assert dialog._preset_buttons[3.0].get_active() is True
+    assert "suggested-action" in dialog._preset_buttons[3.0].get_css_classes()
+    assert dialog._preset_buttons[1.0].get_active() is False
+    assert "suggested-action" not in dialog._preset_buttons[1.0].get_css_classes()
+    assert dialog._preset_buttons[5.0].get_active() is False
+    assert dialog._preset_buttons[10.0].get_active() is False
+
+    # Changing to 5.5s (no matching preset) -> none should be active or suggested-action
     dialog.spin_duration.set_value(5.5)
     assert dialog.duration == 5.5
+    assert not any(btn.get_active() for btn in dialog._preset_buttons.values())
+    assert not any("suggested-action" in btn.get_css_classes() for btn in dialog._preset_buttons.values())
     assert "00:05.50" in dialog.badge_duration.get_label()
+
+    # Changing to 10.0s via spin -> 10s preset becomes active
+    dialog.spin_duration.set_value(10.0)
+    assert dialog._preset_buttons[10.0].get_active() is True
+    assert "suggested-action" in dialog._preset_buttons[10.0].get_css_classes()
+    assert dialog._preset_buttons[3.0].get_active() is False
+    assert "suggested-action" not in dialog._preset_buttons[3.0].get_css_classes()
+
+    # Clicking 1s preset button -> spin becomes 1.0 and 1s preset is active
+    dialog._on_preset_clicked(1.0)
+    assert dialog.duration == 1.0
+    assert dialog.spin_duration.get_value() == 1.0
+    assert dialog._preset_buttons[1.0].get_active() is True
+    assert "suggested-action" in dialog._preset_buttons[1.0].get_css_classes()
+    assert dialog._preset_buttons[10.0].get_active() is False
+    assert "suggested-action" not in dialog._preset_buttons[10.0].get_css_classes()
 
 
 def test_image_import_dialog_audio_selection_and_clamping(tmp_path):
@@ -86,7 +118,7 @@ def test_image_import_dialog_audio_selection_and_clamping(tmp_path):
     # Initial max offset should be 8.0 - 3.0 = 5.0
     dialog.scale_offset.set_value(4.0)
     assert abs(dialog.audio_start_time - 4.0) < 0.01
-    assert "00:04.00" in dialog.lbl_slice_range.get_label()
+    assert "00:04.00" in dialog.entry_offset.get_text()
 
     # Changing duration to 6.0 should clamp max offset to 8.0 - 6.0 = 2.0
     dialog.spin_duration.set_value(6.0)
@@ -203,12 +235,30 @@ def test_audio_offset_label_consistency(tmp_path):
     # Move slider across middle and boundary values
     for offset_val in [0.0, 5.2, 10.0, 15.7, 17.0]:
         dialog.scale_offset.set_value(offset_val)
-        # Badge must match formatted offset
+        # Entry text must match formatted offset
+        assert f"{offset_val:05.2f}" in dialog.entry_offset.get_text()
         assert f"{offset_val:05.2f}" in dialog.lbl_offset_badge.get_label()
-        # Label must consistently say Plays start -> end (3.0s)
-        label_text = dialog.lbl_slice_range.get_label()
-        assert label_text.startswith("Plays ")
-        assert "3.0s" in label_text
-        assert "silence padded" not in label_text
+
+    # Test manually editing the initial offset via entry
+    dialog.entry_offset.set_text("00:07.50")
+    dialog._on_entry_offset_activate()
+    assert abs(dialog.audio_start_time - 7.50) < 0.01
+    assert abs(dialog.scale_offset.get_value() - 7.50) < 0.01
+
+    dialog.entry_offset.set_text("12.3")
+    dialog._on_entry_offset_activate()
+    assert abs(dialog.audio_start_time - 12.30) < 0.01
+    assert abs(dialog.scale_offset.get_value() - 12.30) < 0.01
+
+    # Clamping when manual value exceeds maximum offset (20.0 - 3.0 = 17.0)
+    dialog.entry_offset.set_text("999")
+    dialog._on_entry_offset_activate()
+    assert abs(dialog.audio_start_time - 17.0) < 0.01
+    assert abs(dialog.scale_offset.get_value() - 17.0) < 0.01
+
+    # Invalid string reverts to current formatted time
+    dialog.entry_offset.set_text("invalid_text")
+    dialog._on_entry_offset_activate()
+    assert "00:17.00" in dialog.entry_offset.get_text()
 
     dialog._cleanup_audio()

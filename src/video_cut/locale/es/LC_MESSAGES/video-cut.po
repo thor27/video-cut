@@ -258,8 +258,16 @@ msgid "Open Image"
 msgstr "Abrir Imagen"
 
 #: src/video_cut/image_import_dialog.py:111
+msgid "Import Image"
+msgstr "Importar Imagen"
+
+#: src/video_cut/image_import_dialog.py:111
 msgid "Import Image as Segment"
 msgstr "Importar Imagen como Segmento"
+
+#: src/video_cut/image_import_dialog.py:138
+msgid "Import"
+msgstr "Importar"
 
 #: src/video_cut/image_import_dialog.py:138
 msgid "Add Segment"
@@ -312,6 +320,10 @@ msgstr "Ninguna Banda Sonora Seleccionada"
 #: src/video_cut/image_import_dialog.py:266
 msgid "Video will be generated with silent audio"
 msgstr "El vídeo se generará con audio silencioso"
+
+#: src/video_cut/image_import_dialog.py:317
+msgid "Video will be generated with no audio"
+msgstr "El video se generará sin audio"
 
 #: src/video_cut/image_import_dialog.py:270
 msgid "Choose Audio..."

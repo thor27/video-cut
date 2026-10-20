@@ -27,6 +27,20 @@
     border-radius: 6px;
 }
 
+entry.time-badge,
+.time-entry {
+    font-family: monospace;
+    font-size: 13px;
+    font-weight: 700;
+    min-width: 90px;
+    padding: 3px 6px;
+}
+
+.presets-box button:checked {
+    background-color: @accent_bg_color;
+    color: @accent_fg_color;
+}
+
 .filmstrip-scroll {
     padding: 2px 0 6px 0;
 }

@@ -78,6 +78,8 @@ def test_translations_pt_br():
     assert _("Export with default options (Ctrl+E)") == "Exportar com opções predefinidas (Ctrl+E)"
     assert _("Export with Default Options") == "Exportar com opções predefinidas"
     assert _("Export Video") == "Exportar vídeo"
+    assert _("Import") == "Importar"
+    assert _("Video will be generated with no audio") == "O vídeo será gerado sem áudio"
 
 
 def test_translations_es():
@@ -105,6 +107,8 @@ def test_translations_es():
     assert _("Export with default options (Ctrl+E)") == "Exportar con opciones predeterminadas (Ctrl+E)"
     assert _("Export with Default Options") == "Exportar con opciones predeterminadas"
     assert _("Export Video") == "Exportar video"
+    assert _("Import") == "Importar"
+    assert _("Video will be generated with no audio") == "El video se generará sin audio"
 
 
 def test_translations_fr():
@@ -132,6 +136,8 @@ def test_translations_fr():
     assert _("Export with default options (Ctrl+E)") == "Exporter avec les options par défaut (Ctrl+E)"
     assert _("Export with Default Options") == "Exporter avec les options par défaut"
     assert _("Export Video") == "Exporter la vidéo"
+    assert _("Import") == "Importer"
+    assert _("Video will be generated with no audio") == "La vidéo sera générée sans audio"
 
 
 def test_translations_en_us():
@@ -154,6 +160,8 @@ def test_translations_en_us():
     assert _("Export with default options (Ctrl+E)") == "Export with default options (Ctrl+E)"
     assert _("Export with Default Options") == "Export with Default Options"
     assert _("Export Video") == "Export Video"
+    assert _("Import") == "Import"
+    assert _("Video will be generated with no audio") == "Video will be generated with no audio"
 
 
 def test_fallback_unsupported_language():
