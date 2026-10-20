@@ -116,16 +116,16 @@ class MainWindow(Adw.ApplicationWindow):
         self.window_title = Adw.WindowTitle(title=_("Video Cut"), subtitle=_("Video Editor"))
         self.header_bar.set_title_widget(self.window_title)
 
-        # Left controls: App Icon (About) and Open
-        btn_app_icon = Gtk.Button()
-        btn_app_icon.add_css_class("flat")
-        btn_app_icon.set_tooltip_text(_("About Video Cut"))
-        btn_app_icon.set_focusable(False)
-        app_icon_img = Gtk.Image.new_from_icon_name("io.github.thomaz.videocut")
-        app_icon_img.set_pixel_size(24)
-        btn_app_icon.set_child(app_icon_img)
-        btn_app_icon.connect("clicked", lambda _: self._show_about_dialog())
-        self.header_bar.pack_start(btn_app_icon)
+        # Left controls: Fullscreen toggle and Open
+        self.btn_fullscreen = Gtk.Button()
+        self.btn_fullscreen.add_css_class("flat")
+        self.btn_fullscreen.set_tooltip_text(_("Toggle Fullscreen (F11)"))
+        self.btn_fullscreen.set_focusable(False)
+        self.fullscreen_icon = Gtk.Image.new_from_icon_name("view-fullscreen-symbolic")
+        self.btn_fullscreen.set_child(self.fullscreen_icon)
+        self.btn_fullscreen.connect("clicked", lambda _: self.toggle_fullscreen())
+        self.header_bar.pack_start(self.btn_fullscreen)
+        self.connect("notify::fullscreened", self._on_fullscreened_changed)
 
         btn_open = Gtk.Button()
         open_content = Adw.ButtonContent(icon_name="document-open-symbolic", label=_("Open"))
@@ -135,7 +135,51 @@ class MainWindow(Adw.ApplicationWindow):
         btn_open.connect("clicked", lambda _: self._open_video_dialog())
         self.header_bar.pack_start(btn_open)
 
-        # Right controls: Export (SplitButton with dropdown for Advanced Export)
+        # Actions for sandwich menu
+        self.action_new_window = Gio.SimpleAction.new("new_window", None)
+        self.action_new_window.connect("activate", lambda *_: self._create_new_window())
+        self.add_action(self.action_new_window)
+
+        self.action_open = Gio.SimpleAction.new("open", None)
+        self.action_open.connect("activate", lambda *_: self._open_video_dialog())
+        self.add_action(self.action_open)
+
+        self.action_adv_export = Gio.SimpleAction.new("advanced_export", None)
+        self.action_adv_export.connect("activate", lambda *_: self._open_advanced_export_dialog())
+        self.action_adv_export.set_enabled(False)
+        self.add_action(self.action_adv_export)
+
+        self.action_about = Gio.SimpleAction.new("about", None)
+        self.action_about.connect("activate", lambda *_: self._show_about_dialog())
+        self.add_action(self.action_about)
+
+        self.action_fullscreen = Gio.SimpleAction.new("fullscreen", None)
+        self.action_fullscreen.connect("activate", lambda *_: self.toggle_fullscreen())
+        self.add_action(self.action_fullscreen)
+
+        # Right controls: Sandwich Menu and Export
+        menu = Gio.Menu.new()
+        file_section = Gio.Menu.new()
+        file_section.append(_("New Window"), "win.new_window")
+        file_section.append(_("Open..."), "win.open")
+        menu.append_section(None, file_section)
+
+        export_section = Gio.Menu.new()
+        export_section.append(_("Export Options..."), "win.advanced_export")
+        menu.append_section(None, export_section)
+
+        about_section = Gio.Menu.new()
+        about_section.append(_("About Video Cut"), "win.about")
+        menu.append_section(None, about_section)
+
+        self.btn_menu = Gtk.MenuButton()
+        self.btn_menu.set_icon_name("open-menu-symbolic")
+        self.btn_menu.set_tooltip_text(_("Main Menu"))
+        self.btn_menu.set_menu_model(menu)
+        self.btn_menu.set_focusable(False)
+        self.btn_menu.add_css_class("flat")
+
+        # Export (SplitButton with dropdown for Advanced Export)
         self.btn_export = Adw.SplitButton()
         export_content = Adw.ButtonContent(icon_name="document-save-symbolic", label=_("Export"))
         self.btn_export.set_child(export_content)
@@ -182,11 +226,8 @@ class MainWindow(Adw.ApplicationWindow):
         self.export_popover.set_child(pop_box)
         self.btn_export.set_popover(self.export_popover)
 
-        self.action_adv_export = Gio.SimpleAction.new("advanced_export", None)
-        self.action_adv_export.connect("activate", lambda *_: self._open_advanced_export_dialog())
-        self.action_adv_export.set_enabled(False)
-        self.add_action(self.action_adv_export)
-
+        # In header_bar pack_end, widgets are packed from right to left
+        self.header_bar.pack_end(self.btn_menu)
         self.header_bar.pack_end(self.btn_export)
 
         self.toolbar_view.add_top_bar(self.header_bar)
@@ -404,6 +445,21 @@ class MainWindow(Adw.ApplicationWindow):
         # Delete: Delete or BackSpace
         if keyval in (Gdk.KEY_Delete, Gdk.KEY_BackSpace):
             self.delete_selected_segment()
+            return True
+
+        # Ctrl+N: New Window
+        if ctrl and not shift and not alt and keyval in (Gdk.KEY_n, Gdk.KEY_N):
+            self._create_new_window()
+            return True
+
+        # F11: Toggle Fullscreen
+        if keyval == Gdk.KEY_F11:
+            self.toggle_fullscreen()
+            return True
+
+        # Esc: Exit Fullscreen if in fullscreen mode
+        if keyval == Gdk.KEY_Escape and self.is_fullscreen():
+            self.unfullscreen()
             return True
 
         # Ctrl+O: Open
@@ -1280,6 +1336,32 @@ class MainWindow(Adw.ApplicationWindow):
             subprocess.Popen(["xdg-open", str(file_path.resolve())])
         except Exception as e:
             print(f"Failed to open video in default player: {e}")
+
+    def _create_new_window(self) -> "MainWindow":
+        """Create and present a new application window."""
+        app = self.get_application()
+        if app:
+            win = MainWindow(application=app)
+        else:
+            win = MainWindow()
+        win.present()
+        return win
+
+    def toggle_fullscreen(self) -> None:
+        """Toggle fullscreen mode for the window."""
+        if self.is_fullscreen():
+            self.unfullscreen()
+        else:
+            self.fullscreen()
+
+    def _on_fullscreened_changed(self, *_) -> None:
+        """Update fullscreen button icon and tooltip when window state changes."""
+        if self.is_fullscreen():
+            self.fullscreen_icon.set_from_icon_name("view-restore-symbolic")
+            self.btn_fullscreen.set_tooltip_text(_("Exit Fullscreen (F11 or Esc)"))
+        else:
+            self.fullscreen_icon.set_from_icon_name("view-fullscreen-symbolic")
+            self.btn_fullscreen.set_tooltip_text(_("Toggle Fullscreen (F11)"))
 
     def _show_about_dialog(self) -> None:
         about = Adw.AboutWindow(

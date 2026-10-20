@@ -71,6 +71,10 @@ def test_translations_pt_br():
     assert _("Original") == "Original"
     assert _("Freeform (unconstrained)") == "Livre (sem restrição)"
     assert _("Original aspect ratio") == "Proporção original"
+    assert _("New Window") == "Nova janela"
+    assert _("Toggle Fullscreen (F11)") == "Alternar tela cheia (F11)"
+    assert _("Exit Fullscreen (F11 or Esc)") == "Sair da tela cheia (F11 ou Esc)"
+    assert _("Main Menu") == "Menu principal"
 
 
 def test_translations_es():
@@ -91,6 +95,10 @@ def test_translations_es():
     assert _("Original") == "Original"
     assert _("Freeform (unconstrained)") == "Libre (sin restricciones)"
     assert _("Original aspect ratio") == "Proporción original"
+    assert _("New Window") == "Nueva ventana"
+    assert _("Toggle Fullscreen (F11)") == "Alternar pantalla completa (F11)"
+    assert _("Exit Fullscreen (F11 or Esc)") == "Salir de pantalla completa (F11 o Esc)"
+    assert _("Main Menu") == "Menú principal"
 
 
 def test_translations_fr():
@@ -111,6 +119,10 @@ def test_translations_fr():
     assert _("Original") == "Original"
     assert _("Freeform (unconstrained)") == "Libre (sans contrainte)"
     assert _("Original aspect ratio") == "Format d'origine"
+    assert _("New Window") == "Nouvelle fenêtre"
+    assert _("Toggle Fullscreen (F11)") == "Basculer en plein écran (F11)"
+    assert _("Exit Fullscreen (F11 or Esc)") == "Quitter le plein écran (F11 ou Échap)"
+    assert _("Main Menu") == "Menu principal"
 
 
 def test_translations_en_us():
@@ -126,6 +138,10 @@ def test_translations_en_us():
     assert _("Original") == "Original"
     assert _("Freeform (unconstrained)") == "Freeform (unconstrained)"
     assert _("Original aspect ratio") == "Original aspect ratio"
+    assert _("New Window") == "New Window"
+    assert _("Toggle Fullscreen (F11)") == "Toggle Fullscreen (F11)"
+    assert _("Exit Fullscreen (F11 or Esc)") == "Exit Fullscreen (F11 or Esc)"
+    assert _("Main Menu") == "Main Menu"
 
 
 def test_fallback_unsupported_language():

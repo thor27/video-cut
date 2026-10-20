@@ -39,6 +39,10 @@ class VideoCutApplication(Adw.Application):
 
         Gtk.Window.set_default_icon_name("io.github.thomaz.videocut")
 
+        self.set_accels_for_action("win.new_window", ["<Control>n"])
+        self.set_accels_for_action("win.open", ["<Control>o"])
+        self.set_accels_for_action("win.fullscreen", ["F11"])
+
         if not self.window:
             self.window = MainWindow(application=self)
 

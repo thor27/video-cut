@@ -278,7 +278,8 @@ def test_thumbnail_progress_toast():
             # Redundant hide is safe
             win.hide_thumbnail_progress()
         finally:
-            win.close()
+            if win is not None:
+                win.close()
             app.quit()
 
     app.connect("activate", run_test)
@@ -320,7 +321,95 @@ def test_player_controls_margin_at_minimum_window_size():
             assert gap_left >= 10.0, f"Expected gap_left >= 10px, got {gap_left}px"
             assert gap_right >= 10.0, f"Expected gap_right >= 10px, got {gap_right}px"
         finally:
-            win.close()
+            if win is not None:
+                win.close()
+            app.quit()
+
+    app.connect("activate", run_test)
+    app.run(["test"])
+
+
+def test_header_fullscreen_and_sandwich_menu():
+    app = Adw.Application(application_id="io.github.thomaz.videocut.test_header")
+
+    def run_test(app):
+        win = MainWindow(application=app)
+        try:
+            # 1. Fullscreen button and actions
+            assert isinstance(win.btn_fullscreen, Gtk.Button)
+            assert win.fullscreen_icon.get_icon_name() == "view-fullscreen-symbolic"
+            assert win.lookup_action("fullscreen") is not None
+
+            # Toggle fullscreen state simulation
+            win.toggle_fullscreen()
+            # Test _on_fullscreened_changed updates UI
+            # When fullscreened is True:
+            win.is_fullscreen = lambda: True
+            win._on_fullscreened_changed()
+            assert win.fullscreen_icon.get_icon_name() == "view-restore-symbolic"
+
+            # When fullscreened is False:
+            win.is_fullscreen = lambda: False
+            win._on_fullscreened_changed()
+            assert win.fullscreen_icon.get_icon_name() == "view-fullscreen-symbolic"
+
+            # 2. Sandwich menu button
+            assert isinstance(win.btn_menu, Gtk.MenuButton)
+            assert win.btn_menu.get_icon_name() == "open-menu-symbolic"
+            menu_model = win.btn_menu.get_menu_model()
+            assert menu_model is not None
+            assert menu_model.get_n_items() == 3
+
+            sec_file = menu_model.get_item_link(0, "section")
+            assert sec_file.get_n_items() == 2
+            assert sec_file.get_item_attribute_value(0, "action").get_string() == "win.new_window"
+            assert sec_file.get_item_attribute_value(1, "action").get_string() == "win.open"
+
+            sec_export = menu_model.get_item_link(1, "section")
+            assert sec_export.get_n_items() == 1
+            assert sec_export.get_item_attribute_value(0, "action").get_string() == "win.advanced_export"
+
+            sec_about = menu_model.get_item_link(2, "section")
+            assert sec_about.get_n_items() == 1
+            assert sec_about.get_item_attribute_value(0, "action").get_string() == "win.about"
+
+            # 3. Create new window
+            new_win = win._create_new_window()
+            assert isinstance(new_win, MainWindow)
+            assert new_win.get_application() == app
+            new_win.close()
+
+            # 4. Keyboard shortcut handling
+            from gi.repository import Gdk
+            # F11 toggles fullscreen
+            fullscreen_toggled = []
+            win.toggle_fullscreen = lambda: fullscreen_toggled.append(True)
+            handled = win._on_key_pressed(None, Gdk.KEY_F11, 0, 0)
+            assert handled is True
+            assert len(fullscreen_toggled) == 1
+
+            # Esc exits fullscreen when fullscreened
+            unfullscreen_called = []
+            win.unfullscreen = lambda: unfullscreen_called.append(True)
+            win.is_fullscreen = lambda: True
+            handled = win._on_key_pressed(None, Gdk.KEY_Escape, 0, 0)
+            assert handled is True
+            assert len(unfullscreen_called) == 1
+
+            # Esc does not consume when not fullscreened
+            win.is_fullscreen = lambda: False
+            handled = win._on_key_pressed(None, Gdk.KEY_Escape, 0, 0)
+            assert handled is False
+
+            # Ctrl+N creates new window
+            new_wins = []
+            win._create_new_window = lambda: (new_wins.append(True), win)[1]
+            handled = win._on_key_pressed(None, Gdk.KEY_n, 0, Gdk.ModifierType.CONTROL_MASK)
+            assert handled is True
+            assert len(new_wins) == 1
+        finally:
+            if win is not None:
+                win.close()
             app.quit()
 
     app.connect("activate", run_test)
