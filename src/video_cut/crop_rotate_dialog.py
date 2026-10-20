@@ -133,12 +133,20 @@ class CropRotateDialog(Adw.Window):
         self._cairo_frame_surface: Optional[cairo.ImageSurface] = None
         self._load_reference_frame()
 
-        # Canvas geometry caches
+        # Canvas geometry and rendering caches for fast 60+ FPS preview
         self._img_rect: Tuple[int, int, int, int] = (0, 0, 1, 1)  # (x, y, w, h) in preview coordinates
         self._drag_mode: str = "NONE"
         self._drag_start_x: float = 0.0
         self._drag_start_y: float = 0.0
         self._crop_at_drag_start: Tuple[float, float, float, float] = self.crop
+
+        self._base_canvas_surface: Optional[cairo.ImageSurface] = None
+        self._base_canvas_size: Tuple[int, int] = (0, 0)
+        self._base_canvas_scale: float = 0.0
+        self._base_canvas_dest: Tuple[int, int] = (0, 0)
+        self._overlay_surface: Optional[cairo.ImageSurface] = None
+        self._overlay_size: Tuple[int, int] = (0, 0)
+        self._current_cursor_name: str = "default"
 
         title = _("Crop & Rotate — {name}").format(name=segment.source_name)
         self.set_title(title)
@@ -239,6 +247,7 @@ class CropRotateDialog(Adw.Window):
         except Exception:
             self._cairo_frame_surface = None
 
+        self._base_canvas_surface = None
         self._update_readout_label()
         self._render_preview()
 
@@ -399,19 +408,12 @@ class CropRotateDialog(Adw.Window):
                 w = 748
                 h = 500
 
-        surf = cairo.ImageSurface(cairo.FORMAT_ARGB32, w, h)
-        cr = cairo.Context(surf)
-
-        # 1. Dark canvas background
-        cr.set_source_rgb(0.12, 0.12, 0.14)
-        cr.paint()
-
         img_w = self._cairo_frame_surface.get_width()
         img_h = self._cairo_frame_surface.get_height()
         if img_w <= 0 or img_h <= 0:
             return
 
-        # 2. Fit transformed video frame with 24px margins
+        # 1. Fit transformed video frame with 24px margins
         pad = 24.0
         avail_w = max(10.0, w - 2.0 * pad)
         avail_h = max(10.0, h - 2.0 * pad)
@@ -423,22 +425,50 @@ class CropRotateDialog(Adw.Window):
         dest_y = int(round((h - dest_h) / 2.0))
         self._img_rect = (dest_x, dest_y, dest_w, dest_h)
 
-        # Draw frame
-        cr.save()
-        cr.translate(dest_x, dest_y)
-        cr.scale(scale, scale)
-        cr.set_source_surface(self._cairo_frame_surface, 0, 0)
-        cr.paint()
-        cr.restore()
+        # 2. Maintain pre-rendered base canvas (dark background + scaled video frame)
+        if (
+            self._base_canvas_surface is None
+            or self._base_canvas_size != (w, h)
+            or abs(self._base_canvas_scale - scale) > 1e-5
+            or self._base_canvas_dest != (dest_x, dest_y)
+        ):
+            base = cairo.ImageSurface(cairo.FORMAT_ARGB32, w, h)
+            bcr = cairo.Context(base)
+            bcr.set_source_rgb(0.12, 0.12, 0.14)
+            bcr.paint()
 
-        # 3. Crop Box geometry in pixels
+            bcr.save()
+            bcr.translate(dest_x, dest_y)
+            bcr.scale(scale, scale)
+            bcr.set_source_surface(self._cairo_frame_surface, 0, 0)
+            bcr.paint()
+            bcr.restore()
+
+            self._base_canvas_surface = base
+            self._base_canvas_size = (w, h)
+            self._base_canvas_scale = scale
+            self._base_canvas_dest = (dest_x, dest_y)
+
+        # 3. Maintain reusable overlay surface
+        if self._overlay_surface is None or self._overlay_size != (w, h):
+            self._overlay_surface = cairo.ImageSurface(cairo.FORMAT_ARGB32, w, h)
+            self._overlay_size = (w, h)
+
+        surf = self._overlay_surface
+        cr = cairo.Context(surf)
+
+        # Fast blit of pre-rendered base frame
+        cr.set_source_surface(self._base_canvas_surface, 0, 0)
+        cr.paint()
+
+        # 4. Crop Box geometry in pixels
         cx, cy, cw, ch = self.crop
         bx = dest_x + cx * dest_w
         by = dest_y + cy * dest_h
         bw = cw * dest_w
         bh = ch * dest_h
 
-        # 4. Draw darkened shroud outside crop rectangle
+        # 5. Draw darkened shroud outside crop rectangle
         cr.set_source_rgba(0.0, 0.0, 0.0, 0.6)
         if by > dest_y:
             cr.rectangle(dest_x, dest_y, dest_w, by - dest_y)
@@ -453,7 +483,7 @@ class CropRotateDialog(Adw.Window):
             cr.rectangle(bx + bw, by, (dest_x + dest_w) - (bx + bw), bh)
             cr.fill()
 
-        # 5. Rule of thirds grid lines
+        # 6. Rule of thirds grid lines
         cr.save()
         cr.set_source_rgba(1.0, 1.0, 1.0, 0.35)
         cr.set_line_width(1.0)
@@ -469,7 +499,7 @@ class CropRotateDialog(Adw.Window):
         cr.stroke()
         cr.restore()
 
-        # 6. Main crop box border
+        # 7. Main crop box border
         cr.set_source_rgba(0.0, 0.0, 0.0, 0.5)
         cr.set_line_width(3.0)
         cr.rectangle(bx, by, bw, bh)
@@ -480,7 +510,7 @@ class CropRotateDialog(Adw.Window):
         cr.rectangle(bx, by, bw, bh)
         cr.stroke()
 
-        # 7. Handles: 4 corner brackets and 4 edge midpoint bars
+        # 8. Handles: 4 corner brackets and 4 edge midpoint bars
         cr.set_source_rgba(1.0, 1.0, 1.0, 1.0)
         cr.set_line_width(3.0)
         handle_len = 16.0
@@ -519,15 +549,14 @@ class CropRotateDialog(Adw.Window):
         cr.line_to(bx + bw, by + bh / 2.0 + mid_bar)
         cr.stroke()
 
-        # 8. Convert to Gdk.Texture and set on Gtk.Picture
+        # 9. Ultra-fast direct texture upload using Gdk.MemoryTexture (no PNG compression/decompression)
         try:
-            bio = io.BytesIO()
-            surf.write_to_png(bio)
-            bio.seek(0)
-            glib_bytes = GLib.Bytes.new(bio.read())
-            texture = Gdk.Texture.new_from_bytes(glib_bytes)
+            surf.flush()
+            stride = surf.get_stride()
+            glib_bytes = GLib.Bytes.new(surf.get_data().tobytes())
+            texture = Gdk.MemoryTexture.new(w, h, Gdk.MemoryFormat.B8G8R8A8_PREMULTIPLIED, glib_bytes, stride)
             self.preview_picture.set_paintable(texture)
-        except Exception as e:
+        except Exception:
             pass
 
     def _setup_preview_gestures(self) -> None:
@@ -607,10 +636,13 @@ class CropRotateDialog(Adw.Window):
         elif hit == "MOVE":
             cursor_name = "move"
 
-        self.preview_picture.set_cursor_from_name(cursor_name)
+        if cursor_name != self._current_cursor_name:
+            self._current_cursor_name = cursor_name
+            self.preview_picture.set_cursor_from_name(cursor_name)
 
     def _on_mouse_leave(self, _c: Gtk.EventControllerMotion) -> None:
-        if self._drag_mode == "NONE":
+        if self._drag_mode == "NONE" and self._current_cursor_name != "default":
+            self._current_cursor_name = "default"
             self.preview_picture.set_cursor_from_name("default")
 
     def _on_drag_begin(self, gesture: Gtk.GestureDrag, start_x: float, start_y: float) -> None:
@@ -763,7 +795,9 @@ class CropRotateDialog(Adw.Window):
 
     def _on_drag_end(self, gesture: Gtk.GestureDrag, offset_x: float, offset_y: float) -> None:
         self._drag_mode = "NONE"
-        self.preview_picture.set_cursor_from_name("default")
+        if self._current_cursor_name != "default":
+            self._current_cursor_name = "default"
+            self.preview_picture.set_cursor_from_name("default")
 
     def _get_current_aspect_ratio(self) -> Optional[float]:
         """Return the numerical aspect ratio for the selected preset or None."""
