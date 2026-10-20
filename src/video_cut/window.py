@@ -179,52 +179,15 @@ class MainWindow(Adw.ApplicationWindow):
         self.btn_menu.set_focusable(False)
         self.btn_menu.add_css_class("flat")
 
-        # Export (SplitButton with dropdown for Advanced Export)
-        self.btn_export = Adw.SplitButton()
+        # Export button (suggested action)
+        self.btn_export = Gtk.Button()
         export_content = Adw.ButtonContent(icon_name="document-save-symbolic", label=_("Export"))
         self.btn_export.set_child(export_content)
         self.btn_export.set_tooltip_text(_("Export combined video (Ctrl+E)"))
-        self.btn_export.set_dropdown_tooltip(_("Export options"))
         self.btn_export.set_focusable(False)
         self.btn_export.add_css_class("suggested-action")
         self.btn_export.set_sensitive(False)
         self.btn_export.connect("clicked", lambda _: self._export_video_dialog())
-
-        # Square right-click style menu popover
-        self.export_popover = Gtk.Popover()
-        self.export_popover.set_has_arrow(False)
-        self.export_popover.set_autohide(True)
-        self.export_popover.set_position(Gtk.PositionType.BOTTOM)
-        self.export_popover.set_halign(Gtk.Align.END)
-        self.export_popover.add_css_class("menu")
-        self.export_popover.add_css_class("square-menu")
-
-        pop_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
-        pop_box.set_margin_top(4)
-        pop_box.set_margin_bottom(4)
-        pop_box.set_margin_start(4)
-        pop_box.set_margin_end(4)
-
-        btn_options = Gtk.Button()
-        btn_options.add_css_class("flat")
-        row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
-        icon = Gtk.Image.new_from_icon_name("preferences-system-symbolic")
-        icon.set_pixel_size(16)
-        row.append(icon)
-        lbl = Gtk.Label(label=_("Export options..."), xalign=0)
-        lbl.set_hexpand(True)
-        row.append(lbl)
-        btn_options.set_child(row)
-
-        def on_options_clicked(_):
-            self.export_popover.popdown()
-            self._open_advanced_export_dialog()
-
-        btn_options.connect("clicked", on_options_clicked)
-        pop_box.append(btn_options)
-
-        self.export_popover.set_child(pop_box)
-        self.btn_export.set_popover(self.export_popover)
 
         # In header_bar pack_end, widgets are packed from right to left
         self.header_bar.pack_end(self.btn_menu)
@@ -905,6 +868,7 @@ class MainWindow(Adw.ApplicationWindow):
         )
 
         self.player.sync_timeline_change(self.current_global_time)
+        self.timeline_widget.hide_split_pill()
         self.timeline_widget.rebuild_filmstrip()
         self._update_ui_state()
 

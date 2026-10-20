@@ -432,6 +432,7 @@ class SegmentCard(Gtk.Box):
         self._popover_btn.set_cursor_from_name("pointer")
         self._popover_btn.set_tooltip_text("Split clip at cursor")
         self._popover_btn.set_focusable(False)
+        self._popover_btn.set_visible(False)
 
         popover_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=4)
         split_icon = Gtk.Image.new_from_icon_name("video-split-symbolic")
@@ -660,14 +661,11 @@ class SegmentCard(Gtk.Box):
         self.needle.set_visible(True)
 
         needle_center_x = margin_x + 7
-        target_pill = self.split_pill
-        was_visible = target_pill.get_visible()
-        if not was_visible:
-            target_pill.set_visible(True)
-        _, pill_w, _, _ = target_pill.measure(Gtk.Orientation.HORIZONTAL, -1)
-        if not was_visible:
-            target_pill.set_visible(False)
-        if pill_w <= 0:
+        child = self._standalone_split_pill.get_child()
+        if child is not None:
+            _, box_w, _, _ = child.measure(Gtk.Orientation.HORIZONTAL, -1)
+            pill_w = max(50, box_w + 14)
+        else:
             pill_w = 50
 
         # Always perfectly centered over the cursor needle, never constrained by segment borders

@@ -226,9 +226,9 @@ def test_mainwindow_splitbutton_integration():
     from video_cut.window import MainWindow
     win = MainWindow()
 
-    # btn_export must be an Adw.SplitButton
-    assert win.btn_export.get_popover() is not None
-    assert win.export_popover.has_css_class("square-menu")
+    # btn_export is a primary suggested-action button; advanced export is in sandwich menu
+    assert isinstance(win.btn_export, Gtk.Button)
+    assert win.btn_export.has_css_class("suggested-action")
 
     # When timeline is empty, export should be insensitive
     win._update_ui_state()

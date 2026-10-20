@@ -609,14 +609,14 @@ class TimelineWidget(Gtk.Box):
 
     def _get_split_pill_dimensions(self) -> tuple[int, int]:
         """Measure natural dimensions of the split pill button dynamically based on localized text and font size."""
-        was_visible = self.split_pill.get_visible()
-        if not was_visible:
-            self.split_pill.set_visible(True)
-        _, w, _, _ = self.split_pill.measure(Gtk.Orientation.HORIZONTAL, -1)
-        _, h, _, _ = self.split_pill.measure(Gtk.Orientation.VERTICAL, -1)
-        if not was_visible:
-            self.split_pill.set_visible(False)
-        return (w if w > 0 else 50, h if h > 0 else 24)
+        child = self.split_pill.get_child()
+        if child is not None:
+            _, box_w, _, _ = child.measure(Gtk.Orientation.HORIZONTAL, -1)
+            _, box_h, _, _ = child.measure(Gtk.Orientation.VERTICAL, -1)
+            # playhead-split-btn CSS has padding: 1px 6px, border: 1px -> 14px horizontal, 4px vertical
+            # and min-height: 20px / target height: 24px
+            return (max(50, box_w + 14), max(24, box_h + 4))
+        return (50, 24)
 
     def _update_split_pill_position(self) -> None:
         active_card = None

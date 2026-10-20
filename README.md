@@ -75,9 +75,8 @@ All version releases, assets, and changelogs are available on the **[GitHub Vers
   - Step backward / forward 1 second (<kbd>Left</kbd> / <kbd>Right</kbd>)
   - Play / Pause (<kbd>Space</kbd>)
 - **Quick Export & Advanced Export Options**:
-  - Integrated `Adw.SplitButton` in the header bar for seamless exporting.
-  - Primary button: one-click quick export (<kbd>Ctrl+E</kbd>) rendering standard MP4 with optimal presets.
-  - Dropdown chevron: opens an **Export options...** modal that dynamically detects installed FFmpeg capabilities:
+  - Primary **Export** button in header bar (<kbd>Ctrl+E</kbd>) rendering standard MP4 with optimal presets.
+  - **Export options...** available in the top-right menu modal that dynamically detects installed FFmpeg capabilities:
     - **Containers**: MP4 (`.mp4`), Matroska (`.mkv`), WebM (`.webm`), QuickTime (`.mov`) filtered by available system muxers.
     - **Video Codecs**: H.264 / AVC, H.265 / HEVC, VP9, AV1 (SVT-AV1 / libaom), Apple ProRes (`prores_ks`) dynamically matched to container compatibility.
     - **Resolutions**: Match Source, 4K UHD, 2K QHD, 1080p FHD, 720p HD, 480p SD.
