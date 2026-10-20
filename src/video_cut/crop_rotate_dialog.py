@@ -640,54 +640,121 @@ class CropRotateDialog(Adw.Window):
         else:
             # Resizing
             target_ratio = self._get_current_aspect_ratio()
-            nx, ny, nw, nh = init_x, init_y, init_w, init_h
             dir_code = self._drag_mode.replace("RESIZE_", "")
 
-            if "W" in dir_code:
-                max_w = init_x + init_w
-                nw = clamp(init_w - ndx, min_dim, max_w)
-                nx = init_x + (init_w - nw)
-            elif "E" in dir_code:
-                nw = clamp(init_w + ndx, min_dim, 1.0 - init_x)
+            if target_ratio is None or not self._transformed_pixbuf:
+                # Freeform resizing: single-axis for edges, dual-axis for corners
+                nx, ny, nw, nh = init_x, init_y, init_w, init_h
+                if "W" in dir_code:
+                    max_w = init_x + init_w
+                    nw = clamp(init_w - ndx, min_dim, max_w)
+                    nx = init_x + (init_w - nw)
+                elif "E" in dir_code:
+                    nw = clamp(init_w + ndx, min_dim, 1.0 - init_x)
 
-            if "N" in dir_code:
-                max_h = init_y + init_h
-                nh = clamp(init_h - ndy, min_dim, max_h)
-                ny = init_y + (init_h - nh)
-            elif "S" in dir_code:
-                nh = clamp(init_h + ndy, min_dim, 1.0 - init_y)
+                if "N" in dir_code:
+                    max_h = init_y + init_h
+                    nh = clamp(init_h - ndy, min_dim, max_h)
+                    ny = init_y + (init_h - nh)
+                elif "S" in dir_code:
+                    nh = clamp(init_h + ndy, min_dim, 1.0 - init_y)
 
-            # Apply aspect ratio constraint if active
-            if target_ratio is not None and self._transformed_pixbuf:
+                # Bound checks
+                nx = clamp(nx, 0.0, 1.0 - nw)
+                ny = clamp(ny, 0.0, 1.0 - nh)
+                nw = clamp(nw, min_dim, 1.0 - nx)
+                nh = clamp(nh, min_dim, 1.0 - ny)
+            else:
+                # Constrained aspect ratio resizing: maintain strict proportion at all times
+                # If either dimension reaches boundary, growth stops in BOTH dimensions.
                 img_pixel_ratio = self._transformed_pixbuf.get_width() / float(self._transformed_pixbuf.get_height())
-                # Desired (nw / nh) in normalized coordinates: target_ratio / img_pixel_ratio
                 norm_ratio = target_ratio / img_pixel_ratio
 
-                if dir_code in ("W", "E"):
-                    nh = clamp(nw / norm_ratio, min_dim, 1.0)
-                    ny = clamp(init_y + (init_h - nh) / 2.0, 0.0, 1.0 - nh)
-                elif dir_code in ("N", "S"):
-                    nw = clamp(nh * norm_ratio, min_dim, 1.0)
-                    nx = clamp(init_x + (init_w - nw) / 2.0, 0.0, 1.0 - nw)
+                min_w = max(min_dim, min_dim * norm_ratio)
+                min_h = min_w / norm_ratio
+
+                if dir_code == "E":
+                    center_y = init_y + init_h / 2.0
+                    max_h_avail = min(1.0, 2.0 * center_y, 2.0 * (1.0 - center_y))
+                    max_w_avail = 1.0 - init_x
+                    max_w = min(max_w_avail, max_h_avail * norm_ratio)
+                    nw = clamp(init_w + ndx, min_w, max(min_w, max_w))
+                    nh = nw / norm_ratio
+                    nx = init_x
+                    ny = center_y - nh / 2.0
+                elif dir_code == "W":
+                    anchor_x = init_x + init_w
+                    center_y = init_y + init_h / 2.0
+                    max_h_avail = min(1.0, 2.0 * center_y, 2.0 * (1.0 - center_y))
+                    max_w_avail = anchor_x
+                    max_w = min(max_w_avail, max_h_avail * norm_ratio)
+                    nw = clamp(init_w - ndx, min_w, max(min_w, max_w))
+                    nh = nw / norm_ratio
+                    nx = anchor_x - nw
+                    ny = center_y - nh / 2.0
+                elif dir_code == "S":
+                    center_x = init_x + init_w / 2.0
+                    max_w_avail = min(1.0, 2.0 * center_x, 2.0 * (1.0 - center_x))
+                    max_h_avail = 1.0 - init_y
+                    max_h = min(max_h_avail, max_w_avail / norm_ratio)
+                    nh = clamp(init_h + ndy, min_h, max(min_h, max_h))
+                    nw = nh * norm_ratio
+                    ny = init_y
+                    nx = center_x - nw / 2.0
+                elif dir_code == "N":
+                    anchor_y = init_y + init_h
+                    center_x = init_x + init_w / 2.0
+                    max_w_avail = min(1.0, 2.0 * center_x, 2.0 * (1.0 - center_x))
+                    max_h_avail = anchor_y
+                    max_h = min(max_h_avail, max_w_avail / norm_ratio)
+                    nh = clamp(init_h - ndy, min_h, max(min_h, max_h))
+                    nw = nh * norm_ratio
+                    ny = anchor_y - nh
+                    nx = center_x - nw / 2.0
                 else:
-                    # Corner resize: preserve aspect ratio using dominant axis
-                    candidate_h = nw / norm_ratio
-                    if candidate_h <= 1.0:
-                        nh = candidate_h
-                    else:
-                        nh = 1.0
-                        nw = nh * norm_ratio
+                    # Corner resizing: NW, NE, SW, SE
+                    if dir_code == "SE":
+                        max_w_avail = 1.0 - init_x
+                        max_h_avail = 1.0 - init_y
+                        dw_x = ndx
+                        dw_y = ndy * norm_ratio
+                    elif dir_code == "SW":
+                        max_w_avail = init_x + init_w
+                        max_h_avail = 1.0 - init_y
+                        dw_x = -ndx
+                        dw_y = ndy * norm_ratio
+                    elif dir_code == "NE":
+                        max_w_avail = 1.0 - init_x
+                        max_h_avail = init_y + init_h
+                        dw_x = ndx
+                        dw_y = -ndy * norm_ratio
+                    else:  # NW
+                        max_w_avail = init_x + init_w
+                        max_h_avail = init_y + init_h
+                        dw_x = -ndx
+                        dw_y = -ndy * norm_ratio
 
-                    if "N" in dir_code:
-                        ny = clamp(init_y + (init_h - nh), 0.0, 1.0 - nh)
-                    if "W" in dir_code:
-                        nx = clamp(init_x + (init_w - nw), 0.0, 1.0 - nw)
+                    max_w = min(max_w_avail, max_h_avail * norm_ratio)
+                    delta_w = dw_x if abs(dw_x) >= abs(dw_y) else dw_y
+                    nw = clamp(init_w + delta_w, min_w, max(min_w, max_w))
+                    nh = nw / norm_ratio
 
-            # Bound checks
-            nx = clamp(nx, 0.0, 1.0 - nw)
-            ny = clamp(ny, 0.0, 1.0 - nh)
-            nw = clamp(nw, min_dim, 1.0 - nx)
-            nh = clamp(nh, min_dim, 1.0 - ny)
+                    if dir_code == "SE":
+                        nx = init_x
+                        ny = init_y
+                    elif dir_code == "SW":
+                        nx = (init_x + init_w) - nw
+                        ny = init_y
+                    elif dir_code == "NE":
+                        nx = init_x
+                        ny = (init_y + init_h) - nh
+                    else:  # NW
+                        nx = (init_x + init_w) - nw
+                        ny = (init_y + init_h) - nh
+
+                # Floating-point precision safety clamp
+                nx = clamp(nx, 0.0, 1.0 - nw)
+                ny = clamp(ny, 0.0, 1.0 - nh)
 
             self.crop = (nx, ny, nw, nh)
 

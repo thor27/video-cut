@@ -560,4 +560,83 @@ def test_rotation_inverts_preset_without_resetting_crop():
     assert dialog._preset_buttons["Free"].get_active() is True
 
 
+def test_fixed_proportion_growth_stops_when_one_dimension_hits_boundary():
+    try:
+        Gtk.init()
+    except Exception:
+        pass
+    parent = Gtk.Window()
+    seg = Segment(source_path=Path("/tmp/fake.mp4"), source_duration=5.0)
+    dialog = CropRotateDialog(parent=parent, segment=seg, on_apply=lambda *a: None)
+    dialog._render_preview = MagicMock()
+    dialog._img_rect = (0, 0, 1000, 1000)
+
+    # Set up a mock transformed pixbuf with 1920x1080 (16:9)
+    dialog._transformed_pixbuf = GdkPixbuf.Pixbuf.new(GdkPixbuf.Colorspace.RGB, False, 8, 1920, 1080)
+
+    gesture = MagicMock()
+
+    # 1. Select 16:9 on 16:9 image (norm_ratio = 1.0)
+    dialog.selected_preset = "16:9"
+
+    # Place initial crop at (0.2, 0.4, 0.4, 0.4)
+    # Available width to right: 1.0 - 0.2 = 0.8
+    # Available height to bottom: 1.0 - 0.4 = 0.6  <-- height runs out first!
+    dialog._drag_mode = "RESIZE_SE"
+    dialog._crop_at_drag_start = (0.2, 0.4, 0.4, 0.4)
+
+    # Drag SE by huge offset: +800px X and +800px Y
+    dialog._on_drag_update(gesture, offset_x=800, offset_y=800)
+    nx, ny, nw, nh = dialog.crop
+
+    # Height reached boundary at 1.0 (0.4 + 0.6 = 1.0)
+    assert abs(ny + nh - 1.0) < 1e-4
+    assert abs(nh - 0.6) < 1e-4
+
+    # Width MUST stop growing too, preserving exact proportion!
+    # Even though horizontal space had 0.8 available, width must stop at 0.6!
+    assert abs(nw - 0.6) < 1e-4
+    assert abs(nx + nw - 0.8) < 1e-4
+    assert abs(nw / nh - 1.0) < 1e-4
+
+    # 2. Drag NW when width runs out first
+    # Place initial crop at (0.3, 0.5, 0.3, 0.3)
+    # Available width to left: 0.3 + 0.3 = 0.6  <-- width runs out first!
+    # Available height to top: 0.5 + 0.3 = 0.8
+    dialog._drag_mode = "RESIZE_NW"
+    dialog._crop_at_drag_start = (0.3, 0.5, 0.3, 0.3)
+
+    # Drag NW up-left by -800px X and -800px Y
+    dialog._on_drag_update(gesture, offset_x=-800, offset_y=-800)
+    nx, ny, nw, nh = dialog.crop
+
+    # Left edge reached boundary at 0.0
+    assert abs(nx - 0.0) < 1e-4
+    assert abs(nw - 0.6) < 1e-4
+
+    # Height MUST stop growing too, preserving exact proportion!
+    # Even though top had 0.8 available, height must stop at 0.6!
+    assert abs(nh - 0.6) < 1e-4
+    assert abs(ny - 0.2) < 1e-4
+    assert abs(nw / nh - 1.0) < 1e-4
+
+    # 3. Select 4:3 preset on 16:9 image (norm_ratio = (4/3)/(16/9) = 0.75)
+    dialog.selected_preset = "4:3"
+    # Place initial crop at (0.2, 0.5, 0.3, 0.4) -> ratio 0.3/0.4 = 0.75
+    # Available height to bottom: 1.0 - 0.5 = 0.5
+    # Drag S down by +500px
+    dialog._drag_mode = "RESIZE_S"
+    dialog._crop_at_drag_start = (0.2, 0.5, 0.3, 0.4)
+    dialog._on_drag_update(gesture, offset_x=0, offset_y=500)
+    nx, ny, nw, nh = dialog.crop
+
+    # Height reached boundary at 1.0
+    assert abs(ny + nh - 1.0) < 1e-4
+    assert abs(nh - 0.5) < 1e-4
+
+    # Width stopped growing at 0.5 * 0.75 = 0.375, preserving exact ratio!
+    assert abs(nw - 0.375) < 1e-4
+    assert abs(nw / nh - 0.75) < 1e-4
+
+
 
