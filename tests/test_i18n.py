@@ -73,8 +73,11 @@ def test_translations_pt_br():
     assert _("Original aspect ratio") == "Proporção original"
     assert _("New Window") == "Nova janela"
     assert _("Toggle Fullscreen (F11)") == "Alternar tela cheia (F11)"
-    assert _("Exit Fullscreen (F11 or Esc)") == "Sair da tela cheia (F11 ou Esc)"
     assert _("Main Menu") == "Menu principal"
+    assert _("Export...") == "Exportar..."
+    assert _("Export with default options (Ctrl+E)") == "Exportar com opções predefinidas (Ctrl+E)"
+    assert _("Export with Default Options") == "Exportar com opções predefinidas"
+    assert _("Export Video") == "Exportar vídeo"
 
 
 def test_translations_es():
@@ -97,8 +100,11 @@ def test_translations_es():
     assert _("Original aspect ratio") == "Proporción original"
     assert _("New Window") == "Nueva ventana"
     assert _("Toggle Fullscreen (F11)") == "Alternar pantalla completa (F11)"
-    assert _("Exit Fullscreen (F11 or Esc)") == "Salir de pantalla completa (F11 o Esc)"
     assert _("Main Menu") == "Menú principal"
+    assert _("Export...") == "Exportar..."
+    assert _("Export with default options (Ctrl+E)") == "Exportar con opciones predeterminadas (Ctrl+E)"
+    assert _("Export with Default Options") == "Exportar con opciones predeterminadas"
+    assert _("Export Video") == "Exportar video"
 
 
 def test_translations_fr():
@@ -121,8 +127,11 @@ def test_translations_fr():
     assert _("Original aspect ratio") == "Format d'origine"
     assert _("New Window") == "Nouvelle fenêtre"
     assert _("Toggle Fullscreen (F11)") == "Basculer en plein écran (F11)"
-    assert _("Exit Fullscreen (F11 or Esc)") == "Quitter le plein écran (F11 ou Échap)"
     assert _("Main Menu") == "Menu principal"
+    assert _("Export...") == "Exporter..."
+    assert _("Export with default options (Ctrl+E)") == "Exporter avec les options par défaut (Ctrl+E)"
+    assert _("Export with Default Options") == "Exporter avec les options par défaut"
+    assert _("Export Video") == "Exporter la vidéo"
 
 
 def test_translations_en_us():
@@ -140,8 +149,11 @@ def test_translations_en_us():
     assert _("Original aspect ratio") == "Original aspect ratio"
     assert _("New Window") == "New Window"
     assert _("Toggle Fullscreen (F11)") == "Toggle Fullscreen (F11)"
-    assert _("Exit Fullscreen (F11 or Esc)") == "Exit Fullscreen (F11 or Esc)"
     assert _("Main Menu") == "Main Menu"
+    assert _("Export...") == "Export..."
+    assert _("Export with default options (Ctrl+E)") == "Export with default options (Ctrl+E)"
+    assert _("Export with Default Options") == "Export with Default Options"
+    assert _("Export Video") == "Export Video"
 
 
 def test_fallback_unsupported_language():

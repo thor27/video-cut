@@ -169,7 +169,7 @@ video-cut /path/to/my_video.mp4
 | <kbd>Ctrl+Shift+Z</kbd> or <kbd>Ctrl+Y</kbd> | Redo undone edit |
 | <kbd>Alt+Left</kbd> / <kbd>Alt+Right</kbd> | Move selected clip earlier / later |
 | <kbd>Ctrl+O</kbd> | Open video or image file |
-| <kbd>Ctrl+E</kbd> | Export combined video |
+| <kbd>Ctrl+E</kbd> | Export with default options |
 
 ## Architecture
 

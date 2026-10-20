@@ -356,6 +356,8 @@ def test_split_pill_hover_and_context_menu_top_left():
 
     def run_test(app):
         try:
+            from video_cut.i18n import init_i18n
+            init_i18n("en_US")
             split_called = []
             seg = Segment(
                 id="seg-1",
@@ -439,7 +441,8 @@ def test_split_pill_hover_and_context_menu_top_left():
             card.show_split_pill()
             needle_x_start = card.needle.get_margin_start() + 7
             pill_x_start = card.split_pill.get_margin_start()
-            _, pill_w, _, _ = card.split_pill.measure(Gtk.Orientation.HORIZONTAL, -1)
+            child = card.split_pill.get_child()
+            pill_w = max(50, child.measure(Gtk.Orientation.HORIZONTAL, -1)[1] + 14) if child else 50
             assert abs((pill_x_start + pill_w / 2.0) - needle_x_start) <= 2
             # Verify split pill container has overflow visible so it is never clipped
             assert card.split_fixed.get_overflow() == Gtk.Overflow.VISIBLE

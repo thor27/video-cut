@@ -76,6 +76,7 @@ class MainWindow(Adw.ApplicationWindow):
         self._setup_shortcuts()
         self._setup_window_drag_and_drop()
         self._setup_clipboard_listener()
+        self._update_ui_state()
 
     def _build_ui(self) -> None:
         # Load CSS and icons
@@ -127,6 +128,33 @@ class MainWindow(Adw.ApplicationWindow):
         self.header_bar.pack_start(self.btn_fullscreen)
         self.connect("notify::fullscreened", self._on_fullscreened_changed)
 
+        # Empty state top actions: Undo, Redo, Paste in linked button group
+        self.top_actions_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
+        self.top_actions_box.add_css_class("linked")
+
+        self.top_btn_undo = Gtk.Button.new_from_icon_name("edit-undo-symbolic")
+        self.top_btn_undo.set_tooltip_text(_("Undo (Ctrl+Z)"))
+        self.top_btn_undo.set_focusable(False)
+        self.top_btn_undo.set_sensitive(False)
+        self.top_btn_undo.connect("clicked", lambda _: self.undo())
+        self.top_actions_box.append(self.top_btn_undo)
+
+        self.top_btn_redo = Gtk.Button.new_from_icon_name("edit-redo-symbolic")
+        self.top_btn_redo.set_tooltip_text(_("Redo (Ctrl+Shift+Z or Ctrl+Y)"))
+        self.top_btn_redo.set_focusable(False)
+        self.top_btn_redo.set_sensitive(False)
+        self.top_btn_redo.connect("clicked", lambda _: self.redo())
+        self.top_actions_box.append(self.top_btn_redo)
+
+        self.top_btn_paste = Gtk.Button.new_from_icon_name("edit-paste-symbolic")
+        self.top_btn_paste.set_tooltip_text(_("Paste clip (Ctrl+V)"))
+        self.top_btn_paste.set_focusable(False)
+        self.top_btn_paste.set_sensitive(False)
+        self.top_btn_paste.connect("clicked", lambda _: self.paste_segment())
+        self.top_actions_box.append(self.top_btn_paste)
+
+        self.header_bar.pack_start(self.top_actions_box)
+
         # Actions for sandwich menu
         self.action_new_window = Gio.SimpleAction.new("new_window", None)
         self.action_new_window.connect("activate", lambda *_: self._create_new_window())
@@ -172,10 +200,8 @@ class MainWindow(Adw.ApplicationWindow):
         self.btn_menu.add_css_class("flat")
 
         # Export button (suggested action)
-        self.btn_export = Gtk.Button()
-        export_content = Adw.ButtonContent(icon_name="document-save-symbolic", label=_("Export"))
-        self.btn_export.set_child(export_content)
-        self.btn_export.set_tooltip_text(_("Export combined video (Ctrl+E)"))
+        self.btn_export = Gtk.Button(label=_("Export..."))
+        self.btn_export.set_tooltip_text(_("Export with default options (Ctrl+E)"))
         self.btn_export.set_focusable(False)
         self.btn_export.add_css_class("suggested-action")
         self.btn_export.set_sensitive(False)
@@ -192,10 +218,11 @@ class MainWindow(Adw.ApplicationWindow):
         self.toolbar_view.set_content(main_box)
 
         # Video Player area using Gtk.Picture (Zero hover controls) with Empty State
-        player_container = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
-        player_container.add_css_class("video-container")
-        player_container.set_vexpand(True)
-        player_container.set_hexpand(True)
+        self.player_container = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
+        self.player_container.add_css_class("video-container")
+        self.player_container.add_css_class("empty-state")
+        self.player_container.set_vexpand(True)
+        self.player_container.set_hexpand(True)
 
         self.player_stack = Gtk.Stack()
         self.player_stack.set_vexpand(True)
@@ -224,8 +251,8 @@ class MainWindow(Adw.ApplicationWindow):
         self.video_picture.set_hexpand(True)
         self.player_stack.add_named(self.video_picture, "player")
 
-        player_container.append(self.player_stack)
-        main_box.append(player_container)
+        self.player_container.append(self.player_stack)
+        main_box.append(self.player_container)
 
         # 3. Storyboard Timeline (with integrated transport controls and edit buttons)
         self.timeline_widget = TimelineWidget(
@@ -537,6 +564,7 @@ class MainWindow(Adw.ApplicationWindow):
         can_delete = has_selection
 
         self.btn_export.set_sensitive(has_video)
+        self.btn_export.set_visible(has_video)
         if hasattr(self, "action_adv_export"):
             self.action_adv_export.set_enabled(has_video)
         self.btn_undo.set_sensitive(self.timeline.can_undo)
@@ -548,13 +576,26 @@ class MainWindow(Adw.ApplicationWindow):
         self.btn_delete.set_sensitive(can_delete)
         self.timeline_widget.set_can_paste(can_paste)
 
+        if hasattr(self, "top_actions_box"):
+            self.top_actions_box.set_visible(not has_video)
+        if hasattr(self, "top_btn_undo"):
+            self.top_btn_undo.set_sensitive(self.timeline.can_undo)
+        if hasattr(self, "top_btn_redo"):
+            self.top_btn_redo.set_sensitive(self.timeline.can_redo)
+        if hasattr(self, "top_btn_paste"):
+            self.top_btn_paste.set_sensitive(can_paste)
+
+        self.timeline_widget.set_visible(has_video)
+
         if has_video:
+            self.player_container.remove_css_class("empty-state")
             self.player_stack.set_visible_child_name("player")
             first_seg = self.timeline.segments[0]
             count = len(self.timeline.segments)
             self.window_title.set_title(first_seg.source_name)
             self.window_title.set_subtitle(f"{count} segment{'s' if count > 1 else ''} • Total {format_time(self.timeline.total_duration)}")
         else:
+            self.player_container.add_css_class("empty-state")
             self.player_stack.set_visible_child_name("empty")
             self.player.clear()
             self.window_title.set_title(_("Video Cut"))
@@ -1088,7 +1129,10 @@ class MainWindow(Adw.ApplicationWindow):
             return
 
         dialog = Gtk.FileDialog.new()
-        dialog.set_title(_("Export Combined Video"))
+        if settings:
+            dialog.set_title(_("Export Video"))
+        else:
+            dialog.set_title(_("Export with Default Options"))
 
         ext = "mp4"
         if settings:

@@ -525,8 +525,20 @@ msgstr ""
 msgid "Export"
 msgstr ""
 
+msgid "Export..."
+msgstr ""
+
 #: src/video_cut/window.py:186
 msgid "Export combined video (Ctrl+E)"
+msgstr ""
+
+msgid "Export with default options (Ctrl+E)"
+msgstr ""
+
+msgid "Export with Default Options"
+msgstr ""
+
+msgid "Export Video"
 msgstr ""
 
 #: src/video_cut/window.py:187

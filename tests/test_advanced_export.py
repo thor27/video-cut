@@ -230,14 +230,16 @@ def test_mainwindow_splitbutton_integration():
     assert isinstance(win.btn_export, Gtk.Button)
     assert win.btn_export.has_css_class("suggested-action")
 
-    # When timeline is empty, export should be insensitive
+    # When timeline is empty, export should be hidden and insensitive
     win._update_ui_state()
     assert not win.btn_export.get_sensitive()
+    assert not win.btn_export.get_visible()
     assert not win.action_adv_export.get_enabled()
 
     # Add a mock segment
     win.timeline.add_video(Path("/tmp/clip.mp4"), source_duration=5.0)
     win._update_ui_state()
     assert win.btn_export.get_sensitive()
+    assert win.btn_export.get_visible()
     assert win.action_adv_export.get_enabled()
 

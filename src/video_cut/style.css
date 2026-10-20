@@ -4,6 +4,10 @@
     background-color: #0d0d0d;
 }
 
+.video-container.empty-state {
+    background-color: @window_bg_color;
+}
+
 .timeline-container {
     background-color: alpha(@window_bg_color, 0.95);
     border-top: 1px solid alpha(currentColor, 0.12);

@@ -21,8 +21,11 @@ def test_ui_smoke():
             win = MainWindow(application=app)
             assert win.player_stack.get_visible_child_name() == "empty"
             assert win.timeline.is_empty is True
+            assert win.timeline_widget.get_visible() is False
+            assert win.top_actions_box.get_visible() is True
+            assert win.btn_export.get_visible() is False
 
-            # Verify top bar contains Fullscreen, Export, and Menu, but NO Open button
+            # Verify top bar contains Fullscreen, Export, Menu, and top actions (Undo, Redo, Paste), but NO Open button
             header_buttons = []
             child = win.header_bar.get_first_child()
             while child:
@@ -40,8 +43,13 @@ def test_ui_smoke():
             open_header_buttons = [b for b in header_buttons if "open video or image" in (b.get_tooltip_text() or "").lower()]
             assert len(open_header_buttons) == 0, f"Open button should not be in header bar: {open_header_buttons}"
             assert win.btn_export in header_buttons
+            assert win.btn_export.get_label() == "Export..."
+            assert "Export with default options" in (win.btn_export.get_tooltip_text() or "")
             assert win.btn_fullscreen in header_buttons
             assert win.btn_menu in header_buttons
+            assert win.top_btn_undo in header_buttons
+            assert win.top_btn_redo in header_buttons
+            assert win.top_btn_paste in header_buttons
 
             # Verify bottom timeline bar has the edit buttons and NO 'Timeline' label
             time_bar_labels = []
@@ -65,6 +73,9 @@ def test_ui_smoke():
 
             win.load_video(Path("/tmp/test_video.mp4"))
             assert win.player_stack.get_visible_child_name() == "player"
+            assert win.timeline_widget.get_visible() is True
+            assert win.top_actions_box.get_visible() is False
+            assert win.btn_export.get_visible() is True
 
             # Check that 1 segment is loaded
             assert len(win.timeline.segments) == 1
@@ -76,12 +87,18 @@ def test_ui_smoke():
             assert len(win.timeline.segments) == 0
             assert win.timeline.is_empty is True
             assert win.player_stack.get_visible_child_name() == "empty"
+            assert win.timeline_widget.get_visible() is False
+            assert win.top_actions_box.get_visible() is True
+            assert win.btn_export.get_visible() is False
 
             # Undo restores the single segment
             assert win.timeline.can_undo is True
             win.undo()
             assert len(win.timeline.segments) == 1
             assert win.player_stack.get_visible_child_name() == "player"
+            assert win.timeline_widget.get_visible() is True
+            assert win.top_actions_box.get_visible() is False
+            assert win.btn_export.get_visible() is True
 
             # Simulate moving playhead to 2.0s and splitting
             win.current_global_time = 2.0

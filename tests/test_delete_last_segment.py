@@ -22,6 +22,9 @@ def test_delete_last_segment_returns_to_empty_state_and_undo():
             # Initially empty state
             assert win.timeline.is_empty is True
             assert win.player_stack.get_visible_child_name() == "empty"
+            assert win.timeline_widget.get_visible() is False
+            assert win.top_actions_box.get_visible() is True
+            assert win.btn_export.get_visible() is False
             assert win.btn_delete.get_sensitive() is False
             assert win.btn_cut.get_sensitive() is False
             assert win.btn_export.get_sensitive() is False
@@ -30,6 +33,9 @@ def test_delete_last_segment_returns_to_empty_state_and_undo():
             win.load_video(Path("/tmp/test_video.mp4"))
             assert len(win.timeline.segments) == 1
             assert win.player_stack.get_visible_child_name() == "player"
+            assert win.timeline_widget.get_visible() is True
+            assert win.top_actions_box.get_visible() is False
+            assert win.btn_export.get_visible() is True
             assert win.btn_delete.get_sensitive() is True
             assert win.btn_cut.get_sensitive() is True
             assert win.btn_export.get_sensitive() is True
@@ -44,10 +50,14 @@ def test_delete_last_segment_returns_to_empty_state_and_undo():
             assert win.timeline.is_empty is True
             assert win.timeline.selected_segment_id is None
             assert win.player_stack.get_visible_child_name() == "empty"
+            assert win.timeline_widget.get_visible() is False
+            assert win.top_actions_box.get_visible() is True
+            assert win.btn_export.get_visible() is False
             assert win.btn_delete.get_sensitive() is False
             assert win.btn_cut.get_sensitive() is False
             assert win.btn_export.get_sensitive() is False
             assert win.btn_undo.get_sensitive() is True
+            assert win.top_btn_undo.get_sensitive() is True
             assert win.timeline_widget.btn_add is None
             assert win.timeline_widget.cards_box.get_first_child() is None
 
@@ -56,6 +66,9 @@ def test_delete_last_segment_returns_to_empty_state_and_undo():
             assert len(win.timeline.segments) == 1
             assert win.timeline.is_empty is False
             assert win.player_stack.get_visible_child_name() == "player"
+            assert win.timeline_widget.get_visible() is True
+            assert win.top_actions_box.get_visible() is False
+            assert win.btn_export.get_visible() is True
             assert win.btn_delete.get_sensitive() is True
             assert win.btn_cut.get_sensitive() is True
             assert win.btn_redo.get_sensitive() is True
