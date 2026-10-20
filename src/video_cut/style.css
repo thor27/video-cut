@@ -222,6 +222,7 @@ button.pill.drop-target-active {
     background-color: alpha(currentColor, 0.06);
     border-radius: 20px;
     padding: 3px 6px;
+    margin: 0 12px;
 }
 
 .transport-box button {

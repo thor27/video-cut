@@ -285,3 +285,45 @@ def test_thumbnail_progress_toast():
     app.run(["test"])
 
 
+def test_player_controls_margin_at_minimum_window_size():
+    app = Adw.Application(application_id="io.github.thomaz.videocut.test_margin")
+
+    def run_test(app):
+        win = MainWindow(application=app)
+        try:
+            sample_video = Path("/tmp/test_video.mp4")
+            if sample_video.exists():
+                win.load_video(sample_video, replace=True)
+
+            min_w, _, _, _ = win.measure(Gtk.Orientation.HORIZONTAL, -1)
+            min_h, _, _, _ = win.measure(Gtk.Orientation.VERTICAL, -1)
+            win.set_default_size(min_w, min_h)
+            win.present()
+
+            time_bar = win.timeline_widget.get_first_child()
+            start_w = time_bar.get_start_widget()
+            center_w = time_bar.get_center_widget()
+            end_w = time_bar.get_end_widget()
+
+            # Pump iterations so layout completes
+            ctx = GLib.MainContext.default()
+            for _ in range(20):
+                ctx.iteration(False)
+
+            _, b_start = start_w.compute_bounds(time_bar)
+            _, b_center = center_w.compute_bounds(time_bar)
+            _, b_end = end_w.compute_bounds(time_bar)
+
+            gap_left = b_center.get_x() - (b_start.get_x() + b_start.get_width())
+            gap_right = b_end.get_x() - (b_center.get_x() + b_center.get_width())
+
+            assert gap_left >= 10.0, f"Expected gap_left >= 10px, got {gap_left}px"
+            assert gap_right >= 10.0, f"Expected gap_right >= 10px, got {gap_right}px"
+        finally:
+            win.close()
+            app.quit()
+
+    app.connect("activate", run_test)
+    app.run(["test"])
+
+
