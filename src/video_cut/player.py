@@ -1,5 +1,7 @@
 """Video playback and timeline synchronization controller using Gtk.Picture and Gtk.MediaFile."""
 
+import os
+import sys
 import time
 from pathlib import Path
 from typing import Callable, Optional
@@ -13,6 +15,32 @@ from gi.repository import Gtk, Gdk, Gsk, Graphene, GObject, GLib
 
 from .models import ProjectTimeline, Segment
 from .utils import clamp
+
+# Playback debug logging, enabled with VIDEO_CUT_DEBUG=1
+_DEBUG = bool(os.environ.get("VIDEO_CUT_DEBUG"))
+_T0 = time.monotonic()
+
+
+def _dbg(msg: str) -> None:
+    if _DEBUG:
+        print(f"[player {time.monotonic() - _T0:8.3f}] {msg}", file=sys.stderr, flush=True)
+
+
+def _mf_state(mf: Optional[Gtk.MediaFile]) -> str:
+    """Compact description of a media file's state for debug logs."""
+    if mf is None:
+        return "mf=None"
+    try:
+        err = mf.get_error()
+        return (
+            f"mf#{hash(mf) & 0xFFFF:04x}(prep={int(mf.is_prepared())} play={int(mf.get_playing())} "
+            f"seek={int(mf.get_property('seeking'))} end={int(mf.get_ended())} "
+            f"ts={mf.get_timestamp() / 1e6:.3f} audio={int(mf.has_audio())} "
+            f"vol={mf.get_volume():.2f} mute={int(mf.get_muted())}"
+            f"{' ERR=' + err.message if err else ''})"
+        )
+    except Exception as e:  # pragma: no cover - debug only
+        return f"mf=<state error {e}>"
 
 
 class TransformedPaintable(GObject.Object, Gdk.Paintable):
@@ -307,6 +335,10 @@ class VideoPlayerController:
             return
 
         self.current_segment_id = seg.id
+        _dbg(
+            f"seek_to_global_time({global_time:.3f}) -> seg#{idx} src_ts={source_ts:.3f} "
+            f"playing={self._is_playing} {_mf_state(self.current_media_file)}"
+        )
 
         if self.current_source_path != seg.source_path or self.current_media_file is None:
             self._load_file_and_seek(seg.source_path, source_ts, and_play=self._is_playing, seg=seg)
@@ -324,6 +356,7 @@ class VideoPlayerController:
         seg: Optional[Segment] = None,
     ) -> None:
         """Load a video file into Gtk.MediaFile and attach to Gtk.Picture."""
+        _dbg(f"LOAD {path.name} src_ts={source_ts:.3f} and_play={and_play} old={_mf_state(self.current_media_file)}")
         self._cleanup_media_file()
 
         self.current_source_path = path
@@ -342,6 +375,7 @@ class VideoPlayerController:
                     if obj.get_property("seeking"):
                         self._play_on_seek_done = True
                     else:
+                        _dbg("mf.play() [on_prepared]")
                         obj.play()
 
         def on_seeking_changed(obj, pspec):
@@ -351,20 +385,31 @@ class VideoPlayerController:
                 if self._play_on_seek_done:
                     self._play_on_seek_done = False
                     if self._is_playing and not obj.get_playing():
+                        _dbg("mf.play() [seek done]")
                         obj.play()
 
         h_prep = mf.connect("notify::prepared", on_prepared)
         h_seek = mf.connect("notify::seeking", on_seeking_changed)
         self._media_file_handlers = [h_prep, h_seek]
 
+        if _DEBUG:
+            def on_any_notify(obj, pspec):
+                if pspec.name != "timestamp":
+                    _dbg(f"  notify::{pspec.name} -> {_mf_state(obj)}")
+
+            self._media_file_handlers.append(mf.connect("notify", on_any_notify))
+
     def _seek_media_file(self, source_ts: float, force: bool = False) -> None:
         if not self.current_media_file or not self.current_media_file.is_prepared():
+            _dbg(f"seek({source_ts:.3f}) SKIPPED: not prepared")
             return
 
         # Do not spam seek if already seeking, unless forced (e.g. user seek or segment boundary)
         if not force and (self._is_seeking or self.current_media_file.get_property("seeking")):
+            _dbg(f"seek({source_ts:.3f}) SKIPPED: already seeking")
             return
 
+        _dbg(f"mf.seek({source_ts:.3f}) force={force} before={_mf_state(self.current_media_file)}")
         self._is_seeking = True
         self._last_seek_time = time.monotonic()
         us = int(source_ts * 1_000_000)
@@ -380,8 +425,10 @@ class VideoPlayerController:
         if self.current_global_time >= self.timeline.total_duration - 0.05:
             self.current_global_time = 0.0
 
+        _dbg(f"PLAY at glob={self.current_global_time:.3f} {_mf_state(self.current_media_file)}")
         self._is_playing = True
         self._last_tick_time = time.monotonic()
+        self._last_heartbeat = 0.0
 
         # Ensure correct media file and position
         try:
@@ -402,9 +449,11 @@ class VideoPlayerController:
                             self._seek_media_file(source_ts, force=True)
                         else:
                             self._seek_media_file(source_ts)
+                            _dbg("mf.play() [play, after drift seek]")
                             self.current_media_file.play()
                     else:
                         if not self.current_media_file.get_playing():
+                            _dbg("mf.play() [play]")
                             self.current_media_file.play()
                 else:
                     self._play_on_seek_done = True
@@ -418,6 +467,7 @@ class VideoPlayerController:
 
     def pause(self) -> None:
         """Pause playback."""
+        _dbg(f"PAUSE at glob={self.current_global_time:.3f} {_mf_state(self.current_media_file)}")
         self._is_playing = False
         self._play_on_seek_done = False
         if self._tick_timer_id is not None:
@@ -440,6 +490,10 @@ class VideoPlayerController:
         """Called when timeline is split, reordered, or deleted."""
         was_playing = self._is_playing
         self.current_global_time = clamp(new_global_time, 0.0, self.timeline.total_duration)
+        _dbg(
+            f"SYNC_TIMELINE glob={self.current_global_time:.3f} was_playing={was_playing} "
+            f"segs={[(round(s.start_time, 2), round(s.end_time, 2)) for s in self.timeline.segments]}"
+        )
 
         if not self.timeline.is_empty:
             try:
@@ -451,6 +505,7 @@ class VideoPlayerController:
                     self._apply_segment_transform(seg)
                     self._seek_media_file(source_ts, force=True)
                     if was_playing and not self.current_media_file.get_ended():
+                        _dbg("mf.play() [sync_timeline_change]")
                         self.current_media_file.play()
             except ValueError:
                 pass
@@ -470,8 +525,13 @@ class VideoPlayerController:
 
         new_time = self.current_global_time + dt
 
+        if _DEBUG and now - getattr(self, "_last_heartbeat", 0.0) >= 1.0:
+            self._last_heartbeat = now
+            _dbg(f"tick glob={new_time:.3f} dt={dt * 1000:.0f}ms {_mf_state(self.current_media_file)}")
+
         # Reached end of project timeline
         if new_time >= self.timeline.total_duration:
+            _dbg("END OF TIMELINE -> pause + seek 0")
             self.pause()
             self.seek_to_global_time(0.0)
             return False
@@ -489,6 +549,7 @@ class VideoPlayerController:
 
                 if seg.source_path != self.current_source_path:
                     # Switch to different source file
+                    _dbg(f"SEGMENT CHANGE -> seg#{idx} (different file)")
                     self._load_file_and_seek(seg.source_path, source_ts, and_play=True, seg=seg)
                 else:
                     # Same source file: check whether playback is contiguous
@@ -497,6 +558,10 @@ class VideoPlayerController:
                         prev_seg is not None
                         and prev_seg.source_path == seg.source_path
                         and abs(prev_seg.end_time - seg.start_time) < 0.05
+                    )
+                    _dbg(
+                        f"SEGMENT CHANGE -> seg#{idx} [{seg.start_time:.2f}-{seg.end_time:.2f}] "
+                        f"src_ts={source_ts:.3f} contiguous={is_contiguous} {_mf_state(self.current_media_file)}"
                     )
 
                     if not is_contiguous:
@@ -513,6 +578,7 @@ class VideoPlayerController:
                                 self.current_media_file
                                 and not self.current_media_file.get_playing()
                             ):
+                                _dbg("mf.play() [segment change]")
                                 self.current_media_file.play()
 
             elif self.current_media_file and self.current_media_file.is_prepared():
@@ -525,11 +591,13 @@ class VideoPlayerController:
                 )
                 if not is_stream_seeking and (now - self._last_seek_time > 0.35):
                     if not self.current_media_file.get_playing() and not self.current_media_file.get_ended():
+                        _dbg("mf.play() [tick: stream was not playing]")
                         self.current_media_file.play()
 
                     # Correct any drift > 0.4s
                     cur_stream_ts = self.current_media_file.get_timestamp() / 1_000_000.0
                     if abs(cur_stream_ts - source_ts) > 0.4:
+                        _dbg(f"DRIFT stream={cur_stream_ts:.3f} expected={source_ts:.3f} -> reseek")
                         self._seek_media_file(source_ts)
 
             self.on_time_update(self.current_global_time)
@@ -553,6 +621,7 @@ class VideoPlayerController:
         """Jump playhead to start of previous segment (or 0.0 if on first segment)."""
         if self.timeline.is_empty:
             return
+        _dbg(f"JUMP_PREV (Home) from glob={self.current_global_time:.3f}")
         try:
             idx, seg, _ = self.timeline.map_global_time(self.current_global_time)
             seg_start = self.timeline.get_segment_global_start(idx)
@@ -572,6 +641,7 @@ class VideoPlayerController:
         """Jump playhead to start of next segment."""
         if self.timeline.is_empty:
             return
+        _dbg(f"JUMP_NEXT (End) from glob={self.current_global_time:.3f}")
         try:
             idx, seg, _ = self.timeline.map_global_time(self.current_global_time)
             if idx < len(self.timeline.segments) - 1:
