@@ -1,5 +1,6 @@
 import os
 import subprocess
+from collections.abc import Callable
 from pathlib import Path
 
 import gi
@@ -17,6 +18,7 @@ from .i18n import _
 from .image_import_dialog import ImageImportDialog
 from .models import ExportSettings, ProjectTimeline, Segment
 from .player import VideoPlayerController
+from .progress_modal import ProgressModal
 from .services.export_service import ExportService
 from .services.image_service import ImageService
 from .services.probe_service import ProbeService
@@ -755,24 +757,114 @@ class MainWindow(Adw.ApplicationWindow):
         audio_start_time: float = 0.0,
     ) -> None:
         """Inspect media metadata and add it to the timeline."""
-        display_name = None
-        orig_image_path = None
         if ImageService.is_image(video_path):
-            orig_image_path = video_path
-            display_name = video_path.name
+            self._load_image_as_video(
+                image_path=video_path,
+                replace=replace,
+                duration=duration,
+                audio_path=audio_path,
+                audio_start_time=audio_start_time,
+            )
+            return
+
+        self._finish_load_video(
+            video_path=video_path,
+            replace=replace,
+            orig_image_path=None,
+            display_name=None,
+        )
+
+    def _load_image_as_video(
+        self,
+        image_path: Path,
+        replace: bool = True,
+        duration: float = 1.0,
+        audio_path: Path | str | None = None,
+        audio_start_time: float = 0.0,
+    ) -> None:
+        """Convert image to video asynchronously with real progress reporting."""
+        display_name = image_path.name
+
+        # If already cached, load immediately without modal
+        if ImageService.is_cached(
+            image_path=image_path,
+            cache_dir=self.thumbnail_service.cache_dir,
+            duration=duration,
+            audio_path=audio_path,
+            audio_start_time=audio_start_time,
+        ):
             try:
                 converted_video = ImageService.convert_image_to_video(
-                    video_path,
+                    image_path=image_path,
                     cache_dir=self.thumbnail_service.cache_dir,
                     duration=duration,
                     audio_path=audio_path,
                     audio_start_time=audio_start_time,
                 )
+                self._finish_load_video(
+                    video_path=converted_video,
+                    replace=replace,
+                    orig_image_path=image_path,
+                    display_name=display_name,
+                )
             except Exception as e:
                 self._show_toast(_("Failed to convert image: {error}").format(error=e))
-                return
-            video_path = converted_video
+            return
 
+        cancel_fn: Callable[[], None] | None = None
+
+        modal = ProgressModal(
+            parent=self,
+            title=_("Importing Image"),
+            initial_status=_("Importing image..."),
+            initial_details=_("Converting '{name}' into video segment...").format(name=image_path.name),
+            on_cancel=lambda: cancel_fn() if cancel_fn else None,
+        )
+        modal.present()
+
+        def on_progress(fraction: float, cur_s: float) -> None:
+            percent = int(fraction * 100)
+            modal.update_progress(
+                fraction,
+                status_text=_("Importing image ({percent}%)...").format(percent=percent),
+                details_text=_("Converting frame: {processed} / {total}").format(
+                    processed=format_time(cur_s),
+                    total=format_time(duration),
+                ),
+            )
+
+        def on_done(converted_video: Path | None, error: Exception | None) -> None:
+            modal.finish()
+            if error or not converted_video:
+                if str(error) != "Conversion cancelled":
+                    self._show_toast(_("Failed to convert image: {error}").format(error=error or _("Unknown error")))
+                return
+
+            self._finish_load_video(
+                video_path=converted_video,
+                replace=replace,
+                orig_image_path=image_path,
+                display_name=display_name,
+            )
+
+        cancel_fn = ImageService.convert_image_to_video_async(
+            image_path=image_path,
+            cache_dir=self.thumbnail_service.cache_dir,
+            duration=duration,
+            audio_path=audio_path,
+            audio_start_time=audio_start_time,
+            on_progress=on_progress,
+            on_done=on_done,
+        )
+
+    def _finish_load_video(
+        self,
+        video_path: Path,
+        replace: bool = True,
+        orig_image_path: Path | None = None,
+        display_name: str | None = None,
+    ) -> None:
+        """Inspect media metadata, add to timeline, and start thumbnail generation."""
         meta = ProbeService.probe(video_path)
         if not meta or meta.duration <= 0:
             self._show_toast(_("Failed to load media: invalid or unsupported file"))
@@ -1021,117 +1113,28 @@ class MainWindow(Adw.ApplicationWindow):
     def _start_export(self, destination: Path, settings: ExportSettings | None = None) -> None:
         self.player.pause()
 
-        # Build Export Dialog Modal (non-closable during export: must wait or click cancel)
-        export_dialog = Adw.Window(transient_for=self, modal=True)
-        export_dialog.set_default_size(420, 200)
-        export_dialog.set_title(_("Exporting Video"))
-        export_dialog.set_deletable(False)
-
-        can_close = False
-
-        def on_close_request(win):
-            if not can_close:
-                return True
-            return False
-
-        export_dialog.connect("close-request", on_close_request)
-
-        toolbar_view = Adw.ToolbarView()
-        export_dialog.set_content(toolbar_view)
-
-        h_bar = Adw.HeaderBar()
-        h_bar.set_show_title(True)
-        h_bar.set_show_end_title_buttons(False)
-        h_bar.set_show_start_title_buttons(False)
-        toolbar_view.add_top_bar(h_bar)
-
-        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=14)
-        box.set_margin_top(20)
-        box.set_margin_bottom(20)
-        box.set_margin_start(24)
-        box.set_margin_end(24)
-        toolbar_view.set_content(box)
-
-        # Status header with active spinner
-        status_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
-        status_box.set_halign(Gtk.Align.CENTER)
-        spinner = Gtk.Spinner()
-        spinner.set_size_request(22, 22)
-        spinner.start()
-        status_box.append(spinner)
-
-        lbl_status = Gtk.Label(label=_("Rendering video..."))
-        lbl_status.add_css_class("heading")
-        status_box.append(lbl_status)
-        box.append(status_box)
-
-        progress_bar = Gtk.ProgressBar()
-        progress_bar.set_show_text(True)
-        progress_bar.set_fraction(0.0)
-        progress_bar.set_text(_("Rendering..."))
-        box.append(progress_bar)
-
-        lbl_details = Gtk.Label(label=_("Exporting to {name}...").format(name=destination.name))
-        lbl_details.add_css_class("caption")
-        box.append(lbl_details)
-
-        # Pulse timer while waiting for the first progress percentage
-        pulse_timer_id: int | None = None
-        has_received_progress = False
-
-        def on_pulse() -> bool:
-            if not has_received_progress:
-                progress_bar.pulse()
-                return True
-            return False
-
-        pulse_timer_id = GLib.timeout_add(100, on_pulse)
-
-        def stop_pulse():
-            nonlocal pulse_timer_id
-            if pulse_timer_id is not None:
-                GLib.source_remove(pulse_timer_id)
-                pulse_timer_id = None
-
-        btn_cancel = Gtk.Button(label=_("Cancel"))
-        btn_cancel.set_halign(Gtk.Align.CENTER)
-        btn_cancel.add_css_class("destructive-action")
-        btn_cancel.set_focusable(False)
-        box.append(btn_cancel)
-
-        def on_cancel_clicked(_):
-            nonlocal can_close
-            can_close = True
-            stop_pulse()
-            self.export_service.cancel()
-            export_dialog.close()
-
-        btn_cancel.connect("clicked", on_cancel_clicked)
-
-        export_dialog.present()
+        modal = ProgressModal(
+            parent=self,
+            title=_("Exporting Video"),
+            initial_status=_("Rendering video..."),
+            initial_details=_("Exporting to {name}...").format(name=destination.name),
+            on_cancel=lambda: self.export_service.cancel(),
+        )
+        modal.present()
 
         def on_progress(fraction: float, cur_s: float) -> None:
-            nonlocal has_received_progress
-            if not has_received_progress:
-                has_received_progress = True
-                stop_pulse()
-
-            progress_bar.set_fraction(fraction)
             percent = int(fraction * 100)
-            progress_bar.set_text(f"{percent}%")
-            lbl_status.set_label(_("Rendering video ({percent}%)...").format(percent=percent))
-            lbl_details.set_label(_("Processed: {processed} / {total}").format(
-                processed=format_time(cur_s),
-                total=format_time(self.timeline.total_duration),
-            ))
+            modal.update_progress(
+                fraction,
+                status_text=_("Rendering video ({percent}%)...").format(percent=percent),
+                details_text=_("Processed: {processed} / {total}").format(
+                    processed=format_time(cur_s),
+                    total=format_time(self.timeline.total_duration),
+                ),
+            )
 
         def on_done(success: bool, error: str | None) -> None:
-            nonlocal can_close
-            can_close = True
-            stop_pulse()
-            spinner.stop()
-            export_dialog.set_deletable(True)
-            export_dialog.close()
+            modal.finish()
             if success:
                 self._show_toast(_("Export complete: {name}").format(name=destination.name))
                 self._open_in_default_player(destination)

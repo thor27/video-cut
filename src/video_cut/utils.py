@@ -1,7 +1,22 @@
 """Utility functions for time formatting and calculations."""
 
 import math
+import shutil
+import subprocess
+import sys
 import uuid
+
+SUBPROCESS_FLAGS: int = subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0
+
+
+def get_ffmpeg_path() -> str:
+    """Return resolved path to ffmpeg executable."""
+    return shutil.which("ffmpeg") or "ffmpeg"
+
+
+def get_ffprobe_path() -> str:
+    """Return resolved path to ffprobe executable."""
+    return shutil.which("ffprobe") or "ffprobe"
 
 
 def format_time(seconds: float, show_millis: bool = True) -> str:

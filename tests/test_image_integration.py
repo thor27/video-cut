@@ -135,10 +135,15 @@ def test_export_concatenation_with_image(tmp_path, sample_image):
         on_done=on_done,
     )
 
-    timeout = time.time() + 15
+    ctx = GLib.MainContext.default()
+    timeout = time.time() + 30
     while not done and time.time() < timeout:
-        GLib.MainContext.default().iteration(False)
-        time.sleep(0.05)
+        while ctx.pending():
+            ctx.iteration(False)
+        time.sleep(0.02)
+
+    while ctx.pending():
+        ctx.iteration(False)
 
     assert results.get("success") is True, f"Export failed: {results.get('error')}"
     assert output_file.exists()

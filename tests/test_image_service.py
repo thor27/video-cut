@@ -1,7 +1,10 @@
 """Unit tests for ImageService."""
 
 import subprocess
+import time
 from pathlib import Path
+
+from gi.repository import GLib
 
 from video_cut.services.image_service import SUPPORTED_IMAGE_EXTENSIONS, ImageService
 from video_cut.services.probe_service import ProbeService
@@ -125,3 +128,106 @@ def test_convert_image_with_soundtrack(tmp_path):
     aud_dur = ProbeService.probe_duration(video_path)
     assert aud_dur is not None
     assert abs(aud_dur - 3.5) < 0.2
+
+
+def test_convert_image_to_video_async(tmp_path):
+    img_path = tmp_path / "async_photo.png"
+    subprocess.run(
+        ["ffmpeg", "-y", "-f", "lavfi", "-i", "color=c=purple:s=320x240:d=1", "-frames:v", "1", str(img_path)],
+        check=True,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
+
+    cache_dir = tmp_path / "cache"
+    done = False
+    results = {}
+    progress_calls = []
+
+    def on_progress(fraction: float, cur_s: float):
+        progress_calls.append((fraction, cur_s))
+
+    def on_done(path: Path | None, error: Exception | None):
+        nonlocal done
+        results["path"] = path
+        results["error"] = error
+        done = True
+
+    ImageService.convert_image_to_video_async(
+        img_path,
+        cache_dir=cache_dir,
+        duration=2.0,
+        on_progress=on_progress,
+        on_done=on_done,
+    )
+
+    ctx = GLib.MainContext.default()
+    timeout = time.time() + 10.0
+    while not done and time.time() < timeout:
+        while ctx.pending():
+            ctx.iteration(False)
+        time.sleep(0.02)
+
+    assert done is True
+    assert results["error"] is None
+    assert results["path"] is not None
+    assert results["path"].exists()
+    assert len(progress_calls) > 0
+    assert progress_calls[-1][0] == 1.0
+
+    # Test calling async on already cached image triggers immediate callback
+    results_cached = {}
+    ImageService.convert_image_to_video_async(
+        img_path,
+        cache_dir=cache_dir,
+        duration=2.0,
+        on_done=lambda p, e: results_cached.update({"path": p, "error": e, "done": True}),
+    )
+    timeout = time.time() + 2.0
+    while "done" not in results_cached and time.time() < timeout:
+        while ctx.pending():
+            ctx.iteration(False)
+        time.sleep(0.01)
+
+    assert results_cached.get("path") == results["path"]
+
+
+def test_convert_image_to_video_async_cancel(tmp_path):
+    img_path = tmp_path / "cancel_photo.png"
+    subprocess.run(
+        ["ffmpeg", "-y", "-f", "lavfi", "-i", "color=c=yellow:s=640x480:d=1", "-frames:v", "1", str(img_path)],
+        check=True,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
+
+    cache_dir = tmp_path / "cache"
+    done = False
+    results = {}
+
+    def on_done(path: Path | None, error: Exception | None):
+        nonlocal done
+        results["path"] = path
+        results["error"] = error
+        done = True
+
+    cancel = ImageService.convert_image_to_video_async(
+        img_path,
+        cache_dir=cache_dir,
+        duration=10.0,
+        on_done=on_done,
+    )
+    # Cancel immediately
+    cancel()
+
+    ctx = GLib.MainContext.default()
+    timeout = time.time() + 3.0
+    while not done and time.time() < timeout:
+        while ctx.pending():
+            ctx.iteration(False)
+        time.sleep(0.02)
+
+    assert done is True
+    assert results["path"] is None
+    assert "cancelled" in str(results["error"]).lower()
+
