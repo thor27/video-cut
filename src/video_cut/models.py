@@ -23,9 +23,12 @@ class Segment:
     rotation: int = 0
     hflip: bool = False
     vflip: bool = False
+    orig_image_path: Path | None = None
 
     def __post_init__(self) -> None:
         self.source_path = Path(self.source_path)
+        if self.orig_image_path is not None:
+            self.orig_image_path = Path(self.orig_image_path)
         if self.end_time <= 0.0:
             self.end_time = self.source_duration
         self.start_time = clamp(self.start_time, 0.0, self.source_duration)
@@ -73,6 +76,7 @@ class Segment:
             rotation=self.rotation,
             hflip=self.hflip,
             vflip=self.vflip,
+            orig_image_path=self.orig_image_path,
         )
 
     def copy(self) -> Segment:
@@ -89,6 +93,7 @@ class Segment:
             rotation=self.rotation,
             hflip=self.hflip,
             vflip=self.vflip,
+            orig_image_path=self.orig_image_path,
         )
 
 
@@ -288,6 +293,7 @@ class ProjectTimeline:
         source_duration: float,
         insert_after_id: str | None = None,
         display_name: str | None = None,
+        orig_image_path: Path | str | None = None,
     ) -> Segment:
         """Add a whole video or converted image file as a new segment."""
         seg = Segment(
@@ -296,6 +302,7 @@ class ProjectTimeline:
             start_time=0.0,
             end_time=source_duration,
             display_name=display_name,
+            orig_image_path=Path(orig_image_path) if orig_image_path else None,
         )
 
         if insert_after_id:

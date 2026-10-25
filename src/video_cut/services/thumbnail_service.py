@@ -32,6 +32,7 @@ class ThumbnailService:
         self._cache: dict[str, list[tuple[float, Path]]] = {}
         # Mapping from file key to list of (timestamp, fullsize_preview_path)
         self._preview_cache: dict[str, list[tuple[float, Path]]] = {}
+        self._image_keys: set[str] = set()
         self._cache_lock = threading.Lock()
         self._completed_keys: set[str] = set()
         self._in_progress_keys: set[str] = set()
@@ -72,9 +73,10 @@ class ThumbnailService:
         """Register thumbnail for a converted image video without needing FFmpeg extraction."""
         key = self._file_key(video_path)
         with self._cache_lock:
+            self._image_keys.add(key)
             self._cache[key] = [(0.0, image_path), (duration, image_path)]
             preview_p = full_image_path if full_image_path else image_path
-            self._preview_cache[key] = [(duration / 2.0, preview_p)]
+            self._preview_cache[key] = [(0.0, preview_p), (duration, preview_p)]
             self._completed_keys.add(key)
 
     def get_preview_keyframe(
@@ -93,6 +95,12 @@ class ThumbnailService:
         video_cache_dir.mkdir(parents=True, exist_ok=True)
 
         with self._cache_lock:
+            # 1. Fast path: If this is an image-converted video, any timestamp maps to the original image!
+            if key in self._image_keys:
+                img_items = list(self._preview_cache.get(key, []))
+                if img_items and img_items[0][1].exists():
+                    return img_items[0][1]
+
             items = list(self._preview_cache.get(key, []))
 
         # Check in-memory preview cache
@@ -103,7 +111,7 @@ class ThumbnailService:
                     return best[1]
             else:
                 best = min(items, key=lambda x: abs(x[0] - target_time))
-                if best[1].exists() and abs(best[0] - target_time) < 2.0:
+                if best[1].exists():
                     return best[1]
 
         # Check disk cache: preview_keyframe.jpg or any preview_mid_*.jpg

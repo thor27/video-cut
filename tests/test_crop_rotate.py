@@ -784,5 +784,42 @@ def test_player_get_current_frame_pixbuf(tmp_path):
     ctrl.clear()
 
 
+def test_crop_rotate_dialog_orig_image_path(tmp_path):
+    orig_img = tmp_path / "orig.jpg"
+    pb = GdkPixbuf.Pixbuf.new(GdkPixbuf.Colorspace.RGB, False, 8, 1280, 720)
+    pb.savev(str(orig_img), "jpeg", ["quality"], ["90"])
+
+    seg = Segment(source_path=tmp_path / "imported_vid.mp4", source_duration=5.0, orig_image_path=orig_img)
+    parent = Gtk.Window()
+    dialog = CropRotateDialog(parent=parent, segment=seg, on_apply=lambda *a: None)
+    assert dialog.base_pixbuf is not None
+    assert dialog.base_pixbuf.get_width() == 1280
+    assert dialog.base_pixbuf.get_height() == 720
+
+
+def test_crop_rotate_dialog_player_idle_load(tmp_path):
+    from gi.repository import GLib
+
+    seg = Segment(source_path=tmp_path / "vid.mp4", source_duration=5.0)
+    parent = Gtk.Window()
+
+    mock_player = MagicMock()
+    player_pb = GdkPixbuf.Pixbuf.new(GdkPixbuf.Colorspace.RGB, False, 8, 854, 480)
+    mock_player.get_current_frame_pixbuf.return_value = player_pb
+
+    dialog = CropRotateDialog(parent=parent, segment=seg, on_apply=lambda *a: None, player=mock_player)
+    # Initially placeholder while presenting
+    assert dialog.base_pixbuf is not None
+
+    # Run main context to process GLib.idle_add callback
+    context = GLib.MainContext.default()
+    while context.pending():
+        context.iteration(False)
+
+    assert dialog.base_pixbuf is player_pb
+    assert dialog.base_pixbuf.get_width() == 854
+
+
+
 
 

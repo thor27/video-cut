@@ -5,6 +5,7 @@ from __future__ import annotations
 import io
 import subprocess
 import tempfile
+import threading
 from collections.abc import Callable
 from pathlib import Path
 from typing import Any
@@ -81,6 +82,17 @@ def get_preset_tooltip(preset: str) -> str:
     return preset
 
 
+def _load_pixbuf_fit_max(file_path: Path, max_w: int = 1920, max_h: int = 1080) -> GdkPixbuf.Pixbuf:
+    """Load image from disk, scaling down to fit max dimensions only if larger."""
+    try:
+        info, w, h = GdkPixbuf.Pixbuf.get_file_info(str(file_path))
+        if info and (w > max_w or h > max_h):
+            return GdkPixbuf.Pixbuf.new_from_file_at_scale(str(file_path), max_w, max_h, True)
+    except Exception:
+        pass
+    return GdkPixbuf.Pixbuf.new_from_file(str(file_path))
+
+
 class PreviewPicture(Gtk.Picture):
     """Subclass of Gtk.Picture that accurately tracks layout size allocations."""
 
@@ -108,6 +120,7 @@ class CropRotateDialog(Adw.Window):
         current_time: float | None = None,
         thumbnail_service: Any = None,
         initial_pixbuf: GdkPixbuf.Pixbuf | None = None,
+        player: Any = None,
     ) -> None:
         super().__init__()
         self.set_transient_for(parent)
@@ -120,6 +133,8 @@ class CropRotateDialog(Adw.Window):
         self.current_time = current_time
         self.thumbnail_service = thumbnail_service
         self.initial_pixbuf = initial_pixbuf
+        self.player = player
+        self._is_closed: bool = False
 
         # Transform state
         self.rotation: int = segment.rotation % 360
@@ -135,7 +150,7 @@ class CropRotateDialog(Adw.Window):
         self.base_pixbuf: GdkPixbuf.Pixbuf | None = None
         self._transformed_pixbuf: GdkPixbuf.Pixbuf | None = None
         self._cairo_frame_surface: cairo.ImageSurface | None = None
-        self._load_reference_frame()
+        self._bgra_ref: Any = None
 
         # Canvas geometry and rendering caches for fast 60+ FPS preview
         self._img_rect: tuple[int, int, int, int] = (0, 0, 1, 1)  # (x, y, w, h) in preview coordinates
@@ -155,14 +170,99 @@ class CropRotateDialog(Adw.Window):
         title = _("Crop & Rotate — {name}").format(name=segment.source_name)
         self.set_title(title)
 
+        # Build UI immediately (< 5ms)
         self._build_ui()
+
+        # Connect window close signal to cleanly cancel any pending async callbacks
+        self.connect("close-request", self._on_close_request)
+
+        # Load reference frame (synchronous if immediate/cached, or async with spinner)
+        self._load_reference_frame_fast_or_async()
+
+    def _on_close_request(self, *args) -> bool:
+        self._is_closed = True
+        return False
+
+    def _set_reference_pixbuf(self, pb: GdkPixbuf.Pixbuf | None) -> None:
+        """Set loaded reference pixbuf, stop spinner, and refresh preview."""
+        if getattr(self, "_is_closed", False):
+            return
+        if pb is None:
+            pb = GdkPixbuf.Pixbuf.new(GdkPixbuf.Colorspace.RGB, False, 8, 640, 360)
+            pb.fill(0x333333FF)
+
+        self.base_pixbuf = pb
+        if hasattr(self, "loading_spinner") and self.loading_spinner:
+            self.loading_spinner.stop()
+            self.loading_spinner.set_visible(False)
+
         self._update_transformed_pixbuf()
 
-    def _load_reference_frame(self) -> None:
-        """Extract or load a high-quality reference frame for the preview."""
+    def _load_reference_frame_fast_or_async(self) -> None:
+        """Fast check for cached/provided frame or async load to keep dialog presentation instantaneous."""
+        # 1. Provided directly (e.g. initial_pixbuf)
         if self.initial_pixbuf is not None:
-            self.base_pixbuf = self.initial_pixbuf
+            self._set_reference_pixbuf(self.initial_pixbuf)
             return
+
+        # 2. If player is active (cursor on segment), grab snapshot in next idle tick so window presents first
+        if self.player:
+            self.base_pixbuf = GdkPixbuf.Pixbuf.new(GdkPixbuf.Colorspace.RGB, False, 8, 640, 360)
+            self.base_pixbuf.fill(0x1E1E22FF)
+            self._update_transformed_pixbuf()
+            if hasattr(self, "loading_spinner") and self.loading_spinner:
+                self.loading_spinner.start()
+                self.loading_spinner.set_visible(True)
+
+            def _on_player_frame_idle():
+                if getattr(self, "_is_closed", False):
+                    return False
+                try:
+                    native = self.get_native()
+                    renderer = native.get_renderer() if native else None
+                    pb = self.player.get_current_frame_pixbuf(renderer)
+                    if pb:
+                        self._set_reference_pixbuf(pb)
+                        return False
+                except Exception:
+                    pass
+                self._load_async_worker()
+                return False
+
+            GLib.idle_add(_on_player_frame_idle)
+            return
+
+        # 3. Check for existing cached file or image path
+        cached_file = self._find_cached_preview_file()
+        if cached_file and cached_file.exists():
+            try:
+                pb = _load_pixbuf_fit_max(cached_file)
+                self._set_reference_pixbuf(pb)
+                return
+            except Exception:
+                pass
+
+        # 4. Nothing cached yet: show spinner and fetch in background worker
+        self.base_pixbuf = GdkPixbuf.Pixbuf.new(GdkPixbuf.Colorspace.RGB, False, 8, 640, 360)
+        self.base_pixbuf.fill(0x1E1E22FF)
+        self._update_transformed_pixbuf()
+        if hasattr(self, "loading_spinner") and self.loading_spinner:
+            self.loading_spinner.start()
+            self.loading_spinner.set_visible(True)
+        self._load_async_worker()
+
+    def _load_async_worker(self) -> None:
+        def worker() -> None:
+            pb = self._fetch_reference_frame_uncached()
+            GLib.idle_add(self._set_reference_pixbuf, pb)
+
+        threading.Thread(target=worker, daemon=True).start()
+
+    def _find_cached_preview_file(self) -> Path | None:
+        """Quickly check if a reference frame file is already known or cached on disk (< 1ms)."""
+        # Fast path 1: Image segment original path
+        if self.segment.orig_image_path and self.segment.orig_image_path.exists():
+            return self.segment.orig_image_path
 
         path = self.segment.source_path
         ext = path.suffix.lower()
@@ -173,25 +273,61 @@ class CropRotateDialog(Adw.Window):
             else (self.segment.start_time + self.segment.end_time) / 2.0
         )
 
-        # 1. Use dedicated full-size preview keyframe from ThumbnailService
+        # Fast path 2: Thumbnail service in-memory cache
+        if self.thumbnail_service:
+            try:
+                key = self.thumbnail_service._file_key(path)
+                with self.thumbnail_service._cache_lock:
+                    if key in getattr(self.thumbnail_service, "_image_keys", set()):
+                        img_items = list(self.thumbnail_service._preview_cache.get(key, []))
+                        if img_items and img_items[0][1].exists():
+                            return img_items[0][1]
+
+                    items = list(self.thumbnail_service._preview_cache.get(key, []))
+                    if items:
+                        best = min(items, key=lambda x: abs(x[0] - target_t))
+                        if best[1].exists():
+                            return best[1]
+
+                    # Also check thumbnail cache if available
+                    normal_items = list(self.thumbnail_service._cache.get(key, []))
+                    if normal_items:
+                        best_n = min(normal_items, key=lambda x: abs(x[0] - target_t))
+                        if best_n[1].exists():
+                            return best_n[1]
+            except Exception:
+                pass
+
+        # Fast path 3: If it's a still image file itself
+        if ext in (".png", ".jpg", ".jpeg", ".webp", ".bmp", ".svg") and path.exists():
+            return path
+
+        # Fast path 4: Check existing segment thumbnails
+        if self.segment.thumbnails:
+            valid = [t for t in self.segment.thumbnails if t is not None and t.exists()]
+            if valid:
+                return valid[0]
+
+        return None
+
+    def _fetch_reference_frame_uncached(self) -> GdkPixbuf.Pixbuf | None:
+        """Extract frame via ThumbnailService or FFmpeg (runs in background thread)."""
+        path = self.segment.source_path
+        target_t = (
+            self.current_time
+            if (self.current_time is not None and self.segment.start_time <= self.current_time <= self.segment.end_time)
+            else (self.segment.start_time + self.segment.end_time) / 2.0
+        )
+
         if self.thumbnail_service:
             try:
                 keyframe_p = self.thumbnail_service.get_preview_keyframe(path, target_time=target_t)
                 if keyframe_p and keyframe_p.exists():
-                    self.base_pixbuf = GdkPixbuf.Pixbuf.new_from_file(str(keyframe_p))
-                    return
+                    return _load_pixbuf_fit_max(keyframe_p)
             except Exception:
                 pass
 
-        # 2. If it's a still image file, load full original resolution directly
-        if ext in (".png", ".jpg", ".jpeg", ".webp", ".bmp", ".svg"):
-            try:
-                self.base_pixbuf = GdkPixbuf.Pixbuf.new_from_file(str(path))
-                return
-            except Exception:
-                pass
-
-        # 3. Fallback: Extract frame using FFmpeg at full size
+        # Fallback FFmpeg extraction at full size
         with tempfile.NamedTemporaryFile(suffix=".jpg", delete=False) as tmp:
             tmp_path = Path(tmp.name)
 
@@ -224,7 +360,7 @@ class CropRotateDialog(Adw.Window):
                 creationflags=SUBPROCESS_FLAGS,
             )
             if tmp_path.exists() and tmp_path.stat().st_size > 0:
-                self.base_pixbuf = GdkPixbuf.Pixbuf.new_from_file(str(tmp_path))
+                return _load_pixbuf_fit_max(tmp_path)
         except Exception:
             pass
         finally:
@@ -234,21 +370,7 @@ class CropRotateDialog(Adw.Window):
                 except OSError:
                     pass
 
-        # 4. Fallback: check segment's existing thumbnails if available
-        if self.base_pixbuf is None and self.segment.thumbnails:
-            valid = [t for t in self.segment.thumbnails if t is not None and t.exists()]
-            if valid:
-                try:
-                    self.base_pixbuf = GdkPixbuf.Pixbuf.new_from_file(str(valid[0]))
-                    return
-                except Exception:
-                    pass
-
-        # 5. Final placeholder fallback if nothing could be loaded
-        if self.base_pixbuf is None:
-            self.base_pixbuf = GdkPixbuf.Pixbuf.new(GdkPixbuf.Colorspace.RGB, False, 8, 640, 360)
-            self.base_pixbuf.fill(0x333333FF)
-
+        return None
 
     def _update_transformed_pixbuf(self) -> None:
         """Apply current rotation and flips to base_pixbuf and update the rendered frame surface."""
@@ -270,15 +392,32 @@ class CropRotateDialog(Adw.Window):
             pb = pb.flip(False)
 
         self._transformed_pixbuf = pb
-        try:
-            ok, data = pb.save_to_bufferv("png", [], [])
-            if ok:
-                self._cairo_frame_surface = cairo.ImageSurface.create_from_png(io.BytesIO(data))
-            else:
-                self._cairo_frame_surface = None
-        except Exception:
-            self._cairo_frame_surface = None
+        surf = None
 
+        # Ultra-fast numpy RGBA -> ARGB32 buffer conversion (16ms vs 226ms PNG roundtrip)
+        try:
+            import numpy as np
+
+            pb_rgba = pb.add_alpha(False, 0, 0, 0) if not pb.get_has_alpha() else pb
+            pw, ph, pstride = pb_rgba.get_width(), pb_rgba.get_height(), pb_rgba.get_rowstride()
+            arr = np.frombuffer(pb_rgba.get_pixels(), dtype=np.uint8).reshape((ph, pstride))
+            rgb_slice = arr[:, : pw * 4].reshape((ph, pw, 4))
+            bgra = np.empty((ph, pw, 4), dtype=np.uint8)
+            bgra[:, :, 0] = rgb_slice[:, :, 2]
+            bgra[:, :, 1] = rgb_slice[:, :, 1]
+            bgra[:, :, 2] = rgb_slice[:, :, 0]
+            bgra[:, :, 3] = rgb_slice[:, :, 3]
+            surf = cairo.ImageSurface.create_for_data(bgra, cairo.FORMAT_ARGB32, pw, ph, pw * 4)
+            self._bgra_ref = bgra
+        except Exception:
+            try:
+                ok, data = pb.save_to_bufferv("png", [], [])
+                if ok:
+                    surf = cairo.ImageSurface.create_from_png(io.BytesIO(data))
+            except Exception:
+                surf = None
+
+        self._cairo_frame_surface = surf
         self._base_canvas_surface = None
         self._update_readout_label()
         self._render_preview()
@@ -311,7 +450,11 @@ class CropRotateDialog(Adw.Window):
         main_box.set_margin_bottom(16)
         toolbar_view.set_content(main_box)
 
-        # Interactive Picture preview (tracks real layout allocation)
+        # Interactive Picture preview inside overlay with loading spinner
+        self.preview_overlay = Gtk.Overlay()
+        self.preview_overlay.set_vexpand(True)
+        self.preview_overlay.set_hexpand(True)
+
         self.preview_picture = PreviewPicture(on_allocate=lambda w, h: self._render_preview(w, h))
         self.preview_picture.set_vexpand(True)
         self.preview_picture.set_hexpand(True)
@@ -320,7 +463,16 @@ class CropRotateDialog(Adw.Window):
 
         # Gestures on preview picture
         self._setup_preview_gestures()
-        main_box.append(self.preview_picture)
+        self.preview_overlay.set_child(self.preview_picture)
+
+        self.loading_spinner = Gtk.Spinner()
+        self.loading_spinner.set_size_request(48, 48)
+        self.loading_spinner.set_halign(Gtk.Align.CENTER)
+        self.loading_spinner.set_valign(Gtk.Align.CENTER)
+        self.loading_spinner.set_visible(False)
+        self.preview_overlay.add_overlay(self.loading_spinner)
+
+        main_box.append(self.preview_overlay)
 
         # Controls container
         controls_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)

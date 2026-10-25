@@ -937,6 +937,7 @@ class MainWindow(Adw.ApplicationWindow):
             source_duration=meta.duration,
             insert_after_id=self.timeline.selected_segment_id if not replace else None,
             display_name=display_name,
+            orig_image_path=full_image_path or orig_image_path,
         )
 
         if orig_image_path:
@@ -1070,13 +1071,6 @@ class MainWindow(Adw.ApplicationWindow):
             seg_global_start - 0.05 <= self.current_global_time <= seg_global_end + 0.05
         )
 
-        player_frame = None
-        if is_cursor_in_segment:
-            try:
-                player_frame = self.player.get_current_frame_pixbuf(self.get_renderer())
-            except Exception:
-                player_frame = None
-
         def on_apply(crop, rotation, hflip, vflip) -> None:
             self.timeline.save_state(self.current_global_time)
             seg.crop = crop
@@ -1094,7 +1088,7 @@ class MainWindow(Adw.ApplicationWindow):
             on_apply=on_apply,
             current_time=self.current_global_time,
             thumbnail_service=self.thumbnail_service,
-            initial_pixbuf=player_frame,
+            player=self.player if is_cursor_in_segment else None,
         )
         dialog.present()
 
