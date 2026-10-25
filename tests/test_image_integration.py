@@ -38,17 +38,28 @@ def sample_image(tmp_path):
 
 def test_load_image_initial_and_add(sample_image):
     app = Adw.Application(application_id="io.github.thomaz.videocut.test.image")
+    test_error = None
 
     def run_test(app):
+        nonlocal test_error
         win = None
         try:
             win = MainWindow(application=app)
             assert win.player_stack.get_visible_child_name() == "empty"
 
+            def wait_for(condition_fn, timeout=10.0):
+                ctx = GLib.MainContext.default()
+                t_end = time.time() + timeout
+                while not condition_fn() and time.time() < t_end:
+                    while ctx.pending():
+                        ctx.iteration(False)
+                    time.sleep(0.02)
+                assert condition_fn()
+
             # 1. Load image as initial media
             win.load_video(sample_image, replace=True)
+            wait_for(lambda: len(win.timeline.segments) == 1)
             assert win.player_stack.get_visible_child_name() == "player"
-            assert len(win.timeline.segments) == 1
 
             seg = win.timeline.segments[0]
             assert abs(seg.duration - 1.0) < 0.05
@@ -56,11 +67,12 @@ def test_load_image_initial_and_add(sample_image):
             assert seg.display_name == sample_image.name
             assert seg.source_name == sample_image.name
             assert seg.stem == sample_image.stem
-            assert seg.thumbnails == [sample_image]
+            assert seg.thumbnails and (seg.thumbnails == [sample_image] or seg.thumbnails[0].exists())
             assert win.window_title.get_title() == sample_image.name
 
             # Verify export initial filename uses original image stem instead of hex hash
             saved_initial_name = None
+
             def mock_save(dlg_self, parent, cancellable, callback):
                 nonlocal saved_initial_name
                 saved_initial_name = dlg_self.get_initial_name()
@@ -82,9 +94,11 @@ def test_load_image_initial_and_add(sample_image):
 
                 # 3. Add another image
                 win.load_video(sample_image, replace=False)
-                assert len(win.timeline.segments) == 3
+                wait_for(lambda: len(win.timeline.segments) == 3)
                 assert abs(win.timeline.total_duration - 7.0) < 0.1
                 assert win.timeline.segments[2].display_name == sample_image.name
+        except Exception as exc:
+            test_error = exc
         finally:
             if win:
                 win.close()
@@ -92,6 +106,9 @@ def test_load_image_initial_and_add(sample_image):
 
     app.connect("activate", run_test)
     app.run(["test"])
+    if test_error:
+        raise test_error
+
 
 
 def test_export_concatenation_with_image(tmp_path, sample_image):
@@ -164,11 +181,23 @@ def test_load_image_with_soundtrack_and_duration(tmp_path, sample_image):
     )
 
     app = Adw.Application(application_id="io.github.thomaz.videocut.test.image.soundtrack")
+    test_error = None
 
     def run_test(app):
+        nonlocal test_error
         win = None
         try:
             win = MainWindow(application=app)
+
+            def wait_for(condition_fn, timeout=10.0):
+                ctx = GLib.MainContext.default()
+                t_end = time.time() + timeout
+                while not condition_fn() and time.time() < t_end:
+                    while ctx.pending():
+                        ctx.iteration(False)
+                    time.sleep(0.02)
+                assert condition_fn()
+
             # Load image with 4.5s duration and audio slice starting at 2.0s
             win.load_video(
                 sample_image,
@@ -177,7 +206,7 @@ def test_load_image_with_soundtrack_and_duration(tmp_path, sample_image):
                 audio_path=audio_file,
                 audio_start_time=2.0,
             )
-            assert len(win.timeline.segments) == 1
+            wait_for(lambda: len(win.timeline.segments) == 1)
             seg = win.timeline.segments[0]
             assert abs(seg.duration - 4.5) < 0.1
             assert abs(win.timeline.total_duration - 4.5) < 0.1
@@ -190,6 +219,8 @@ def test_load_image_with_soundtrack_and_duration(tmp_path, sample_image):
             aud_dur = ProbeService.probe_duration(seg.source_path)
             assert aud_dur is not None
             assert abs(aud_dur - 4.5) < 0.2
+        except Exception as exc:
+            test_error = exc
         finally:
             if win:
                 win.close()
@@ -197,4 +228,7 @@ def test_load_image_with_soundtrack_and_duration(tmp_path, sample_image):
 
     app.connect("activate", run_test)
     app.run(["test"])
+    if test_error:
+        raise test_error
+
 

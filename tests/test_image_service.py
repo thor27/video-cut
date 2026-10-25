@@ -231,3 +231,68 @@ def test_convert_image_to_video_async_cancel(tmp_path):
     assert results["path"] is None
     assert "cancelled" in str(results["error"]).lower()
 
+
+def test_create_thumbnail(tmp_path):
+    img_path = tmp_path / "big_photo.png"
+    subprocess.run(
+        ["ffmpeg", "-y", "-f", "lavfi", "-i", "color=c=cyan:s=1920x1080:d=1", "-frames:v", "1", str(img_path)],
+        check=True,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
+
+    thumb_path = tmp_path / "thumb.jpg"
+    res = ImageService.create_thumbnail(img_path, thumb_path, max_size=(320, 180))
+    assert res == thumb_path
+    assert thumb_path.exists()
+    assert thumb_path.stat().st_size > 0
+
+    # Test caching: returns existing dst_path without re-creating
+    mtime = thumb_path.stat().st_mtime
+    res2 = ImageService.create_thumbnail(img_path, thumb_path, max_size=(320, 180))
+    assert res2 == thumb_path
+    assert thumb_path.stat().st_mtime == mtime
+
+
+def test_convert_image_to_video_async_with_metadata_and_thumb(tmp_path):
+    img_path = tmp_path / "meta_photo.png"
+    subprocess.run(
+        ["ffmpeg", "-y", "-f", "lavfi", "-i", "color=c=red:s=640x360:d=1", "-frames:v", "1", str(img_path)],
+        check=True,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
+
+    cache_dir = tmp_path / "cache"
+    done = False
+    results = {}
+
+    def on_done(path, error, meta, thumb_p):
+        nonlocal done
+        results["path"] = path
+        results["error"] = error
+        results["meta"] = meta
+        results["thumb"] = thumb_p
+        done = True
+
+    ImageService.convert_image_to_video_async(
+        img_path,
+        cache_dir=cache_dir,
+        duration=1.0,
+        on_done=on_done,
+    )
+
+    ctx = GLib.MainContext.default()
+    timeout = time.time() + 10.0
+    while not done and time.time() < timeout:
+        while ctx.pending():
+            ctx.iteration(False)
+        time.sleep(0.02)
+
+    assert done is True
+    assert results["error"] is None
+    assert results["path"] is not None and results["path"].exists()
+    assert results["meta"] is not None
+    assert abs(results["meta"].duration - 1.0) < 0.1
+    assert results["thumb"] is not None and results["thumb"].exists()
+

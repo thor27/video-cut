@@ -21,7 +21,7 @@ from .player import VideoPlayerController
 from .progress_modal import ProgressModal
 from .services.export_service import ExportService
 from .services.image_service import ImageService
-from .services.probe_service import ProbeService
+from .services.probe_service import ProbeService, VideoMetadata
 from .services.thumbnail_service import ThumbnailService
 from .timeline_widget import TimelineWidget
 from .utils import clamp, format_time
@@ -655,22 +655,30 @@ class MainWindow(Adw.ApplicationWindow):
             return
 
         # Sequential batch import
-        imported_count = 0
-        for idx, media_path in enumerate(valid_paths):
+        def import_next(idx: int, count: int) -> None:
+            if idx >= len(valid_paths):
+                if count == 1:
+                    self._show_toast(_("Added '{name}' to timeline").format(name=valid_paths[0].name))
+                elif count > 1:
+                    self._show_toast(_("Added {count} media clips to timeline").format(count=count))
+                return
+
+            media_path = valid_paths[idx]
             is_first = (idx == 0 and replace)
+
+            def on_item_done():
+                import_next(idx + 1, count + 1)
+
             try:
                 if ImageService.is_image(media_path):
-                    self.load_video(media_path, replace=is_first, duration=3.0)
+                    self.load_video(media_path, replace=is_first, duration=3.0, on_done=on_item_done)
                 else:
-                    self.load_video(media_path, replace=is_first)
-                imported_count += 1
+                    self.load_video(media_path, replace=is_first, on_done=on_item_done)
             except Exception as e:
                 print(f"Error importing {media_path}: {e}")
+                import_next(idx + 1, count)
 
-        if imported_count == 1:
-            self._show_toast(_("Added '{name}' to timeline").format(name=valid_paths[0].name))
-        elif imported_count > 1:
-            self._show_toast(_("Added {count} media clips to timeline").format(count=imported_count))
+        import_next(0, 0)
 
     def _setup_window_drag_and_drop(self) -> None:
         """Enable dragging and dropping video/image files onto the window."""
@@ -755,6 +763,7 @@ class MainWindow(Adw.ApplicationWindow):
         duration: float = 1.0,
         audio_path: Path | str | None = None,
         audio_start_time: float = 0.0,
+        on_done: Callable[[], None] | None = None,
     ) -> None:
         """Inspect media metadata and add it to the timeline."""
         if ImageService.is_image(video_path):
@@ -764,6 +773,7 @@ class MainWindow(Adw.ApplicationWindow):
                 duration=duration,
                 audio_path=audio_path,
                 audio_start_time=audio_start_time,
+                on_done_callback=on_done,
             )
             return
 
@@ -773,6 +783,8 @@ class MainWindow(Adw.ApplicationWindow):
             orig_image_path=None,
             display_name=None,
         )
+        if on_done:
+            on_done()
 
     def _load_image_as_video(
         self,
@@ -781,6 +793,7 @@ class MainWindow(Adw.ApplicationWindow):
         duration: float = 1.0,
         audio_path: Path | str | None = None,
         audio_start_time: float = 0.0,
+        on_done_callback: Callable[[], None] | None = None,
     ) -> None:
         """Convert image to video asynchronously with real progress reporting."""
         display_name = image_path.name
@@ -801,14 +814,22 @@ class MainWindow(Adw.ApplicationWindow):
                     audio_path=audio_path,
                     audio_start_time=audio_start_time,
                 )
+                thumb_path = ImageService.create_thumbnail(
+                    image_path=image_path,
+                    thumb_path=converted_video.with_suffix(".thumb.jpg"),
+                )
                 self._finish_load_video(
                     video_path=converted_video,
                     replace=replace,
-                    orig_image_path=image_path,
+                    orig_image_path=thumb_path or image_path,
                     display_name=display_name,
                 )
+                if on_done_callback:
+                    on_done_callback()
             except Exception as e:
                 self._show_toast(_("Failed to convert image: {error}").format(error=e))
+                if on_done_callback:
+                    on_done_callback()
             return
 
         cancel_fn: Callable[[], None] | None = None
@@ -824,28 +845,58 @@ class MainWindow(Adw.ApplicationWindow):
 
         def on_progress(fraction: float, cur_s: float) -> None:
             percent = int(fraction * 100)
-            modal.update_progress(
-                fraction,
-                status_text=_("Importing image ({percent}%)...").format(percent=percent),
-                details_text=_("Converting frame: {processed} / {total}").format(
-                    processed=format_time(cur_s),
-                    total=format_time(duration),
-                ),
-            )
+            if percent >= 100:
+                modal.update_progress(
+                    1.0,
+                    status_text=_("Finalizing clip..."),
+                    details_text=_("Preparing timeline and media player..."),
+                )
+            else:
+                modal.update_progress(
+                    fraction,
+                    status_text=_("Importing image ({percent}%)...").format(percent=percent),
+                    details_text=_("Converting frame: {processed} / {total}").format(
+                        processed=format_time(cur_s),
+                        total=format_time(duration),
+                    ),
+                )
 
-        def on_done(converted_video: Path | None, error: Exception | None) -> None:
-            modal.finish()
+        def on_done(
+            converted_video: Path | None,
+            error: Exception | None,
+            meta: VideoMetadata | None = None,
+            thumb_path: Path | None = None,
+        ) -> None:
             if error or not converted_video:
+                modal.finish()
                 if str(error) != "Conversion cancelled":
                     self._show_toast(_("Failed to convert image: {error}").format(error=error or _("Unknown error")))
+                if on_done_callback:
+                    on_done_callback()
                 return
 
-            self._finish_load_video(
-                video_path=converted_video,
-                replace=replace,
-                orig_image_path=image_path,
-                display_name=display_name,
+            modal.update_progress(
+                1.0,
+                status_text=_("Finalizing clip..."),
+                details_text=_("Preparing timeline and media player..."),
             )
+
+            try:
+                self._finish_load_video(
+                    video_path=converted_video,
+                    replace=replace,
+                    orig_image_path=thumb_path or image_path,
+                    display_name=display_name,
+                    preprobed_meta=meta,
+                )
+            finally:
+                def _do_finish():
+                    modal.finish()
+                    if on_done_callback:
+                        on_done_callback()
+                    return False
+
+                GLib.idle_add(_do_finish)
 
         cancel_fn = ImageService.convert_image_to_video_async(
             image_path=image_path,
@@ -863,9 +914,10 @@ class MainWindow(Adw.ApplicationWindow):
         replace: bool = True,
         orig_image_path: Path | None = None,
         display_name: str | None = None,
+        preprobed_meta: VideoMetadata | None = None,
     ) -> None:
         """Inspect media metadata, add to timeline, and start thumbnail generation."""
-        meta = ProbeService.probe(video_path)
+        meta = preprobed_meta if preprobed_meta is not None else ProbeService.probe(video_path)
         if not meta or meta.duration <= 0:
             self._show_toast(_("Failed to load media: invalid or unsupported file"))
             return

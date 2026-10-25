@@ -11,6 +11,7 @@ from pathlib import Path
 from gi.repository import GLib
 
 from ..utils import SUBPROCESS_FLAGS, get_ffmpeg_path
+from .probe_service import ProbeService, VideoMetadata
 
 SUPPORTED_IMAGE_EXTENSIONS: set[str] = {
     ".png",
@@ -225,6 +226,53 @@ class ImageService:
         return out_path
 
     @classmethod
+    def create_thumbnail(
+        cls,
+        image_path: Path | str,
+        thumb_path: Path | str | None = None,
+        max_size: tuple[int, int] = (320, 180),
+    ) -> Path:
+        """Generate a fast, downscaled thumbnail JPEG for an image file."""
+        src_path = Path(image_path)
+        if thumb_path is None:
+            thumb_path = src_path.with_suffix(".thumb.jpg")
+        dst_path = Path(thumb_path)
+        if dst_path.exists() and dst_path.stat().st_size > 0:
+            return dst_path
+
+        try:
+            from PIL import Image
+
+            with Image.open(src_path) as im:
+                im.thumbnail(max_size)
+                im.convert("RGB").save(dst_path, "JPEG", quality=85)
+            return dst_path
+        except Exception:
+            try:
+                ffmpeg_bin = get_ffmpeg_path()
+                cmd = [
+                    ffmpeg_bin,
+                    "-y",
+                    "-i",
+                    str(src_path),
+                    "-vf",
+                    f"scale='min({max_size[0]},iw)':'min({max_size[1]},ih)':force_original_aspect_ratio=decrease",
+                    "-vframes",
+                    "1",
+                    str(dst_path),
+                ]
+                subprocess.run(
+                    cmd,
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                    check=True,
+                    creationflags=SUBPROCESS_FLAGS,
+                )
+                return dst_path
+            except Exception:
+                return src_path
+
+    @classmethod
     def convert_image_to_video_async(
         cls,
         image_path: Path | str,
@@ -233,7 +281,7 @@ class ImageService:
         audio_path: Path | str | None = None,
         audio_start_time: float = 0.0,
         on_progress: Callable[[float, float], None] | None = None,
-        on_done: Callable[[Path | None, Exception | None], None] | None = None,
+        on_done: Callable[..., None] | None = None,
     ) -> Callable[[], None]:
         """Asynchronously convert an image to video with real progress reporting and cancellation support.
 
@@ -249,6 +297,32 @@ class ImageService:
 
         cancelled = False
         process: subprocess.Popen | None = None
+
+        def _notify_done(
+            p: Path | None,
+            err: Exception | None,
+            meta: VideoMetadata | None = None,
+            thumb_p: Path | None = None,
+        ) -> None:
+            if not on_done:
+                return
+            try:
+                import inspect
+
+                sig = inspect.signature(on_done)
+                has_var = any(
+                    param.kind in (inspect.Parameter.VAR_POSITIONAL, inspect.Parameter.VAR_KEYWORD)
+                    for param in sig.parameters.values()
+                )
+                if has_var or len(sig.parameters) >= 4:
+                    on_done(p, err, meta, thumb_p)
+                else:
+                    on_done(p, err)
+            except Exception:
+                try:
+                    on_done(p, err, meta, thumb_p)
+                except TypeError:
+                    on_done(p, err)
 
         def cancel() -> None:
             nonlocal cancelled, process
@@ -266,10 +340,12 @@ class ImageService:
 
         # If already cached, notify immediately on idle loop
         if out_path.exists() and out_path.stat().st_size > 0:
+            thumb_path = cls.create_thumbnail(img_path, out_path.with_suffix(".thumb.jpg"))
+            meta = ProbeService.probe(out_path)
             if on_progress:
                 GLib.idle_add(on_progress, 1.0, duration)
             if on_done:
-                GLib.idle_add(on_done, out_path, None)
+                GLib.idle_add(_notify_done, out_path, None, meta, thumb_path)
             return cancel
 
         def worker() -> None:
@@ -305,7 +381,7 @@ class ImageService:
                             except OSError:
                                 pass
                         if on_done:
-                            GLib.idle_add(on_done, None, RuntimeError("Conversion cancelled"))
+                            GLib.idle_add(_notify_done, None, RuntimeError("Conversion cancelled"), None, None)
                         return
 
                     line = process.stdout.readline() if process.stdout else ""
@@ -324,10 +400,12 @@ class ImageService:
                     return
 
                 if rc == 0:
+                    thumb_path = cls.create_thumbnail(img_path, out_path.with_suffix(".thumb.jpg"))
+                    meta = ProbeService.probe(out_path)
                     if on_progress:
                         GLib.idle_add(on_progress, 1.0, duration)
                     if on_done:
-                        GLib.idle_add(on_done, out_path, None)
+                        GLib.idle_add(_notify_done, out_path, None, meta, thumb_path)
                 else:
                     if out_path.exists():
                         try:
@@ -336,9 +414,11 @@ class ImageService:
                             pass
                     if on_done:
                         GLib.idle_add(
-                            on_done,
+                            _notify_done,
                             None,
                             RuntimeError(f"FFmpeg conversion failed with code {rc}"),
+                            None,
+                            None,
                         )
             except Exception as exc:
                 if out_path.exists():
@@ -347,8 +427,9 @@ class ImageService:
                     except OSError:
                         pass
                 if on_done:
-                    GLib.idle_add(on_done, None, exc)
+                    GLib.idle_add(_notify_done, None, exc, None, None)
 
         thread = threading.Thread(target=worker, daemon=True)
         thread.start()
         return cancel
+
