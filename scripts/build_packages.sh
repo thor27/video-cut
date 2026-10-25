@@ -20,22 +20,24 @@ Usage:
   ./scripts/build_packages.sh [options]
 
 Options:
-  --all         Build all distribution packages (DEB, AppImage, Snap, Source)
+  --all         Build all distribution packages (DEB, AppImage, Snap, Flatpak, Source)
   --deb         Build only Debian (.deb) package
   --appimage    Build only AppImage (.AppImage) package
   --snap        Build only Snap (.snap) package
+  --flatpak     Build/validate Flatpak package
   --source      Build source tarball and zip archives
   --clean       Clean build/ and dist/ directories
   -h, --help    Show this help message
 
 If no option is provided, DEB, AppImage, and Source archives will be built by default,
-and Snapcraft configuration will be validated.
+and Snapcraft and Flatpak configurations will be validated.
 EOF
 }
 
 DO_DEB=0
 DO_APPIMAGE=0
 DO_SNAP=0
+DO_FLATPAK=0
 DO_SOURCE=0
 DO_CLEAN=0
 
@@ -43,6 +45,7 @@ if [ $# -eq 0 ]; then
     DO_DEB=1
     DO_APPIMAGE=1
     DO_SNAP=1
+    DO_FLATPAK=1
     DO_SOURCE=1
 else
     while [ $# -gt 0 ]; do
@@ -51,6 +54,7 @@ else
                 DO_DEB=1
                 DO_APPIMAGE=1
                 DO_SNAP=1
+                DO_FLATPAK=1
                 DO_SOURCE=1
                 ;;
             --deb)
@@ -61,6 +65,9 @@ else
                 ;;
             --snap)
                 DO_SNAP=1
+                ;;
+            --flatpak)
+                DO_FLATPAK=1
                 ;;
             --source)
                 DO_SOURCE=1
@@ -86,7 +93,7 @@ if [ "$DO_CLEAN" -eq 1 ]; then
     echo "==> Cleaning build and dist directories..."
     rm -rf "${REPO_ROOT}/build" "${REPO_ROOT}/dist"
     echo "==> Clean complete."
-    if [ "$DO_DEB" -eq 0 ] && [ "$DO_APPIMAGE" -eq 0 ] && [ "$DO_SNAP" -eq 0 ]; then
+    if [ "$DO_DEB" -eq 0 ] && [ "$DO_APPIMAGE" -eq 0 ] && [ "$DO_SNAP" -eq 0 ] && [ "$DO_FLATPAK" -eq 0 ]; then
         exit 0
     fi
 fi
@@ -113,6 +120,12 @@ fi
 if [ "$DO_SNAP" -eq 1 ]; then
     echo ""
     "${SCRIPTS_DIR}/build_snap.sh"
+fi
+
+# 4. Flatpak Package
+if [ "$DO_FLATPAK" -eq 1 ]; then
+    echo ""
+    "${SCRIPTS_DIR}/build_flatpak.sh"
 fi
 
 # 4. Source Archives

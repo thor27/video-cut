@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Copyright 2026 Thomaz Reis <thor27@gmail.com> -->
+<component type="desktop-application">
+  <id>io.github.thomaz.videocut</id>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>GPL-3.0-or-later</project_license>
+  <name>Video Cut</name>
+  <summary>Fast, lightweight video editor to cut, merge, crop, and rotate clips</summary>
+
+  <description>
+    <p>
+      Video Cut is an easy-to-use, fast, and lightweight video editor inspired by macOS
+      QuickTime and Preview. It lets you cut and merge videos, add images with audio
+      soundtracks, crop, and rotate clips on an intuitive filmstrip timeline with
+      multi-format export.
+    </p>
+    <p>Key highlights include:</p>
+    <ul>
+      <li>Frame-accurate video cutting, slicing, and trimming</li>
+      <li>Merge multiple videos and images into a single timeline</li>
+      <li>Interactive crop tool with aspect ratio presets (16:9, 9:16, 1:1, 4:3, 3:4, 21:9, 9:21)</li>
+      <li>Rotate (90° CW/CCW) and flip (horizontal/vertical) clips</li>
+      <li>Import photos and graphics with customizable duration and optional background soundtrack</li>
+      <li>Drag-and-drop segment reordering with smooth undo and redo history</li>
+      <li>Desktop clipboard copy &amp; paste integration for clips and images</li>
+      <li>Fast export with standard MP4 or advanced options (containers, codecs, CRF quality, speed presets)</li>
+    </ul>
+  </description>
+
+  <launchable type="desktop-id">io.github.thomaz.videocut.desktop</launchable>
+
+  <developer id="io.github.thomaz">
+    <name>Thomaz Reis</name>
+  </developer>
+
+  <url type="homepage">https://github.com/thor27/video-cut</url>
+  <url type="bugtracker">https://github.com/thor27/video-cut/issues</url>
+  <url type="vcs-browser">https://github.com/thor27/video-cut</url>
+
+  <screenshots>
+    <screenshot type="default">
+      <caption>Main application window with multi-segment filmstrip timeline</caption>
+      <image type="source">https://raw.githubusercontent.com/thor27/video-cut/v0.2.0/screenshot.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>Crop and rotate dialog with aspect ratio presets and rule-of-thirds grid</caption>
+      <image type="source">https://raw.githubusercontent.com/thor27/video-cut/243deffe0a548f4c837a8a9a31e2132f25888b46/screenshot_crop_rotate.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>Image segment import dialog with duration presets and soundtrack audio</caption>
+      <image type="source">https://raw.githubusercontent.com/thor27/video-cut/243deffe0a548f4c837a8a9a31e2132f25888b46/screenshot_image_import.png</image>
+    </screenshot>
+  </screenshots>
+
+  <releases>
+    <release version="0.2.0" date="2026-10-24">
+      <url type="details">https://github.com/thor27/video-cut/releases/tag/v0.2.0</url>
+      <description>
+        <p>Highlights of version 0.2.0:</p>
+        <ul>
+          <li>Desktop Drag &amp; Drop: drag videos and photos directly from file managers into the editor</li>
+          <li>Clipboard integration: copy and paste video clips and image files directly across apps</li>
+          <li>Crop &amp; Rotate enhancements: added 3:4 and 9:21 presets with auto-inversion upon rotation</li>
+          <li>Dedicated fullscreen mode toggle button and keyboard shortcut (F11)</li>
+          <li>Export redesign with prominent primary action and advanced settings popover</li>
+          <li>Image import duration presets (1s, 3s, 5s, 10s) and preserved source image stems</li>
+          <li>Audio and playback continuity improvements across segment transitions</li>
+        </ul>
+      </description>
+    </release>
+    <release version="0.1.1" date="2026-10-19">
+      <url type="details">https://github.com/thor27/video-cut/releases/tag/v0.1.1</url>
+      <description>
+        <p>Bug fixes and usability refinements across Linux desktop environments and packages.</p>
+      </description>
+    </release>
+  </releases>
+
+  <branding>
+    <color type="primary" scheme_preference="light">#e66100</color>
+    <color type="primary" scheme_preference="dark">#ff7800</color>
+  </branding>
+
+  <content_rating type="oars-1.1" />
+
+  <provides>
+    <binary>video-cut</binary>
+  </provides>
+</component>

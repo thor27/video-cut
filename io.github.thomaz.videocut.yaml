@@ -1,0 +1,55 @@
+app-id: io.github.thomaz.videocut
+runtime: org.gnome.Platform
+runtime-version: '49'
+sdk: org.gnome.Sdk
+command: video-cut
+
+finish-args:
+  # Graphical display (Wayland with X11 fallback)
+  - --socket=wayland
+  - --socket=fallback-x11
+  # Audio playback
+  - --socket=pulseaudio
+  # Hardware-accelerated graphics and video decoding
+  - --device=dri
+  # Access to files across system
+  - --filesystem=host
+  - --filesystem=xdg-run/gvfs
+  # Inter-process communication
+  - --share=ipc
+
+cleanup:
+  - /include
+  - /lib/pkgconfig
+  - /man
+  - /share/man
+  - /share/gtk-doc
+  - '*.la'
+  - '*.a'
+
+modules:
+  - name: video-cut
+    buildsystem: simple
+    build-commands:
+      # Install Python package into /app prefix
+      - python3 -m pip install --prefix=/app --no-deps --no-build-isolation .
+      # Install desktop entry
+      - install -Dm644 src/video_cut/resources/io.github.thomaz.videocut.desktop -t /app/share/applications/
+      # Install AppStream metainfo
+      - install -Dm644 io.github.thomaz.videocut.metainfo.xml -t /app/share/metainfo/
+      # Install scalable application icon
+      - install -Dm644 src/video_cut/resources/io.github.thomaz.videocut.svg /app/share/icons/hicolor/scalable/apps/io.github.thomaz.videocut.svg
+      # Install symbolic action icon for split button
+      - install -Dm644 src/video_cut/resources/hicolor/scalable/actions/video-split-symbolic.svg /app/share/icons/hicolor/scalable/actions/video-split-symbolic.svg
+      # Install sized PNG application icons
+      - install -Dm644 src/video_cut/resources/icon_16.png /app/share/icons/hicolor/16x16/apps/io.github.thomaz.videocut.png
+      - install -Dm644 src/video_cut/resources/icon_24.png /app/share/icons/hicolor/24x24/apps/io.github.thomaz.videocut.png
+      - install -Dm644 src/video_cut/resources/icon_32.png /app/share/icons/hicolor/32x32/apps/io.github.thomaz.videocut.png
+      - install -Dm644 src/video_cut/resources/icon_48.png /app/share/icons/hicolor/48x48/apps/io.github.thomaz.videocut.png
+      - install -Dm644 src/video_cut/resources/icon_64.png /app/share/icons/hicolor/64x64/apps/io.github.thomaz.videocut.png
+      - install -Dm644 src/video_cut/resources/icon_128.png /app/share/icons/hicolor/128x128/apps/io.github.thomaz.videocut.png
+      - install -Dm644 src/video_cut/resources/icon_256.png /app/share/icons/hicolor/256x256/apps/io.github.thomaz.videocut.png
+      - install -Dm644 src/video_cut/resources/icon_512.png /app/share/icons/hicolor/512x512/apps/io.github.thomaz.videocut.png
+    sources:
+      - type: dir
+        path: .

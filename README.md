@@ -114,23 +114,25 @@ pytest tests/
 Build distribution packages directly using the scripts in `scripts/`:
 
 ```bash
-# Build both DEB and AppImage (and validate Snapcraft)
+# Build DEB, AppImage, and validate Snap and Flatpak
 ./scripts/build_packages.sh
 
 # Or build individually:
 ./scripts/build_deb.sh        # Builds dist/video-cut_*.deb
 ./scripts/build_appimage.sh   # Builds dist/VideoCut-*.AppImage
 ./scripts/build_snap.sh       # Builds dist/video-cut_*.snap (requires snapcraft)
+./scripts/build_flatpak.sh    # Builds dist/VideoCut-*.flatpak (requires flatpak-builder)
 ```
 
 Generated packages are placed in the `dist/` directory:
 - **Debian Package (`.deb`)**: Install via `sudo apt install ./dist/video-cut_*.deb`
 - **AppImage (`.AppImage`)**: Standalone binary `./dist/VideoCut-*.AppImage`
 - **Snap Package (`.snap`)**: Install locally via `sudo snap install --dangerous ./dist/video-cut_*.snap`
+- **Flatpak (`.flatpak`)**: Install locally via `flatpak install --user ./dist/VideoCut-*.flatpak` (see [FLATHUB_PUBLISHING.md](FLATHUB_PUBLISHING.md) for Flathub guide)
 
 #### Versioning
 
-Video Cut uses a single source of truth for versioning defined in [`src/video_cut/__init__.py`](src/video_cut/__init__.py). Python packaging metadata (`pyproject.toml`), Snapcraft (`snap/snapcraft.yaml`), and all packaging scripts automatically adopt this version.
+Video Cut uses a single source of truth for versioning defined in [`src/video_cut/__init__.py`](src/video_cut/__init__.py). Python packaging metadata (`pyproject.toml`), AppStream MetaInfo (`io.github.thomaz.videocut.metainfo.xml`), Snapcraft (`snap/snapcraft.yaml`), and all packaging scripts automatically adopt this version.
 
 ```bash
 ./scripts/set_version.sh --show    # Display current version
