@@ -639,4 +639,51 @@ def test_fixed_proportion_growth_stops_when_one_dimension_hits_boundary():
     assert abs(nw / nh - 0.75) < 1e-4
 
 
+def test_crop_rotate_dialog_reuses_existing_thumbnails(tmp_path):
+    # Create fake thumb
+    thumb_path = tmp_path / "cached_thumb.jpg"
+    thumb_pb = GdkPixbuf.Pixbuf.new(GdkPixbuf.Colorspace.RGB, False, 8, 960, 540)
+    thumb_pb.fill(0x123456FF)
+    thumb_pb.savev(str(thumb_path), "jpeg", ["quality"], ["90"])
+
+    parent = Gtk.Window()
+    # Provide video path that does NOT exist to verify it uses the thumbnail directly
+    seg = Segment(source_path=tmp_path / "nonexistent.mp4", source_duration=10.0)
+    seg.thumbnails = [thumb_path]
+
+    dialog = CropRotateDialog(parent=parent, segment=seg, on_apply=lambda *a: None)
+    assert dialog.base_pixbuf is not None
+    assert dialog.base_pixbuf.get_width() == 960
+    assert dialog.base_pixbuf.get_height() == 540
+
+
+def test_crop_rotate_dialog_thumbnail_service_closest_timestamp(tmp_path):
+    # Create two thumbnails at different timestamps
+    thumb1 = tmp_path / "thumb_0s.jpg"
+    thumb2 = tmp_path / "thumb_5s.jpg"
+    GdkPixbuf.Pixbuf.new(GdkPixbuf.Colorspace.RGB, False, 8, 640, 360).savev(str(thumb1), "jpeg", ["quality"], ["90"])
+    GdkPixbuf.Pixbuf.new(GdkPixbuf.Colorspace.RGB, False, 8, 640, 360).savev(str(thumb2), "jpeg", ["quality"], ["90"])
+
+    from video_cut.services.thumbnail_service import ThumbnailService
+    ts_service = ThumbnailService(cache_dir=tmp_path / "cache")
+    video_path = tmp_path / "sample.mp4"
+    key = ts_service._file_key(video_path)
+    with ts_service._cache_lock:
+        ts_service._cache[key] = [(0.0, thumb1), (5.0, thumb2)]
+
+    parent = Gtk.Window()
+    seg = Segment(source_path=video_path, source_duration=10.0)
+
+    # When current_time is 4.8s, it should pick thumb2 (5.0s)
+    dialog = CropRotateDialog(
+        parent=parent,
+        segment=seg,
+        on_apply=lambda *a: None,
+        current_time=4.8,
+        thumbnail_service=ts_service,
+    )
+    assert dialog.base_pixbuf is not None
+    assert dialog.base_pixbuf.get_width() == 640
+
+
 

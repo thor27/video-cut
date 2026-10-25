@@ -15,6 +15,8 @@ import gi
 gi.require_version("GLib", "2.0")
 from gi.repository import GLib
 
+from ..utils import SUBPROCESS_FLAGS, get_ffmpeg_path
+
 
 class ThumbnailService:
     """Manages asynchronous extraction and caching of video thumbnails."""
@@ -168,8 +170,9 @@ class ThumbnailService:
             ts_ms = int(round(target_time * 1000))
             out_p = video_cache_dir / f"thumb_exact_{ts_ms}.jpg"
             if not out_p.exists():
+                vf = "scale='min(960,iw)':'min(540,ih)':force_original_aspect_ratio=decrease,scale=trunc(iw/2)*2:trunc(ih/2)*2"
                 cmd = [
-                    "ffmpeg",
+                    get_ffmpeg_path(),
                     "-y",
                     "-nostdin",
                     "-ss",
@@ -182,13 +185,19 @@ class ThumbnailService:
                     "-frames:v",
                     "1",
                     "-vf",
-                    "scale=160:90:force_original_aspect_ratio=decrease,pad=160:90:(ow-iw)/2:(oh-ih)/2",
+                    vf,
                     "-q:v",
-                    "3",
+                    "2",
                     str(out_p),
                 ]
                 try:
-                    subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True)
+                    subprocess.run(
+                        cmd,
+                        stdout=subprocess.DEVNULL,
+                        stderr=subprocess.DEVNULL,
+                        check=True,
+                        creationflags=SUBPROCESS_FLAGS,
+                    )
                 except Exception:
                     pass
 
@@ -268,7 +277,7 @@ class ThumbnailService:
             self._active_jobs += 1
             self._in_progress_keys.add(key)
 
-        vf = "scale=160:90:force_original_aspect_ratio=decrease,pad=160:90:(ow-iw)/2:(oh-ih)/2"
+        vf = "scale='min(960,iw)':'min(540,ih)':force_original_aspect_ratio=decrease,scale=trunc(iw/2)*2:trunc(ih/2)*2"
 
         items: list[tuple[int, float, Path]] = []
         for idx, t in enumerate(times):
@@ -279,7 +288,8 @@ class ThumbnailService:
         def extract_batch(batch_items: list[tuple[int, float, Path]]) -> None:
             to_extract = [item for item in batch_items if not item[2].exists()]
             if to_extract:
-                cmd = ["ffmpeg", "-y", "-nostdin"]
+                ffmpeg_bin = get_ffmpeg_path()
+                cmd = [ffmpeg_bin, "-y", "-nostdin"]
                 for _idx, t, _out_p in to_extract:
                     cmd.extend(["-skip_frame", "bidir", "-ss", f"{t:.3f}", "-i", str(path)])
                 for local_i, (_idx, _t, out_p) in enumerate(to_extract):
@@ -288,26 +298,36 @@ class ThumbnailService:
                         "-frames:v", "1",
                         "-an", "-sn", "-dn",
                         "-vf", vf,
-                        "-q:v", "3",
+                        "-q:v", "2",
                         str(out_p),
                     ])
-                res = subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                res = subprocess.run(
+                    cmd,
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                    creationflags=SUBPROCESS_FLAGS,
+                )
                 if res.returncode != 0:
                     # Fallback to individual extraction if batched multi-input fails
                     for _idx, t, out_p in to_extract:
                         if not out_p.exists():
                             fb_cmd = [
-                                "ffmpeg", "-y", "-nostdin",
+                                ffmpeg_bin, "-y", "-nostdin",
                                 "-ss", f"{t:.3f}",
                                 "-i", str(path),
                                 "-an", "-sn", "-dn",
                                 "-frames:v", "1",
                                 "-vf", vf,
-                                "-q:v", "3",
+                                "-q:v", "2",
                                 str(out_p),
                             ]
                             try:
-                                subprocess.run(fb_cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                                subprocess.run(
+                                    fb_cmd,
+                                    stdout=subprocess.DEVNULL,
+                                    stderr=subprocess.DEVNULL,
+                                    creationflags=SUBPROCESS_FLAGS,
+                                )
                             except Exception:
                                 pass
 

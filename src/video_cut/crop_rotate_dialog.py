@@ -7,6 +7,7 @@ import subprocess
 import tempfile
 from collections.abc import Callable
 from pathlib import Path
+from typing import Any
 
 import gi
 
@@ -19,7 +20,7 @@ from gi.repository import Adw, Gdk, GdkPixbuf, GLib, Gtk
 
 from .i18n import _
 from .models import Segment
-from .utils import clamp
+from .utils import SUBPROCESS_FLAGS, clamp, get_ffmpeg_path
 
 # Aspect ratio preset dictionary: label -> ratio (width / height) or None
 ASPECT_PRESETS = [
@@ -105,6 +106,7 @@ class CropRotateDialog(Adw.Window):
         segment: Segment,
         on_apply: Callable[[tuple[float, float, float, float] | None, int, bool, bool], None],
         current_time: float | None = None,
+        thumbnail_service: Any = None,
     ) -> None:
         super().__init__()
         self.set_transient_for(parent)
@@ -115,6 +117,7 @@ class CropRotateDialog(Adw.Window):
         self.segment = segment
         self.on_apply = on_apply
         self.current_time = current_time
+        self.thumbnail_service = thumbnail_service
 
         # Transform state
         self.rotation: int = segment.rotation % 360
@@ -158,39 +161,88 @@ class CropRotateDialog(Adw.Window):
         path = self.segment.source_path
         ext = path.suffix.lower()
 
-        # 1. If it's a still image file, load directly
-        if ext in (".png", ".jpg", ".jpeg", ".webp", ".bmp", ".svg"):
-            try:
-                self.base_pixbuf = GdkPixbuf.Pixbuf.new_from_file(str(path))
-                return
-            except Exception:
-                pass
-
-        # 2. Extract frame from video using FFmpeg
         target_t = (
             self.current_time
             if (self.current_time is not None and self.segment.start_time <= self.current_time <= self.segment.end_time)
             else (self.segment.start_time + self.segment.end_time) / 2.0
         )
 
+        # 1. Reuse existing high-quality thumbnail if available
+        thumb_file: Path | None = None
+
+        if self.thumbnail_service:
+            try:
+                key = self.thumbnail_service._file_key(path)
+                with self.thumbnail_service._cache_lock:
+                    cached_items = list(self.thumbnail_service._cache.get(key, []))
+                if cached_items:
+                    best_item = min(cached_items, key=lambda item: abs(item[0] - target_t))
+                    if best_item[1].exists():
+                        thumb_file = best_item[1]
+            except Exception:
+                pass
+
+        if not thumb_file and self.segment.thumbnails:
+            valid = [t for t in self.segment.thumbnails if t is not None and t.exists()]
+            if valid:
+                if len(valid) == 1 or self.segment.duration <= 0:
+                    thumb_file = valid[0]
+                else:
+                    ratio = max(0.0, min(1.0, (target_t - self.segment.start_time) / self.segment.duration))
+                    idx = min(len(valid) - 1, int(round(ratio * (len(valid) - 1))))
+                    thumb_file = valid[idx]
+
+        if thumb_file and thumb_file.exists():
+            try:
+                self.base_pixbuf = GdkPixbuf.Pixbuf.new_from_file(str(thumb_file))
+                return
+            except Exception:
+                pass
+
+        # 2. If it's a still image file, load with downscaling cap
+        if ext in (".png", ".jpg", ".jpeg", ".webp", ".bmp", ".svg"):
+            try:
+                self.base_pixbuf = GdkPixbuf.Pixbuf.new_from_file_at_scale(str(path), 960, 540, True)
+                return
+            except Exception:
+                try:
+                    self.base_pixbuf = GdkPixbuf.Pixbuf.new_from_file(str(path))
+                    return
+                except Exception:
+                    pass
+
+        # 3. Fallback: Extract frame using FFmpeg capped at 960x540
         with tempfile.NamedTemporaryFile(suffix=".jpg", delete=False) as tmp:
             tmp_path = Path(tmp.name)
 
         try:
+            vf = "scale='min(960,iw)':'min(540,ih)':force_original_aspect_ratio=decrease,scale=trunc(iw/2)*2:trunc(ih/2)*2"
             cmd = [
-                "ffmpeg",
+                get_ffmpeg_path(),
                 "-y",
+                "-nostdin",
                 "-ss",
                 f"{target_t:.3f}",
                 "-i",
                 str(path),
+                "-an",
+                "-sn",
+                "-dn",
                 "-frames:v",
                 "1",
+                "-vf",
+                vf,
                 "-q:v",
                 "2",
                 str(tmp_path),
             ]
-            subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True)
+            subprocess.run(
+                cmd,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                check=True,
+                creationflags=SUBPROCESS_FLAGS,
+            )
             if tmp_path.exists() and tmp_path.stat().st_size > 0:
                 self.base_pixbuf = GdkPixbuf.Pixbuf.new_from_file(str(tmp_path))
         except Exception:
@@ -202,20 +254,11 @@ class CropRotateDialog(Adw.Window):
                 except OSError:
                     pass
 
-        # 3. Fallback to existing segment thumbnail
-        if self.base_pixbuf is None and self.segment.thumbnails:
-            for thumb in self.segment.thumbnails:
-                if thumb.exists():
-                    try:
-                        self.base_pixbuf = GdkPixbuf.Pixbuf.new_from_file(str(thumb))
-                        break
-                    except Exception:
-                        pass
-
         # 4. Final placeholder fallback if nothing could be loaded
         if self.base_pixbuf is None:
             self.base_pixbuf = GdkPixbuf.Pixbuf.new(GdkPixbuf.Colorspace.RGB, False, 8, 640, 360)
             self.base_pixbuf.fill(0x333333FF)
+
 
     def _update_transformed_pixbuf(self) -> None:
         """Apply current rotation and flips to base_pixbuf and update the rendered frame surface."""

@@ -1070,6 +1070,7 @@ class MainWindow(Adw.ApplicationWindow):
             segment=seg,
             on_apply=on_apply,
             current_time=self.current_global_time,
+            thumbnail_service=self.thumbnail_service,
         )
         dialog.present()
 

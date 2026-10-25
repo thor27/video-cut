@@ -230,7 +230,7 @@ class ImageService:
         cls,
         image_path: Path | str,
         thumb_path: Path | str | None = None,
-        max_size: tuple[int, int] = (320, 180),
+        max_size: tuple[int, int] = (960, 540),
     ) -> Path:
         """Generate a fast, downscaled thumbnail JPEG for an image file."""
         src_path = Path(image_path)
