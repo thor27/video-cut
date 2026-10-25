@@ -822,6 +822,7 @@ class MainWindow(Adw.ApplicationWindow):
                     video_path=converted_video,
                     replace=replace,
                     orig_image_path=thumb_path or image_path,
+                    full_image_path=image_path,
                     display_name=display_name,
                 )
                 if on_done_callback:
@@ -886,6 +887,7 @@ class MainWindow(Adw.ApplicationWindow):
                     video_path=converted_video,
                     replace=replace,
                     orig_image_path=thumb_path or image_path,
+                    full_image_path=image_path,
                     display_name=display_name,
                     preprobed_meta=meta,
                 )
@@ -913,6 +915,7 @@ class MainWindow(Adw.ApplicationWindow):
         video_path: Path,
         replace: bool = True,
         orig_image_path: Path | None = None,
+        full_image_path: Path | None = None,
         display_name: str | None = None,
         preprobed_meta: VideoMetadata | None = None,
     ) -> None:
@@ -937,7 +940,12 @@ class MainWindow(Adw.ApplicationWindow):
         )
 
         if orig_image_path:
-            self.thumbnail_service.register_image_thumbnail(video_path, orig_image_path, meta.duration)
+            self.thumbnail_service.register_image_thumbnail(
+                video_path,
+                orig_image_path,
+                meta.duration,
+                full_image_path=full_image_path,
+            )
             seg.thumbnails = [orig_image_path]
         else:
             def on_first_thumb(path: Path, first_thumb_path: Path):
@@ -1054,6 +1062,21 @@ class MainWindow(Adw.ApplicationWindow):
         if self.player.is_playing:
             self.player.pause()
 
+        # Check if playhead cursor is within the selected segment
+        seg_idx = self.timeline.get_segment_index(seg.id)
+        seg_global_start = self.timeline.get_segment_global_start(seg_idx)
+        seg_global_end = seg_global_start + seg.duration
+        is_cursor_in_segment = (
+            seg_global_start - 0.05 <= self.current_global_time <= seg_global_end + 0.05
+        )
+
+        player_frame = None
+        if is_cursor_in_segment:
+            try:
+                player_frame = self.player.get_current_frame_pixbuf(self.get_renderer())
+            except Exception:
+                player_frame = None
+
         def on_apply(crop, rotation, hflip, vflip) -> None:
             self.timeline.save_state(self.current_global_time)
             seg.crop = crop
@@ -1071,6 +1094,7 @@ class MainWindow(Adw.ApplicationWindow):
             on_apply=on_apply,
             current_time=self.current_global_time,
             thumbnail_service=self.thumbnail_service,
+            initial_pixbuf=player_frame,
         )
         dialog.present()
 

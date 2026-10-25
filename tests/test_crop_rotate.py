@@ -686,4 +686,103 @@ def test_crop_rotate_dialog_thumbnail_service_closest_timestamp(tmp_path):
     assert dialog.base_pixbuf.get_width() == 640
 
 
+def test_crop_rotate_dialog_uses_initial_pixbuf_directly():
+    parent = Gtk.Window()
+    seg = Segment(source_path=Path("/tmp/fake_video.mp4"), source_duration=10.0)
+
+    # Custom pixbuf representing player frame capture
+    player_pb = GdkPixbuf.Pixbuf.new(GdkPixbuf.Colorspace.RGB, False, 8, 1920, 1080)
+    player_pb.fill(0x55AAFFFF)
+
+    dialog = CropRotateDialog(
+        parent=parent,
+        segment=seg,
+        on_apply=lambda *a: None,
+        initial_pixbuf=player_pb,
+    )
+
+    assert dialog.base_pixbuf is player_pb
+    assert dialog.base_pixbuf.get_width() == 1920
+    assert dialog.base_pixbuf.get_height() == 1080
+
+
+def test_thumbnail_service_midpoint_keyframe_and_full_image(tmp_path):
+    from video_cut.services.thumbnail_service import ThumbnailService
+
+    ts_service = ThumbnailService(cache_dir=tmp_path / "cache")
+    video_path = tmp_path / "clip.mp4"
+    orig_img = tmp_path / "orig_photo.jpg"
+    thumb_img = tmp_path / "thumb_photo.jpg"
+
+    GdkPixbuf.Pixbuf.new(GdkPixbuf.Colorspace.RGB, False, 8, 4000, 3000).savev(
+        str(orig_img), "jpeg", ["quality"], ["95"]
+    )
+    GdkPixbuf.Pixbuf.new(GdkPixbuf.Colorspace.RGB, False, 8, 480, 360).savev(
+        str(thumb_img), "jpeg", ["quality"], ["80"]
+    )
+
+    ts_service.register_image_thumbnail(
+        video_path=video_path,
+        image_path=thumb_img,
+        duration=5.0,
+        full_image_path=orig_img,
+    )
+
+    # get_preview_keyframe should return the full original image, NOT the small thumbnail!
+    keyframe = ts_service.get_preview_keyframe(video_path, target_time=2.5)
+    assert keyframe == orig_img
+    pb = GdkPixbuf.Pixbuf.new_from_file(str(keyframe))
+    assert pb.get_width() == 4000
+    assert pb.get_height() == 3000
+
+
+def test_player_get_current_frame_pixbuf(tmp_path):
+    import subprocess
+
+    from gi.repository import GLib
+
+    from video_cut.player import VideoPlayerController
+
+    vid_path = tmp_path / "sample.mp4"
+    subprocess.run(
+        [
+            "ffmpeg", "-y", "-nostdin",
+            "-f", "lavfi", "-i", "testsrc=duration=0.5:size=320x240:rate=10",
+            str(vid_path),
+        ],
+        check=True,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
+
+    timeline = ProjectTimeline()
+    timeline.add_video(vid_path, 0.5)
+
+    win = Gtk.Window()
+    win.realize()
+    pic = Gtk.Picture()
+    win.set_child(pic)
+
+    ctrl = VideoPlayerController(timeline, pic, lambda t: None, lambda s: None)
+    ctrl.seek_to_global_time(0.0)
+
+    # Wait until prepared
+    loop = GLib.MainLoop()
+    def check():
+        if ctrl.current_media_file and ctrl.current_media_file.is_prepared():
+            loop.quit()
+            return False
+        return True
+    GLib.timeout_add(10, check)
+    loop.run()
+
+    renderer = win.get_renderer()
+    frame_pb = ctrl.get_current_frame_pixbuf(renderer=renderer)
+    assert frame_pb is not None
+    assert frame_pb.get_width() == 320
+    assert frame_pb.get_height() == 240
+    ctrl.clear()
+
+
+
 

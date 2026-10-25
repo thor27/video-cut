@@ -107,6 +107,7 @@ class CropRotateDialog(Adw.Window):
         on_apply: Callable[[tuple[float, float, float, float] | None, int, bool, bool], None],
         current_time: float | None = None,
         thumbnail_service: Any = None,
+        initial_pixbuf: GdkPixbuf.Pixbuf | None = None,
     ) -> None:
         super().__init__()
         self.set_transient_for(parent)
@@ -118,6 +119,7 @@ class CropRotateDialog(Adw.Window):
         self.on_apply = on_apply
         self.current_time = current_time
         self.thumbnail_service = thumbnail_service
+        self.initial_pixbuf = initial_pixbuf
 
         # Transform state
         self.rotation: int = segment.rotation % 360
@@ -157,7 +159,11 @@ class CropRotateDialog(Adw.Window):
         self._update_transformed_pixbuf()
 
     def _load_reference_frame(self) -> None:
-        """Extract or load a reference frame for the preview."""
+        """Extract or load a high-quality reference frame for the preview."""
+        if self.initial_pixbuf is not None:
+            self.base_pixbuf = self.initial_pixbuf
+            return
+
         path = self.segment.source_path
         ext = path.suffix.lower()
 
@@ -167,56 +173,30 @@ class CropRotateDialog(Adw.Window):
             else (self.segment.start_time + self.segment.end_time) / 2.0
         )
 
-        # 1. Reuse existing high-quality thumbnail if available
-        thumb_file: Path | None = None
-
+        # 1. Use dedicated full-size preview keyframe from ThumbnailService
         if self.thumbnail_service:
             try:
-                key = self.thumbnail_service._file_key(path)
-                with self.thumbnail_service._cache_lock:
-                    cached_items = list(self.thumbnail_service._cache.get(key, []))
-                if cached_items:
-                    best_item = min(cached_items, key=lambda item: abs(item[0] - target_t))
-                    if best_item[1].exists():
-                        thumb_file = best_item[1]
+                keyframe_p = self.thumbnail_service.get_preview_keyframe(path, target_time=target_t)
+                if keyframe_p and keyframe_p.exists():
+                    self.base_pixbuf = GdkPixbuf.Pixbuf.new_from_file(str(keyframe_p))
+                    return
             except Exception:
                 pass
 
-        if not thumb_file and self.segment.thumbnails:
-            valid = [t for t in self.segment.thumbnails if t is not None and t.exists()]
-            if valid:
-                if len(valid) == 1 or self.segment.duration <= 0:
-                    thumb_file = valid[0]
-                else:
-                    ratio = max(0.0, min(1.0, (target_t - self.segment.start_time) / self.segment.duration))
-                    idx = min(len(valid) - 1, int(round(ratio * (len(valid) - 1))))
-                    thumb_file = valid[idx]
-
-        if thumb_file and thumb_file.exists():
-            try:
-                self.base_pixbuf = GdkPixbuf.Pixbuf.new_from_file(str(thumb_file))
-                return
-            except Exception:
-                pass
-
-        # 2. If it's a still image file, load with downscaling cap
+        # 2. If it's a still image file, load full original resolution directly
         if ext in (".png", ".jpg", ".jpeg", ".webp", ".bmp", ".svg"):
             try:
-                self.base_pixbuf = GdkPixbuf.Pixbuf.new_from_file_at_scale(str(path), 960, 540, True)
+                self.base_pixbuf = GdkPixbuf.Pixbuf.new_from_file(str(path))
                 return
             except Exception:
-                try:
-                    self.base_pixbuf = GdkPixbuf.Pixbuf.new_from_file(str(path))
-                    return
-                except Exception:
-                    pass
+                pass
 
-        # 3. Fallback: Extract frame using FFmpeg capped at 960x540
+        # 3. Fallback: Extract frame using FFmpeg at full size
         with tempfile.NamedTemporaryFile(suffix=".jpg", delete=False) as tmp:
             tmp_path = Path(tmp.name)
 
         try:
-            vf = "scale='min(960,iw)':'min(540,ih)':force_original_aspect_ratio=decrease,scale=trunc(iw/2)*2:trunc(ih/2)*2"
+            vf = "scale=trunc(iw/2)*2:trunc(ih/2)*2"
             cmd = [
                 get_ffmpeg_path(),
                 "-y",
@@ -254,7 +234,17 @@ class CropRotateDialog(Adw.Window):
                 except OSError:
                     pass
 
-        # 4. Final placeholder fallback if nothing could be loaded
+        # 4. Fallback: check segment's existing thumbnails if available
+        if self.base_pixbuf is None and self.segment.thumbnails:
+            valid = [t for t in self.segment.thumbnails if t is not None and t.exists()]
+            if valid:
+                try:
+                    self.base_pixbuf = GdkPixbuf.Pixbuf.new_from_file(str(valid[0]))
+                    return
+                except Exception:
+                    pass
+
+        # 5. Final placeholder fallback if nothing could be loaded
         if self.base_pixbuf is None:
             self.base_pixbuf = GdkPixbuf.Pixbuf.new(GdkPixbuf.Colorspace.RGB, False, 8, 640, 360)
             self.base_pixbuf.fill(0x333333FF)

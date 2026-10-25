@@ -12,7 +12,8 @@ gi.require_version("Gtk", "4.0")
 gi.require_version("Gdk", "4.0")
 gi.require_version("Gsk", "4.0")
 gi.require_version("Adw", "1")
-from gi.repository import Gdk, GLib, GObject, Graphene, Gsk, Gtk
+gi.require_version("GdkPixbuf", "2.0")
+from gi.repository import Gdk, GdkPixbuf, GLib, GObject, Graphene, Gsk, Gtk
 
 from .models import ProjectTimeline, Segment
 from .utils import clamp
@@ -652,3 +653,52 @@ class VideoPlayerController:
                 self.seek_to_global_time(self.timeline.total_duration)
         except ValueError:
             pass
+
+    def get_current_frame_pixbuf(
+        self,
+        renderer: Gsk.Renderer | None = None,
+        max_dim: int = 1920,
+    ) -> GdkPixbuf.Pixbuf | None:
+        """Capture the current un-transformed raw frame from the player as a GdkPixbuf.Pixbuf."""
+        if not self.current_media_file or not self.current_media_file.is_prepared():
+            return None
+
+        mf = self.current_media_file
+        iw = mf.get_intrinsic_width()
+        ih = mf.get_intrinsic_height()
+        if iw <= 0 or ih <= 0:
+            return None
+
+        if renderer is None and self.video_picture:
+            native = self.video_picture.get_native()
+            if native:
+                renderer = native.get_renderer()
+
+        if renderer is None:
+            return None
+
+        target_w = iw
+        target_h = ih
+        if max_dim > 0 and (iw > max_dim or ih > max_dim):
+            scale = min(max_dim / float(iw), max_dim / float(ih))
+            target_w = max(1, int(round(iw * scale)))
+            target_h = max(1, int(round(ih * scale)))
+
+        try:
+            snap = Gtk.Snapshot.new()
+            mf.snapshot(snap, target_w, target_h)
+            node = snap.to_node()
+            if not node:
+                return None
+            rect = Graphene.Rect().init(0, 0, target_w, target_h)
+            tex = renderer.render_texture(node, rect)
+            if not tex:
+                return None
+            tiff_bytes = tex.save_to_tiff_bytes()
+            loader = GdkPixbuf.PixbufLoader.new_with_type("tiff")
+            loader.write(tiff_bytes.get_data())
+            loader.close()
+            return loader.get_pixbuf()
+        except Exception as e:
+            _dbg(f"get_current_frame_pixbuf error: {e}")
+            return None

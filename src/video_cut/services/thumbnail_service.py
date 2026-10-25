@@ -30,6 +30,8 @@ class ThumbnailService:
         self.executor = ThreadPoolExecutor(max_workers=max_workers)
         # Mapping from file key to list of (timestamp, image_path)
         self._cache: dict[str, list[tuple[float, Path]]] = {}
+        # Mapping from file key to list of (timestamp, fullsize_preview_path)
+        self._preview_cache: dict[str, list[tuple[float, Path]]] = {}
         self._cache_lock = threading.Lock()
         self._completed_keys: set[str] = set()
         self._in_progress_keys: set[str] = set()
@@ -60,12 +62,129 @@ class ThumbnailService:
         else:
             return max(2.0, duration / 100.0)
 
-    def register_image_thumbnail(self, video_path: Path, image_path: Path, duration: float = 1.0) -> None:
+    def register_image_thumbnail(
+        self,
+        video_path: Path,
+        image_path: Path,
+        duration: float = 1.0,
+        full_image_path: Path | None = None,
+    ) -> None:
         """Register thumbnail for a converted image video without needing FFmpeg extraction."""
         key = self._file_key(video_path)
         with self._cache_lock:
             self._cache[key] = [(0.0, image_path), (duration, image_path)]
+            preview_p = full_image_path if full_image_path else image_path
+            self._preview_cache[key] = [(duration / 2.0, preview_p)]
             self._completed_keys.add(key)
+
+    def get_preview_keyframe(
+        self,
+        source_path: Path,
+        target_time: float | None = None,
+    ) -> Path | None:
+        """Get or extract a high-quality full-size keyframe thumbnail for preview/crop-rotate dialog.
+
+        If target_time is provided, returns or extracts the keyframe nearest to target_time.
+        Otherwise returns the cached midpoint keyframe.
+        """
+        path = Path(source_path)
+        key = self._file_key(path)
+        video_cache_dir = self.cache_dir / key
+        video_cache_dir.mkdir(parents=True, exist_ok=True)
+
+        with self._cache_lock:
+            items = list(self._preview_cache.get(key, []))
+
+        # Check in-memory preview cache
+        if items:
+            if target_time is None:
+                best = items[len(items) // 2]
+                if best[1].exists():
+                    return best[1]
+            else:
+                best = min(items, key=lambda x: abs(x[0] - target_time))
+                if best[1].exists() and abs(best[0] - target_time) < 2.0:
+                    return best[1]
+
+        # Check disk cache: preview_keyframe.jpg or any preview_mid_*.jpg
+        default_preview = video_cache_dir / "preview_keyframe.jpg"
+        if target_time is not None:
+            ts_ms = int(round(target_time * 1000))
+            exact_p = video_cache_dir / f"preview_mid_{ts_ms}.jpg"
+            if exact_p.exists():
+                with self._cache_lock:
+                    if key not in self._preview_cache:
+                        self._preview_cache[key] = []
+                    self._preview_cache[key].append((target_time, exact_p))
+                return exact_p
+        elif default_preview.exists():
+            return default_preview
+
+        # If not cached yet, extract synchronously at target_time
+        t = target_time if target_time is not None else 0.0
+        ts_ms = int(round(t * 1000))
+        out_p = video_cache_dir / f"preview_mid_{ts_ms}.jpg"
+        if not out_p.exists():
+            cmd = [
+                get_ffmpeg_path(),
+                "-y",
+                "-nostdin",
+                "-ss",
+                f"{t:.3f}",
+                "-i",
+                str(path),
+                "-an",
+                "-sn",
+                "-dn",
+                "-frames:v",
+                "1",
+                "-vf",
+                "scale=trunc(iw/2)*2:trunc(ih/2)*2",
+                "-q:v",
+                "2",
+                str(out_p),
+            ]
+            try:
+                subprocess.run(
+                    cmd,
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                    check=True,
+                    creationflags=SUBPROCESS_FLAGS,
+                )
+            except Exception:
+                pass
+
+        if out_p.exists():
+            with self._cache_lock:
+                if key not in self._preview_cache:
+                    self._preview_cache[key] = []
+                self._preview_cache[key].append((t, out_p))
+            if not default_preview.exists():
+                try:
+                    import shutil
+
+                    shutil.copyfile(out_p, default_preview)
+                except Exception:
+                    pass
+            return out_p
+
+        if default_preview.exists():
+            return default_preview
+
+        # If file does not exist or ffmpeg extraction fails, fallback to best item in _cache
+        with self._cache_lock:
+            normal_items = list(self._cache.get(key, []))
+        if normal_items:
+            best_normal = (
+                min(normal_items, key=lambda x: abs(x[0] - target_time))
+                if target_time is not None
+                else normal_items[len(normal_items) // 2]
+            )
+            if best_normal[1].exists():
+                return best_normal[1]
+
+        return None
 
     def is_cached(self, source_path: Path) -> bool:
         """Check if thumbnails for source_path are already fully cached."""
@@ -362,7 +481,63 @@ class ThumbnailService:
                 if remaining[mid:]:
                     batches.append(remaining[mid:])
 
-        futures = [self.executor.submit(extract_batch, b) for b in batches]
+        # Submit special full-size midpoint keyframe extraction for dialog preview
+        mid_time = duration / 2.0
+        mid_ms = int(round(mid_time * 1000))
+        preview_mid_p = video_cache_dir / f"preview_mid_{mid_ms}.jpg"
+        default_preview_p = video_cache_dir / "preview_keyframe.jpg"
+
+        def extract_preview() -> None:
+            if not preview_mid_p.exists() and not default_preview_p.exists():
+                cmd = [
+                    get_ffmpeg_path(),
+                    "-y",
+                    "-nostdin",
+                    "-ss",
+                    f"{mid_time:.3f}",
+                    "-i",
+                    str(path),
+                    "-an",
+                    "-sn",
+                    "-dn",
+                    "-frames:v",
+                    "1",
+                    "-vf",
+                    "scale=trunc(iw/2)*2:trunc(ih/2)*2",
+                    "-q:v",
+                    "2",
+                    str(preview_mid_p),
+                ]
+                try:
+                    subprocess.run(
+                        cmd,
+                        stdout=subprocess.DEVNULL,
+                        stderr=subprocess.DEVNULL,
+                        creationflags=SUBPROCESS_FLAGS,
+                    )
+                except Exception:
+                    pass
+
+            target_p = (
+                preview_mid_p
+                if preview_mid_p.exists()
+                else (default_preview_p if default_preview_p.exists() else None)
+            )
+            if target_p:
+                if not default_preview_p.exists() and preview_mid_p.exists():
+                    try:
+                        import shutil
+
+                        shutil.copyfile(preview_mid_p, default_preview_p)
+                    except Exception:
+                        pass
+                with self._cache_lock:
+                    if key not in self._preview_cache:
+                        self._preview_cache[key] = []
+                    self._preview_cache[key].append((mid_time, target_p))
+
+        futures = [self.executor.submit(extract_preview)]
+        futures.extend([self.executor.submit(extract_batch, b) for b in batches])
 
         def coordinator() -> None:
             for f in futures:
