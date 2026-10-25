@@ -3,18 +3,19 @@
 import subprocess
 import time
 from pathlib import Path
-import pytest
+
 import gi
+import pytest
 
 gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
-from gi.repository import Gtk, Adw, GLib
+from gi.repository import Adw, GLib, Gtk
 
-from video_cut.window import MainWindow
 from video_cut.models import ProjectTimeline
 from video_cut.services.export_service import ExportService
-from video_cut.services.probe_service import ProbeService
 from video_cut.services.image_service import ImageService
+from video_cut.services.probe_service import ProbeService
+from video_cut.window import MainWindow
 
 
 @pytest.fixture

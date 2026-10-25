@@ -1,10 +1,11 @@
 """Data models representing video segments and the project timeline with Undo/Redo."""
 
 from __future__ import annotations
+
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Optional, List, Tuple
-from .utils import generate_id, clamp
+
+from .utils import clamp, generate_id
 
 
 @dataclass
@@ -16,9 +17,9 @@ class Segment:
     start_time: float = 0.0
     end_time: float = 0.0
     id: str = field(default_factory=generate_id)
-    thumbnails: List[Path] = field(default_factory=list)
-    display_name: Optional[str] = None
-    crop: Optional[Tuple[float, float, float, float]] = None
+    thumbnails: list[Path] = field(default_factory=list)
+    display_name: str | None = None
+    crop: tuple[float, float, float, float] | None = None
     rotation: int = 0
     hflip: bool = False
     vflip: bool = False
@@ -57,7 +58,7 @@ class Segment:
         )
         return has_crop or (self.rotation % 360 != 0) or self.hflip or self.vflip
 
-    def clone(self, new_start: Optional[float] = None, new_end: Optional[float] = None) -> Segment:
+    def clone(self, new_start: float | None = None, new_end: float | None = None) -> Segment:
         """Create a new segment copy with a new ID."""
         is_trimmed = (new_start is not None) or (new_end is not None)
         return Segment(
@@ -95,8 +96,8 @@ class Segment:
 class TimelineSnapshot:
     """State snapshot for Undo and Redo operations."""
 
-    segments: List[Segment]
-    selected_segment_id: Optional[str]
+    segments: list[Segment]
+    selected_segment_id: str | None
     global_time: float
 
 
@@ -104,10 +105,10 @@ class ProjectTimeline:
     """Manages the ordered sequence of video segments on the timeline with Undo/Redo."""
 
     def __init__(self) -> None:
-        self.segments: List[Segment] = []
-        self.selected_segment_id: Optional[str] = None
-        self.undo_stack: List[TimelineSnapshot] = []
-        self.redo_stack: List[TimelineSnapshot] = []
+        self.segments: list[Segment] = []
+        self.selected_segment_id: str | None = None
+        self.undo_stack: list[TimelineSnapshot] = []
+        self.redo_stack: list[TimelineSnapshot] = []
 
     @property
     def is_empty(self) -> bool:
@@ -137,7 +138,7 @@ class ProjectTimeline:
             self.undo_stack.pop(0)
         self.redo_stack.clear()
 
-    def undo(self, current_global_time: float) -> Optional[float]:
+    def undo(self, current_global_time: float) -> float | None:
         """Undo last timeline change. Returns restored global_time or None."""
         if not self.can_undo:
             return None
@@ -154,7 +155,7 @@ class ProjectTimeline:
         self.selected_segment_id = target.selected_segment_id
         return target.global_time
 
-    def redo(self, current_global_time: float) -> Optional[float]:
+    def redo(self, current_global_time: float) -> float | None:
         """Redo previously undone timeline change. Returns restored global_time or None."""
         if not self.can_redo:
             return None
@@ -171,7 +172,7 @@ class ProjectTimeline:
         self.selected_segment_id = target.selected_segment_id
         return target.global_time
 
-    def get_segment(self, segment_id: str) -> Optional[Segment]:
+    def get_segment(self, segment_id: str) -> Segment | None:
         for seg in self.segments:
             if seg.id == segment_id:
                 return seg
@@ -189,7 +190,7 @@ class ProjectTimeline:
             return 0.0
         return sum(self.segments[i].duration for i in range(segment_index))
 
-    def map_global_time(self, global_time: float) -> Tuple[int, Segment, float]:
+    def map_global_time(self, global_time: float) -> tuple[int, Segment, float]:
         """
         Map a global timeline timestamp to (segment_index, segment, source_timestamp).
         If timeline is empty, raises ValueError.
@@ -213,7 +214,7 @@ class ProjectTimeline:
 
     def split_at(
         self, global_time: float, min_segment_duration: float = 0.05
-    ) -> Optional[Tuple[Segment, Segment]]:
+    ) -> tuple[Segment, Segment] | None:
         """
         Split the active segment at global_time into two segments.
         Returns (left_segment, right_segment) or None if cut position is invalid.
@@ -285,8 +286,8 @@ class ProjectTimeline:
         self,
         source_path: Path | str,
         source_duration: float,
-        insert_after_id: Optional[str] = None,
-        display_name: Optional[str] = None,
+        insert_after_id: str | None = None,
+        display_name: str | None = None,
     ) -> Segment:
         """Add a whole video or converted image file as a new segment."""
         seg = Segment(
@@ -311,7 +312,7 @@ class ProjectTimeline:
     def paste_segment(
         self,
         segment: Segment,
-        after_segment_id: Optional[str] = None,
+        after_segment_id: str | None = None,
     ) -> Segment:
         """Paste a cloned segment after after_segment_id (or at the end)."""
         new_seg = segment.clone()
@@ -341,9 +342,9 @@ class ExportSettings:
     video_codec: str = "libx264"     # libx264, libx265, libvpx-vp9, libsvtav1, prores_ks
     crf: int = 21                    # 18, 21, 26
     preset: str = "veryfast"         # ultrafast, veryfast, fast, medium, slow
-    target_width: Optional[int] = None
-    target_height: Optional[int] = None
-    fps: Optional[float] = None      # 24, 30, 60 or None for original
+    target_width: int | None = None
+    target_height: int | None = None
+    fps: float | None = None      # 24, 30, 60 or None for original
     audio_codec: str = "aac"         # aac, libopus, libmp3lame, flac
     audio_bitrate: str = "192k"      # 128k, 192k, 256k, 320k
 

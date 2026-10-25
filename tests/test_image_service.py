@@ -2,9 +2,8 @@
 
 import subprocess
 from pathlib import Path
-import pytest
 
-from video_cut.services.image_service import ImageService, SUPPORTED_IMAGE_EXTENSIONS
+from video_cut.services.image_service import SUPPORTED_IMAGE_EXTENSIONS, ImageService
 from video_cut.services.probe_service import ProbeService
 
 

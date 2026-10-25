@@ -1,18 +1,19 @@
 """Storyboard timeline widget managing the filmstrip and playhead needles."""
 
+from collections.abc import Callable
 from pathlib import Path
-from typing import Callable, Dict, Optional
+
 import gi
 
 gi.require_version("Gtk", "4.0")
 gi.require_version("Gdk", "4.0")
 gi.require_version("Adw", "1")
-from gi.repository import Gtk, Gdk, Adw, GLib
+from gi.repository import Gdk, GLib, Gtk
 
+from .i18n import _
 from .models import ProjectTimeline, Segment
 from .segment_card import SegmentCard
-from .utils import format_time, clamp
-from .i18n import _
+from .utils import clamp, format_time
 
 
 def compute_segment_widths(
@@ -34,25 +35,56 @@ def compute_segment_widths(
         return {seg.id: w for seg in segments}
 
     fixed: dict[str, int] = {}
-    remaining = list(segments)
     rem_width = available_width
 
-    while remaining:
-        rem_dur = sum(s.duration for s in remaining)
-        clamped = False
-        for s in list(remaining):
+    # Fast path: single-pass sorted clamping when sufficient width exists
+    if available_width >= len(segments) * min_width:
+        sorted_segs = sorted(segments, key=lambda s: s.duration)
+        rem_dur = total_duration
+        remaining_idx = 0
+        for i, s in enumerate(sorted_segs):
             prop_w = (s.duration / rem_dur) * rem_width if rem_dur > 0 else 0
-            if prop_w < min_width and rem_width >= min_width:
+            if prop_w < min_width:
                 fixed[s.id] = min_width
                 rem_width -= min_width
-                remaining.remove(s)
-                clamped = True
+                rem_dur -= s.duration
+            else:
+                remaining_idx = i
                 break
-        if not clamped:
+        else:
+            remaining_idx = len(sorted_segs)
+
+        if rem_dur > 0:
+            factor = rem_width / rem_dur
+            for i in range(remaining_idx, len(sorted_segs)):
+                s = sorted_segs[i]
+                fixed[s.id] = int(round(s.duration * factor))
+    else:
+        # Constrained width fallback
+        remaining = list(segments)
+        rem_dur = total_duration
+        while remaining and rem_width >= min_width:
+            clamped = False
             for s in remaining:
-                prop_w = (s.duration / rem_dur) * rem_width
-                fixed[s.id] = int(round(prop_w))
-            break
+                prop_w = (s.duration / rem_dur) * rem_width if rem_dur > 0 else 0
+                if prop_w < min_width:
+                    fixed[s.id] = min_width
+                    rem_width -= min_width
+                    rem_dur -= s.duration
+                    remaining.remove(s)
+                    clamped = True
+                    break
+            if not clamped:
+                break
+
+        if remaining:
+            if rem_dur > 0:
+                factor = rem_width / rem_dur
+                for s in remaining:
+                    fixed[s.id] = int(round(s.duration * factor))
+            else:
+                for s in remaining:
+                    fixed[s.id] = 0
 
     diff = available_width - sum(fixed.values())
     if diff != 0 and segments:
@@ -74,24 +106,24 @@ class TimelineWidget(Gtk.Box):
         on_split_requested: Callable[[], None],
         on_delete_requested: Callable[[str], None],
         on_add_video_requested: Callable[[], None],
-        on_selection_changed: Callable[[Optional[str]], None],
+        on_selection_changed: Callable[[str | None], None],
         on_play_pause: Callable[[], None],
         on_step_1s: Callable[[int], None],
         on_step_frame: Callable[[int], None],
         on_jump_segment: Callable[[int], None],
         on_structure_changed: Callable[[], None] = lambda: None,
-        get_segment_thumbnails: Optional[Callable[[Segment, int], list[Path]]] = None,
-        on_copy_requested: Optional[Callable[[str], None]] = None,
-        on_cut_requested: Optional[Callable[[str], None]] = None,
-        on_paste_requested: Optional[Callable[[str], None]] = None,
-        on_undo_requested: Optional[Callable[[], None]] = None,
-        on_redo_requested: Optional[Callable[[], None]] = None,
-        on_cut_selection_requested: Optional[Callable[[], None]] = None,
-        on_copy_selection_requested: Optional[Callable[[], None]] = None,
-        on_paste_selection_requested: Optional[Callable[[], None]] = None,
-        on_delete_selection_requested: Optional[Callable[[], None]] = None,
-        on_crop_rotate_requested: Optional[Callable[[str], None]] = None,
-        on_crop_rotate_selection_requested: Optional[Callable[[], None]] = None,
+        get_segment_thumbnails: Callable[[Segment, int], list[Path]] | None = None,
+        on_copy_requested: Callable[[str], None] | None = None,
+        on_cut_requested: Callable[[str], None] | None = None,
+        on_paste_requested: Callable[[str], None] | None = None,
+        on_undo_requested: Callable[[], None] | None = None,
+        on_redo_requested: Callable[[], None] | None = None,
+        on_cut_selection_requested: Callable[[], None] | None = None,
+        on_copy_selection_requested: Callable[[], None] | None = None,
+        on_paste_selection_requested: Callable[[], None] | None = None,
+        on_delete_selection_requested: Callable[[], None] | None = None,
+        on_crop_rotate_requested: Callable[[str], None] | None = None,
+        on_crop_rotate_selection_requested: Callable[[], None] | None = None,
     ) -> None:
         super().__init__(orientation=Gtk.Orientation.VERTICAL, spacing=6)
         self.timeline = timeline
@@ -118,14 +150,14 @@ class TimelineWidget(Gtk.Box):
         self.on_structure_changed = on_structure_changed
         self.get_segment_thumbnails = get_segment_thumbnails
         self._can_paste = False
-        self.btn_add: Optional[Gtk.Button] = None
+        self.btn_add: Gtk.Button | None = None
         self._is_drop_active: bool = False
 
-        self._cards: Dict[str, SegmentCard] = {}
+        self._cards: dict[str, SegmentCard] = {}
         self._current_time = 0.0
         self._is_scrubbing = False
         self._is_playing = False
-        self._active_scrub_seg_id: Optional[str] = None
+        self._active_scrub_seg_id: str | None = None
 
         self.add_css_class("timeline-container")
 
@@ -377,7 +409,7 @@ class TimelineWidget(Gtk.Box):
         self._split_pill_motion.connect("leave", lambda *_: self._schedule_split_close())
         self.split_pill.add_controller(self._split_pill_motion)
 
-        self._split_timer: Optional[int] = None
+        self._split_timer: int | None = None
         self._split_pill_x: int = 0
         self.split_pill.get_margin_start = lambda: self._split_pill_x
 

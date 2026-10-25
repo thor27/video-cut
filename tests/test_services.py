@@ -1,8 +1,8 @@
 """Unit tests for probe_service and thumbnail_service."""
 
 import time
-import pytest
 from pathlib import Path
+
 from video_cut.services.probe_service import ProbeService
 from video_cut.services.thumbnail_service import ThumbnailService
 

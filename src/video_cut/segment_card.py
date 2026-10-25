@@ -1,19 +1,21 @@
 """Segment Card widget showing thumbnails, duration, and interactive controls."""
 
+from collections.abc import Callable
 from pathlib import Path
-from typing import Any, Callable, List, Optional
+from typing import Any
+
 import gi
 
 gi.require_version("Gtk", "4.0")
 gi.require_version("Gdk", "4.0")
 gi.require_version("Adw", "1")
 gi.require_version("GdkPixbuf", "2.0")
-from gi.repository import Gtk, Gdk, Adw, GObject, GLib, GdkPixbuf
 import cairo
+from gi.repository import Gdk, GdkPixbuf, GLib, GObject, Gtk
 
-from .models import Segment
-from .utils import format_time, clamp
 from .i18n import _
+from .models import Segment
+from .utils import clamp, format_time
 
 
 class SegmentCard(Gtk.Box):
@@ -27,24 +29,24 @@ class SegmentCard(Gtk.Box):
         index: int,
         is_selected: bool,
         on_select: Callable[[str], None],
-        on_scrub_to_source_time: Optional[Callable[[str, float], None]] = None,
+        on_scrub_to_source_time: Callable[[str, float], None] | None = None,
         on_move_left: Callable[[str], None] = lambda _: None,
         on_move_right: Callable[[str], None] = lambda _: None,
         on_split: Callable[[str], None] = lambda _: None,
         on_delete: Callable[[str], None] = lambda _: None,
-        on_copy: Optional[Callable[[str], None]] = None,
-        on_cut: Optional[Callable[[str], None]] = None,
-        on_paste: Optional[Callable[[str], None]] = None,
-        on_crop_rotate: Optional[Callable[[str], None]] = None,
+        on_copy: Callable[[str], None] | None = None,
+        on_cut: Callable[[str], None] | None = None,
+        on_paste: Callable[[str], None] | None = None,
+        on_crop_rotate: Callable[[str], None] | None = None,
         on_drop_reorder: Callable[[str, str], None] = lambda _a, _b: None,
         can_delete: bool = True,
         can_paste: bool = False,
         can_move_left: bool = True,
         can_move_right: bool = True,
-        on_scrub_start: Optional[Callable[["SegmentCard", float, float], None]] = None,
-        on_scrub_update: Optional[Callable[["SegmentCard", float, float], None]] = None,
-        on_scrub_end: Optional[Callable[[], None]] = None,
-        timeline_widget: Optional[Any] = None,
+        on_scrub_start: Callable[["SegmentCard", float, float], None] | None = None,
+        on_scrub_update: Callable[["SegmentCard", float, float], None] | None = None,
+        on_scrub_end: Callable[[], None] | None = None,
+        timeline_widget: Any | None = None,
     ) -> None:
         super().__init__(orientation=Gtk.Orientation.VERTICAL, spacing=4)
         self._timeline_widget = timeline_widget
@@ -69,7 +71,7 @@ class SegmentCard(Gtk.Box):
         self.on_paste = on_paste
         self.on_crop_rotate = on_crop_rotate
         self.on_drop_reorder = on_drop_reorder
-        self._popover_close_timer: Optional[int] = None
+        self._popover_close_timer: int | None = None
         self._is_drag_scrubbing: bool = False
 
         self.add_css_class("segment-card")
@@ -556,7 +558,7 @@ class SegmentCard(Gtk.Box):
     def _on_popover_split_clicked(self) -> None:
         self._on_split_pill_clicked()
 
-    def update_thumbnails(self, thumbnails: List[Optional[Path]]) -> None:
+    def update_thumbnails(self, thumbnails: list[Path | None]) -> None:
         """Populate the filmstrip box with thumbnails or animated spinners for loading slots."""
         if getattr(self, "_current_thumb_list", None) == thumbnails:
             return
@@ -639,7 +641,7 @@ class SegmentCard(Gtk.Box):
                 slot.append(spinner)
                 self.filmstrip_box.append(slot)
 
-    def set_needle_ratio(self, ratio: Optional[float]) -> None:
+    def set_needle_ratio(self, ratio: float | None) -> None:
         """Move playhead needle to ratio (0.0 to 1.0) or hide it if None."""
         if ratio is None:
             self._cancel_popover_timer()
@@ -750,7 +752,7 @@ class SegmentCard(Gtk.Box):
         if self.needle.get_visible():
             self.show_split_pill()
 
-    def _create_drag_preview_texture(self) -> Optional[Gdk.Texture]:
+    def _create_drag_preview_texture(self) -> Gdk.Texture | None:
         """Generate a sleek miniature preview card for drag-and-drop feedback using native Cairo."""
         width, height = 120, 68
         try:

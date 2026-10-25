@@ -1,13 +1,14 @@
 """Advanced Export dialog for configuring export settings (containers, codecs, quality, resolution)."""
 
 from __future__ import annotations
-from typing import Callable, Optional, List, Tuple
-from pathlib import Path
+
+from collections.abc import Callable
+
 import gi
 
 gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
-from gi.repository import Adw, Gtk, GLib
+from gi.repository import Adw, Gtk
 
 from .i18n import _
 from .models import ExportSettings
@@ -21,9 +22,9 @@ class AdvancedExportDialog(Adw.Window):
         self,
         parent: Gtk.Window,
         on_export: Callable[[ExportSettings], None],
-        source_width: Optional[int] = None,
-        source_height: Optional[int] = None,
-        source_fps: Optional[float] = None,
+        source_width: int | None = None,
+        source_height: int | None = None,
+        source_fps: float | None = None,
     ) -> None:
         super().__init__(transient_for=parent, modal=True)
         self.set_title(_("Export Options"))
@@ -38,8 +39,8 @@ class AdvancedExportDialog(Adw.Window):
         if not self.containers:
             self.containers = [("mp4", "MP4 (.mp4)", "mp4")]
 
-        self._current_video_codecs: List[Tuple[str, str]] = []
-        self._current_audio_codecs: List[Tuple[str, str]] = []
+        self._current_video_codecs: list[tuple[str, str]] = []
+        self._current_audio_codecs: list[tuple[str, str]] = []
         self._updating_codecs = False
 
         self._build_ui()

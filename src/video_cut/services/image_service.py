@@ -4,9 +4,8 @@ import hashlib
 import subprocess
 import tempfile
 from pathlib import Path
-from typing import Optional, Set
 
-SUPPORTED_IMAGE_EXTENSIONS: Set[str] = {
+SUPPORTED_IMAGE_EXTENSIONS: set[str] = {
     ".png",
     ".jpg",
     ".jpeg",
@@ -30,9 +29,9 @@ class ImageService:
     def convert_image_to_video(
         cls,
         image_path: Path | str,
-        cache_dir: Optional[Path] = None,
+        cache_dir: Path | None = None,
         duration: float = 1.0,
-        audio_path: Optional[Path | str] = None,
+        audio_path: Path | str | None = None,
         audio_start_time: float = 0.0,
     ) -> Path:
         """Convert an image into a 30fps H.264/AAC MP4 video with optional soundtrack or silent audio."""
@@ -52,7 +51,7 @@ class ImageService:
         except OSError:
             raw = f"{img_path}_{duration:.3f}"
 
-        aud_path: Optional[Path] = None
+        aud_path: Path | None = None
         if audio_path is not None:
             aud_path = Path(audio_path)
             if not aud_path.exists():

@@ -1,6 +1,7 @@
 """Unit tests for deleting the last remaining segment and returning to the empty state."""
 
 from pathlib import Path
+
 import gi
 
 gi.require_version("Gtk", "4.0")

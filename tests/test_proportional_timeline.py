@@ -1,15 +1,16 @@
 """Unit and integration tests for proportional timeline segment sizing and dynamic thumbnails."""
 
 from pathlib import Path
+
 import gi
 
 gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
-from gi.repository import Gtk, Gdk, Adw
+from gi.repository import Adw, Gtk
 
-from video_cut.models import ProjectTimeline, Segment
-from video_cut.timeline_widget import TimelineWidget, compute_segment_widths
+from video_cut.models import Segment
 from video_cut.segment_card import SegmentCard
+from video_cut.timeline_widget import compute_segment_widths
 from video_cut.window import MainWindow
 
 

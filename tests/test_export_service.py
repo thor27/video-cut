@@ -1,7 +1,7 @@
 """Unit tests for export_service.py."""
 
-import pytest
 from pathlib import Path
+
 from video_cut.models import Segment
 from video_cut.services.export_service import ExportService
 

@@ -1,15 +1,14 @@
 """Tests for Desktop Integration: Drag & Drop and Universal Copy & Paste."""
 
-import tempfile
 from pathlib import Path
+
 import gi
 
 gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
-from gi.repository import Gtk, Gdk, Adw, Gio, GLib, GObject
+from gi.repository import Adw, Gdk, Gio
 
 from video_cut.window import MainWindow, parse_uri_list
-from video_cut.models import ProjectTimeline, Segment
 
 
 def test_parse_uri_list(tmp_path):

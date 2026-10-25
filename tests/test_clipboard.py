@@ -1,15 +1,15 @@
 """Tests for Segment Selection, Copy/Cut/Paste, and video-split-symbolic icon."""
 
 from pathlib import Path
+
 import gi
 
 gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
-from gi.repository import Gtk, Gdk, Adw
+from gi.repository import Adw, Gdk, Gtk
 
-from video_cut.models import ProjectTimeline, Segment
+from video_cut.models import ProjectTimeline
 from video_cut.window import MainWindow
-from video_cut.segment_card import SegmentCard
 
 
 def test_timeline_paste_segment():
@@ -186,6 +186,7 @@ def test_clipboard_ui_and_selection():
 
             # Test top bar Delete button:
             sel_id = win.timeline.selected_segment_id
+            assert sel_id is not None
             win.btn_delete.emit("clicked")
             assert len(win.timeline.segments) == 1
             assert win.btn_delete.get_sensitive() is False

@@ -2,23 +2,24 @@
 slice audio offset, and preview playback before importing into the timeline.
 """
 
+from collections.abc import Callable
 from pathlib import Path
-from typing import Callable, Optional
+
 import gi
 
 gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
 gi.require_version("Gst", "1.0")
-from gi.repository import Gtk, Adw, GLib, Gio, Gst
+from gi.repository import Adw, Gio, GLib, Gst, Gtk
 
 try:
     Gst.init(None)
 except Exception:
     pass
 
-from .services.probe_service import ProbeService
-from .utils import format_time, clamp
 from .i18n import _
+from .services.probe_service import ProbeService
+from .utils import clamp, format_time
 
 
 class AudioPreviewPlayer:
@@ -85,7 +86,7 @@ class ImageImportDialog(Adw.Window):
         parent: Gtk.Window,
         image_path: Path,
         is_replace: bool = False,
-        on_confirm: Optional[Callable[[float, Optional[Path], float], None]] = None,
+        on_confirm: Callable[[float, Path | None, float], None] | None = None,
     ):
         super().__init__()
         self.set_transient_for(parent)
@@ -99,13 +100,13 @@ class ImageImportDialog(Adw.Window):
 
         # State
         self.duration: float = 3.0
-        self.audio_path: Optional[Path] = None
+        self.audio_path: Path | None = None
         self.audio_duration: float = 0.0
         self.audio_start_time: float = 0.0
 
         # Audio playback state using safe GStreamer engine
-        self.audio_player: Optional[AudioPreviewPlayer] = None
-        self._preview_timer_id: Optional[int] = None
+        self.audio_player: AudioPreviewPlayer | None = None
+        self._preview_timer_id: int | None = None
         self._is_previewing: bool = False
 
         self.set_title(_("Import Image"))
@@ -154,7 +155,7 @@ class ImageImportDialog(Adw.Window):
         return _Compat()
 
     @staticmethod
-    def _parse_time(text: str) -> Optional[float]:
+    def _parse_time(text: str) -> float | None:
         """Parse time string like '12', '12.5', '12,5', '01:23.45', or '1:02:03' into seconds."""
         if not text:
             return None

@@ -1,26 +1,25 @@
 """Modal dialog for interactive Crop, Rotate, and Flip transformations on video segments."""
 
 from __future__ import annotations
+
 import io
-import math
 import subprocess
 import tempfile
+from collections.abc import Callable
 from pathlib import Path
-from typing import Callable, Optional, Tuple
+
 import gi
 
 gi.require_version("Gtk", "4.0")
 gi.require_version("Gdk", "4.0")
 gi.require_version("Adw", "1")
 gi.require_version("GdkPixbuf", "2.0")
-from gi.repository import Gtk, Gdk, Adw, GdkPixbuf, GLib
 import cairo
+from gi.repository import Adw, Gdk, GdkPixbuf, GLib, Gtk
 
-from .models import Segment
-from .services.probe_service import ProbeService
-from .utils import clamp
 from .i18n import _
-
+from .models import Segment
+from .utils import clamp
 
 # Aspect ratio preset dictionary: label -> ratio (width / height) or None
 ASPECT_PRESETS = [
@@ -84,10 +83,10 @@ def get_preset_tooltip(preset: str) -> str:
 class PreviewPicture(Gtk.Picture):
     """Subclass of Gtk.Picture that accurately tracks layout size allocations."""
 
-    def __init__(self, on_allocate: Optional[Callable[[int, int], None]] = None) -> None:
+    def __init__(self, on_allocate: Callable[[int, int], None] | None = None) -> None:
         super().__init__()
         self.on_allocate = on_allocate
-        self._last_alloc: Tuple[int, int] = (0, 0)
+        self._last_alloc: tuple[int, int] = (0, 0)
 
     def do_size_allocate(self, width: int, height: int, baseline: int) -> None:
         Gtk.Picture.do_size_allocate(self, width, height, baseline)
@@ -104,8 +103,8 @@ class CropRotateDialog(Adw.Window):
         self,
         parent: Gtk.Window,
         segment: Segment,
-        on_apply: Callable[[Optional[Tuple[float, float, float, float]], int, bool, bool], None],
-        current_time: Optional[float] = None,
+        on_apply: Callable[[tuple[float, float, float, float] | None, int, bool, bool], None],
+        current_time: float | None = None,
     ) -> None:
         super().__init__()
         self.set_transient_for(parent)
@@ -121,31 +120,31 @@ class CropRotateDialog(Adw.Window):
         self.rotation: int = segment.rotation % 360
         self.hflip: bool = bool(segment.hflip)
         self.vflip: bool = bool(segment.vflip)
-        self.crop: Tuple[float, float, float, float] = (
+        self.crop: tuple[float, float, float, float] = (
             segment.crop if segment.crop is not None else (0.0, 0.0, 1.0, 1.0)
         )
         self.selected_preset: str = "Free"
         self._is_updating_preset_ui: bool = False
 
         # Frame pixbufs and surfaces
-        self.base_pixbuf: Optional[GdkPixbuf.Pixbuf] = None
-        self._transformed_pixbuf: Optional[GdkPixbuf.Pixbuf] = None
-        self._cairo_frame_surface: Optional[cairo.ImageSurface] = None
+        self.base_pixbuf: GdkPixbuf.Pixbuf | None = None
+        self._transformed_pixbuf: GdkPixbuf.Pixbuf | None = None
+        self._cairo_frame_surface: cairo.ImageSurface | None = None
         self._load_reference_frame()
 
         # Canvas geometry and rendering caches for fast 60+ FPS preview
-        self._img_rect: Tuple[int, int, int, int] = (0, 0, 1, 1)  # (x, y, w, h) in preview coordinates
+        self._img_rect: tuple[int, int, int, int] = (0, 0, 1, 1)  # (x, y, w, h) in preview coordinates
         self._drag_mode: str = "NONE"
         self._drag_start_x: float = 0.0
         self._drag_start_y: float = 0.0
-        self._crop_at_drag_start: Tuple[float, float, float, float] = self.crop
+        self._crop_at_drag_start: tuple[float, float, float, float] = self.crop
 
-        self._base_canvas_surface: Optional[cairo.ImageSurface] = None
-        self._base_canvas_size: Tuple[int, int] = (0, 0)
+        self._base_canvas_surface: cairo.ImageSurface | None = None
+        self._base_canvas_size: tuple[int, int] = (0, 0)
         self._base_canvas_scale: float = 0.0
-        self._base_canvas_dest: Tuple[int, int] = (0, 0)
-        self._overlay_surface: Optional[cairo.ImageSurface] = None
-        self._overlay_size: Tuple[int, int] = (0, 0)
+        self._base_canvas_dest: tuple[int, int] = (0, 0)
+        self._overlay_surface: cairo.ImageSurface | None = None
+        self._overlay_size: tuple[int, int] = (0, 0)
         self._current_cursor_name: str = "default"
 
         title = _("Crop & Rotate — {name}").format(name=segment.source_name)
@@ -344,7 +343,7 @@ class CropRotateDialog(Adw.Window):
         presets_group.add_css_class("linked")
         self._preset_buttons: dict[str, Gtk.ToggleButton] = {}
 
-        for label, ratio in ASPECT_PRESETS:
+        for label, _ratio in ASPECT_PRESETS:
             btn_label = get_preset_label(label)
             btn = Gtk.ToggleButton(label=btn_label)
             btn.set_tooltip_text(get_preset_tooltip(label))
@@ -390,7 +389,7 @@ class CropRotateDialog(Adw.Window):
             flip_str=flip_str,
         ))
 
-    def _render_preview(self, width: Optional[int] = None, height: Optional[int] = None) -> None:
+    def _render_preview(self, width: int | None = None, height: int | None = None) -> None:
         """Render the composite preview image (transformed frame + shroud + crop box + handles)."""
         if not self._cairo_frame_surface:
             return
@@ -799,7 +798,7 @@ class CropRotateDialog(Adw.Window):
             self._current_cursor_name = "default"
             self.preview_picture.set_cursor_from_name("default")
 
-    def _get_current_aspect_ratio(self) -> Optional[float]:
+    def _get_current_aspect_ratio(self) -> float | None:
         """Return the numerical aspect ratio for the selected preset or None."""
         for label, ratio in ASPECT_PRESETS:
             if label == self.selected_preset:
@@ -923,7 +922,7 @@ class CropRotateDialog(Adw.Window):
         """Commit transforms and close dialog."""
         # Normalize crop: if virtually entire frame, set to None
         cx, cy, cw, ch = self.crop
-        final_crop: Optional[Tuple[float, float, float, float]] = self.crop
+        final_crop: tuple[float, float, float, float] | None = self.crop
         if abs(cx) < 1e-4 and abs(cy) < 1e-4 and abs(cw - 1.0) < 1e-4 and abs(ch - 1.0) < 1e-4:
             final_crop = None
 

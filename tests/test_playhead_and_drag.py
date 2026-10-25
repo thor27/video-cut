@@ -1,13 +1,14 @@
 """Unit tests for SegmentCard needle positioning, filmstrip margins, and scrub drag handling."""
 
 from pathlib import Path
+
 import gi
 
 gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
-from gi.repository import Gtk, Adw, GLib
+from gi.repository import Adw, GLib, Gtk
 
-from video_cut.models import Segment, ProjectTimeline
+from video_cut.models import ProjectTimeline, Segment
 from video_cut.segment_card import SegmentCard
 from video_cut.timeline_widget import TimelineWidget
 
@@ -506,15 +507,14 @@ def test_split_pill_left_boundary_not_clipped_in_timeline():
 
 def test_split_pill_centralization_across_languages():
     """Verify split pill is dynamically centered over the orange playhead needle regardless of language and text length."""
-    import time
-    from video_cut.window import MainWindow
     from video_cut.i18n import init_i18n
+    from video_cut.window import MainWindow
 
     for lang in ["en_US", "pt_BR", "fr"]:
         app = Adw.Application(application_id=f"io.github.thomaz.videocut.test.pill_center_{lang}")
         err = []
 
-        def run_test(app, target_lang=lang):
+        def run_test(app, target_lang=lang, err_list=err):
             win = None
             try:
                 init_i18n(target_lang)
@@ -523,7 +523,7 @@ def test_split_pill_centralization_across_languages():
                 win.present()
 
                 ctx = GLib.MainContext.default()
-                for _ in range(50):
+                for _ in range(100):
                     ctx.iteration(False)
 
                 tw = win.timeline_widget
@@ -531,7 +531,7 @@ def test_split_pill_centralization_across_languages():
                 card.set_needle_ratio(0.5)
                 tw.show_split_pill()
 
-                for _ in range(50):
+                for _ in range(100):
                     ctx.iteration(False)
 
                 fs_x = tw.cards_box.get_margin_start()
@@ -549,7 +549,7 @@ def test_split_pill_centralization_across_languages():
 
                 assert diff <= 1.0, f"In {target_lang}, split pill center ({pill_center}) deviated from needle center ({needle_center}) by {diff}px"
             except Exception as e:
-                err.append(e)
+                err_list.append(e)
             finally:
                 if win:
                     win.close()

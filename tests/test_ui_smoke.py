@@ -1,12 +1,12 @@
 """Smoke test for UI components and MainWindow operations."""
 
-import sys
 from pathlib import Path
+
 import gi
 
 gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
-from gi.repository import Gtk, Adw, GLib
+from gi.repository import Adw, Gio, GLib, Gtk
 
 from video_cut.window import MainWindow
 

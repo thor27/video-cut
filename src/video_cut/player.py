@@ -3,15 +3,16 @@
 import os
 import sys
 import time
+from collections.abc import Callable
 from pathlib import Path
-from typing import Callable, Optional
+
 import gi
 
 gi.require_version("Gtk", "4.0")
 gi.require_version("Gdk", "4.0")
 gi.require_version("Gsk", "4.0")
 gi.require_version("Adw", "1")
-from gi.repository import Gtk, Gdk, Gsk, Graphene, GObject, GLib
+from gi.repository import Gdk, GLib, GObject, Graphene, Gsk, Gtk
 
 from .models import ProjectTimeline, Segment
 from .utils import clamp
@@ -26,7 +27,7 @@ def _dbg(msg: str) -> None:
         print(f"[player {time.monotonic() - _T0:8.3f}] {msg}", file=sys.stderr, flush=True)
 
 
-def _mf_state(mf: Optional[Gtk.MediaFile]) -> str:
+def _mf_state(mf: Gtk.MediaFile | None) -> str:
     """Compact description of a media file's state for debug logs."""
     if mf is None:
         return "mf=None"
@@ -52,7 +53,7 @@ class TransformedPaintable(GObject.Object, Gdk.Paintable):
         rotation: int = 0,
         hflip: bool = False,
         vflip: bool = False,
-        crop: Optional[tuple[float, float, float, float]] = None,
+        crop: tuple[float, float, float, float] | None = None,
     ) -> None:
         super().__init__()
         self.base = base
@@ -87,7 +88,7 @@ class TransformedPaintable(GObject.Object, Gdk.Paintable):
         rotation: int = 0,
         hflip: bool = False,
         vflip: bool = False,
-        crop: Optional[tuple[float, float, float, float]] = None,
+        crop: tuple[float, float, float, float] | None = None,
     ) -> None:
         """Update transformation parameters and trigger size & content recalculation."""
         self.rotation = rotation % 360
@@ -197,14 +198,14 @@ class VideoPlayerController:
         self.on_time_update = on_time_update
         self.on_playback_state_changed = on_playback_state_changed
 
-        self.current_media_file: Optional[Gtk.MediaFile] = None
-        self.current_transformed_paintable: Optional[TransformedPaintable] = None
-        self.current_source_path: Optional[Path] = None
-        self.current_segment_id: Optional[str] = None
+        self.current_media_file: Gtk.MediaFile | None = None
+        self.current_transformed_paintable: TransformedPaintable | None = None
+        self.current_source_path: Path | None = None
+        self.current_segment_id: str | None = None
         self.current_global_time: float = 0.0
 
         self._is_playing: bool = False
-        self._tick_timer_id: Optional[int] = None
+        self._tick_timer_id: int | None = None
         self._last_tick_time: float = 0.0
 
         self._is_seeking: bool = False
@@ -253,7 +254,7 @@ class VideoPlayerController:
         else:
             self.clear()
 
-    def _apply_segment_transform(self, seg: Optional[Segment] = None, force: bool = False) -> None:
+    def _apply_segment_transform(self, seg: Segment | None = None, force: bool = False) -> None:
         """Attach or update TransformedPaintable if segment has transforms, else use raw media file."""
         if self.current_media_file is None:
             if self.current_transformed_paintable:
@@ -353,7 +354,7 @@ class VideoPlayerController:
         path: Path,
         source_ts: float,
         and_play: bool = False,
-        seg: Optional[Segment] = None,
+        seg: Segment | None = None,
     ) -> None:
         """Load a video file into Gtk.MediaFile and attach to Gtk.Picture."""
         _dbg(f"LOAD {path.name} src_ts={source_ts:.3f} and_play={and_play} old={_mf_state(self.current_media_file)}")

@@ -1,8 +1,8 @@
 """Integration test for full end-to-end export on test video files."""
 
 import time
-import pytest
 from pathlib import Path
+
 import gi
 
 gi.require_version("GLib", "2.0")

@@ -1,7 +1,9 @@
 """CLI entrypoint for Video Cut."""
 
 import sys
+
 from gi.repository import GLib
+
 from .app import VideoCutApplication
 
 

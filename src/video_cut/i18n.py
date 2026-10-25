@@ -4,7 +4,6 @@ import gettext
 import locale
 import os
 from pathlib import Path
-from typing import Optional, List
 
 DOMAIN = "video-cut"
 LOCALE_DIR = Path(__file__).parent / "locale"
@@ -14,7 +13,7 @@ _active_translation: gettext.NullTranslations = gettext.NullTranslations()
 _current_locale: str = "en_US"
 
 
-def _normalize_lang(code: Optional[str]) -> Optional[str]:
+def _normalize_lang(code: str | None) -> str | None:
     """Normalize a locale/language identifier to one of the supported codes."""
     if not code:
         return None
@@ -73,7 +72,7 @@ def detect_system_locale() -> str:
     return "en_US"
 
 
-def init_i18n(lang: Optional[str] = None) -> None:
+def init_i18n(lang: str | None = None) -> None:
     """Initialize gettext translation catalog based on system language or explicit override."""
     global _active_translation, _current_locale
 
@@ -81,7 +80,7 @@ def init_i18n(lang: Optional[str] = None) -> None:
     _current_locale = target_lang or "en_US"
 
     # Languages list for fallback resolution: e.g. ["pt_BR", "pt", "en_US"]
-    candidate_langs: List[str] = [_current_locale]
+    candidate_langs: list[str] = [_current_locale]
     if "_" in _current_locale:
         candidate_langs.append(_current_locale.split("_")[0])
     if "en_US" not in candidate_langs:
@@ -111,7 +110,7 @@ def get_current_locale() -> str:
     return _current_locale
 
 
-def get_supported_locales() -> List[str]:
+def get_supported_locales() -> list[str]:
     """Return the list of supported locales."""
     return list(SUPPORTED_LOCALES)
 

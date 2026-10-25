@@ -1,23 +1,22 @@
 """Adw.Application definition for Video Cut."""
 
-import sys
 from pathlib import Path
-from typing import Optional
+
 import gi
 
 gi.require_version("Gtk", "4.0")
 gi.require_version("Gdk", "4.0")
 gi.require_version("Adw", "1")
-from gi.repository import Adw, Gio, GLib, Gtk, Gdk
+from gi.repository import Adw, Gdk, Gio, GLib, Gtk
 
-from .window import MainWindow
 from .i18n import _
+from .window import MainWindow
 
 
 class VideoCutApplication(Adw.Application):
     """Main Adw.Application."""
 
-    def __init__(self, initial_video: Optional[str] = None) -> None:
+    def __init__(self, initial_video: str | None = None) -> None:
         if not GLib.get_prgname():
             GLib.set_prgname("io.github.thomaz.videocut")
         if not GLib.get_application_name():
@@ -27,7 +26,7 @@ class VideoCutApplication(Adw.Application):
             flags=Gio.ApplicationFlags.HANDLES_OPEN | Gio.ApplicationFlags.NON_UNIQUE,
         )
         self.initial_video = initial_video
-        self.window: Optional[MainWindow] = None
+        self.window: MainWindow | None = None
 
     def do_activate(self) -> None:
         res_dir = Path(__file__).parent / "resources"

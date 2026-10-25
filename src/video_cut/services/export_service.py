@@ -1,26 +1,26 @@
 """Service to export concatenated segments using FFmpeg filter_complex with real-time progress."""
 
-import os
 import re
 import subprocess
 import threading
+from collections.abc import Callable
 from pathlib import Path
-from typing import Callable, List, Optional
+
 import gi
 
 gi.require_version("GLib", "2.0")
 from gi.repository import GLib
 
-from ..models import Segment, ExportSettings
 from ..i18n import _
+from ..models import ExportSettings, Segment
 from .probe_service import ProbeService
 
 
 class FFmpegCapabilities:
     """Detects available video encoders, audio encoders, and muxers in installed FFmpeg."""
 
-    _encoders: Optional[set[str]] = None
-    _muxers: Optional[set[str]] = None
+    _encoders: set[str] | None = None
+    _muxers: set[str] | None = None
 
     @classmethod
     def get_encoders(cls) -> set[str]:
@@ -120,19 +120,19 @@ class ExportService:
     """Manages video concatenation and export via FFmpeg."""
 
     def __init__(self) -> None:
-        self._process: Optional[subprocess.Popen] = None
+        self._process: subprocess.Popen | None = None
         self._cancelled = False
-        self._thread: Optional[threading.Thread] = None
+        self._thread: threading.Thread | None = None
 
     def build_ffmpeg_command(
         self,
-        segments: List[Segment],
+        segments: list[Segment],
         output_path: Path | str,
-        target_width: Optional[int] = None,
-        target_height: Optional[int] = None,
-        settings: Optional[ExportSettings] = None,
+        target_width: int | None = None,
+        target_height: int | None = None,
+        settings: ExportSettings | None = None,
         fast_seek: bool = False,
-    ) -> List[str]:
+    ) -> list[str]:
         """Construct the FFmpeg command line for concatenating segments."""
         if not segments:
             raise ValueError("No segments to export")
@@ -140,7 +140,7 @@ class ExportService:
         out_path = Path(output_path)
 
         # 1. Determine unique inputs
-        unique_paths: List[Path] = []
+        unique_paths: list[Path] = []
         for seg in segments:
             if seg.source_path not in unique_paths:
                 unique_paths.append(seg.source_path)
@@ -188,8 +188,8 @@ class ExportService:
             cmd.extend(["-i", str(p)])
 
         # 4. Assemble filter_complex
-        filter_parts: List[str] = []
-        concat_inputs: List[str] = []
+        filter_parts: list[str] = []
+        concat_inputs: list[str] = []
 
         for j, seg in enumerate(segments):
             in_idx = path_to_idx[seg.source_path]
@@ -199,7 +199,7 @@ class ExportService:
             v_label = f"v{j}"
             a_label = f"a{j}"
 
-            v_chain: List[str] = [
+            v_chain: list[str] = [
                 f"trim=start={trimmed_start:.3f}:end={trimmed_end:.3f}",
                 "setpts=PTS-STARTPTS",
             ]
@@ -309,11 +309,11 @@ class ExportService:
 
     def export_async(
         self,
-        segments: List[Segment],
+        segments: list[Segment],
         output_path: Path | str,
         on_progress: Callable[[float, float], None],
-        on_done: Callable[[bool, Optional[str]], None],
-        settings: Optional[ExportSettings] = None,
+        on_done: Callable[[bool, str | None], None],
+        settings: ExportSettings | None = None,
     ) -> None:
         """Start async export with progress and completion callbacks."""
         self._cancelled = False

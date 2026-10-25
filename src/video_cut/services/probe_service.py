@@ -4,7 +4,6 @@ import json
 import subprocess
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional
 
 
 @dataclass
@@ -26,7 +25,7 @@ class ProbeService:
     """Wrapper around ffprobe to inspect video files."""
 
     @staticmethod
-    def probe(file_path: Path | str) -> Optional[VideoMetadata]:
+    def probe(file_path: Path | str) -> VideoMetadata | None:
         path = Path(file_path)
         if not path.exists():
             return None
@@ -45,7 +44,7 @@ class ProbeService:
         ]
 
         try:
-            result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, check=True)
+            result = subprocess.run(cmd, capture_output=True, text=True, check=True)
             data = json.loads(result.stdout)
 
             streams = data.get("streams", [])
@@ -83,7 +82,7 @@ class ProbeService:
             return None
 
     @staticmethod
-    def probe_duration(file_path: Path | str) -> Optional[float]:
+    def probe_duration(file_path: Path | str) -> float | None:
         """Inspect media duration using ffprobe for audio or video files."""
         path = Path(file_path)
         if not path.exists():
@@ -100,7 +99,7 @@ class ProbeService:
             str(path),
         ]
         try:
-            result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, check=True)
+            result = subprocess.run(cmd, capture_output=True, text=True, check=True)
             data = json.loads(result.stdout)
             fmt = data.get("format", {})
             dur_str = fmt.get("duration")

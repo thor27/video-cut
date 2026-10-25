@@ -1,17 +1,16 @@
 """Tests for advanced export functionality, dynamic capabilities, dialog, and ffmpeg command generation."""
 
-import pytest
 from pathlib import Path
-from unittest.mock import patch, MagicMock
+
 import gi
 
 gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
-from gi.repository import Gtk, Adw, Gio
+from gi.repository import Gtk
 
-from video_cut.models import Segment, ExportSettings
-from video_cut.services.export_service import ExportService, FFmpegCapabilities
 from video_cut.advanced_export_dialog import AdvancedExportDialog
+from video_cut.models import ExportSettings, Segment
+from video_cut.services.export_service import ExportService, FFmpegCapabilities
 
 
 def test_ffmpeg_capabilities_detection():

@@ -2,13 +2,14 @@
 
 import hashlib
 import json
-import re
 import subprocess
 import tempfile
 import threading
+from bisect import bisect_left
+from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
-from typing import Callable, Dict, List, Optional, Set
+
 import gi
 
 gi.require_version("GLib", "2.0")
@@ -18,7 +19,7 @@ from gi.repository import GLib
 class ThumbnailService:
     """Manages asynchronous extraction and caching of video thumbnails."""
 
-    def __init__(self, cache_dir: Optional[Path] = None, max_workers: int = 4) -> None:
+    def __init__(self, cache_dir: Path | None = None, max_workers: int = 4) -> None:
         if cache_dir is None:
             self.cache_dir = Path(tempfile.gettempdir()) / "video_cut_cache"
         else:
@@ -26,12 +27,12 @@ class ThumbnailService:
         self.cache_dir.mkdir(parents=True, exist_ok=True)
         self.executor = ThreadPoolExecutor(max_workers=max_workers)
         # Mapping from file key to list of (timestamp, image_path)
-        self._cache: Dict[str, List[tuple[float, Path]]] = {}
+        self._cache: dict[str, list[tuple[float, Path]]] = {}
         self._cache_lock = threading.Lock()
-        self._completed_keys: Set[str] = set()
-        self._in_progress_keys: Set[str] = set()
+        self._completed_keys: set[str] = set()
+        self._in_progress_keys: set[str] = set()
         self._active_jobs: int = 0
-        self._active_threads: List[threading.Thread] = []
+        self._active_threads: list[threading.Thread] = []
 
     def has_pending_jobs(self) -> bool:
         """Check if any thumbnail generation tasks are currently active."""
@@ -80,7 +81,7 @@ class ThumbnailService:
         start_time: float,
         end_time: float,
         max_thumbs: int = 8,
-    ) -> List[Optional[Path]]:
+    ) -> list[Path | None]:
         """Return a list of thumbnail paths (or None for loading slots) of length max_thumbs.
 
         The first item corresponds to start_time, the last item to end_time,
@@ -111,7 +112,7 @@ class ThumbnailService:
         if not items:
             return [None] * count
 
-        results: List[Optional[Path]] = []
+        results: list[Path | None] = []
         dt = self._calculate_dt(dur)
         if count == 1:
             max_diff = max(1.5, dur)
@@ -121,8 +122,21 @@ class ThumbnailService:
             # While in progress, use strict tolerance so unreached positions show placeholders
             max_diff = max(dt, step * 0.65)
 
+        n_items = len(items)
         for t in target_times:
-            closest_ts, closest_path = min(items, key=lambda x: abs(x[0] - t))
+            # Binary search for closest timestamp in sorted thumbnail cache
+            idx = bisect_left(items, t, key=lambda x: x[0])
+            if idx == 0:
+                closest_ts, closest_path = items[0]
+            elif idx >= n_items:
+                closest_ts, closest_path = items[-1]
+            else:
+                before = items[idx - 1]
+                after = items[idx]
+                if (after[0] - t) < (t - before[0]):
+                    closest_ts, closest_path = after
+                else:
+                    closest_ts, closest_path = before
             if is_completed:
                 # If extraction is completed, every slot must resolve to the closest frame
                 if closest_path.exists():
@@ -142,7 +156,7 @@ class ThumbnailService:
         self,
         source_path: Path,
         target_time: float,
-        on_ready: Optional[Callable[[Path], None]] = None,
+        on_ready: Callable[[Path], None] | None = None,
     ) -> None:
         """Extract a single thumbnail at an exact timestamp asynchronously."""
         path = Path(source_path)
@@ -194,9 +208,9 @@ class ThumbnailService:
         self,
         source_path: Path | str,
         duration: float,
-        on_done: Callable[[Path, List[tuple[float, Path]]], None],
-        on_first_thumb: Optional[Callable[[Path, Path], None]] = None,
-        on_progress: Optional[Callable[[int, int, Path], None]] = None,
+        on_done: Callable[[Path, list[tuple[float, Path]]], None],
+        on_first_thumb: Callable[[Path, Path], None] | None = None,
+        on_progress: Callable[[int, int, Path], None] | None = None,
     ) -> None:
         """Extract thumbnails in the background ultra-fast using parallel targeted seeks,
         streaming progressive updates as each thumbnail completes.
@@ -222,6 +236,7 @@ class ThumbnailService:
                 data = json.loads(index_file.read_text(encoding="utf-8"))
                 loaded = [(float(ts), Path(p)) for ts, p in data if Path(p).exists()]
                 if len(loaded) >= 1:
+                    loaded.sort(key=lambda x: x[0])
                     with self._cache_lock:
                         self._cache[key] = loaded
                         self._completed_keys.add(key)
@@ -265,9 +280,9 @@ class ThumbnailService:
             to_extract = [item for item in batch_items if not item[2].exists()]
             if to_extract:
                 cmd = ["ffmpeg", "-y", "-nostdin"]
-                for idx, t, out_p in to_extract:
+                for _idx, t, _out_p in to_extract:
                     cmd.extend(["-skip_frame", "bidir", "-ss", f"{t:.3f}", "-i", str(path)])
-                for local_i, (idx, t, out_p) in enumerate(to_extract):
+                for local_i, (_idx, _t, out_p) in enumerate(to_extract):
                     cmd.extend([
                         "-map", f"{local_i}:v:0",
                         "-frames:v", "1",
@@ -279,7 +294,7 @@ class ThumbnailService:
                 res = subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
                 if res.returncode != 0:
                     # Fallback to individual extraction if batched multi-input fails
-                    for idx, t, out_p in to_extract:
+                    for _idx, t, out_p in to_extract:
                         if not out_p.exists():
                             fb_cmd = [
                                 "ffmpeg", "-y", "-nostdin",

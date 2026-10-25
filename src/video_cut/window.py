@@ -1,55 +1,28 @@
 import os
 import subprocess
 from pathlib import Path
-from typing import Optional, List
-from urllib.parse import unquote, urlparse
+
 import gi
 
 gi.require_version("Gtk", "4.0")
 gi.require_version("Gdk", "4.0")
 gi.require_version("Adw", "1")
-from gi.repository import Gtk, Gdk, Adw, GLib, Gio, GObject
+from gi.repository import Adw, Gdk, Gio, GLib, Gtk
 
-from .models import ProjectTimeline, Segment, ExportSettings
+from . import __version__
+from .advanced_export_dialog import AdvancedExportDialog
+from .clipboard_controller import ClipboardController, parse_uri_list
+from .crop_rotate_dialog import CropRotateDialog
+from .i18n import _
+from .image_import_dialog import ImageImportDialog
+from .models import ExportSettings, ProjectTimeline, Segment
 from .player import VideoPlayerController
-from .timeline_widget import TimelineWidget
-from .services.probe_service import ProbeService
-from .services.thumbnail_service import ThumbnailService
 from .services.export_service import ExportService
 from .services.image_service import ImageService
-from .image_import_dialog import ImageImportDialog
-from .crop_rotate_dialog import CropRotateDialog
-from .advanced_export_dialog import AdvancedExportDialog
-from .utils import format_time, clamp
-from .i18n import _
-from . import __version__
-
-
-def parse_uri_list(text: str) -> list[Path]:
-    """Parse text/uri-list, nautilus clipboard, or newline-separated paths into local Paths."""
-    paths: list[Path] = []
-    if not text:
-        return paths
-    for line in text.strip().splitlines():
-        line = line.strip()
-        if not line or line.startswith("#") or line.startswith("x-special/") or line in ("copy", "cut"):
-            continue
-        if line.startswith("file://"):
-            try:
-                parsed = urlparse(line)
-                p = Path(unquote(parsed.path))
-                if p.exists():
-                    paths.append(p)
-            except Exception:
-                pass
-        elif line.startswith("/"):
-            try:
-                p = Path(line)
-                if p.exists():
-                    paths.append(p)
-            except Exception:
-                pass
-    return paths
+from .services.probe_service import ProbeService
+from .services.thumbnail_service import ThumbnailService
+from .timeline_widget import TimelineWidget
+from .utils import clamp, format_time
 
 
 class MainWindow(Adw.ApplicationWindow):
@@ -66,10 +39,10 @@ class MainWindow(Adw.ApplicationWindow):
         self.timeline = ProjectTimeline()
         self.thumbnail_service = ThumbnailService()
         self.export_service = ExportService()
+        self.clipboard_controller = ClipboardController(self)
         self.current_global_time: float = 0.0
-        self._clipboard_segment: Optional[Segment] = None
-        self._thumb_toast: Optional[Adw.Toast] = None
-        self._thumb_toast_label: Optional[Gtk.Label] = None
+        self._thumb_toast: Adw.Toast | None = None
+        self._thumb_toast_label: Gtk.Label | None = None
 
         # Build UI layout
         self._build_ui()
@@ -77,6 +50,14 @@ class MainWindow(Adw.ApplicationWindow):
         self._setup_window_drag_and_drop()
         self._setup_clipboard_listener()
         self._update_ui_state()
+
+    @property
+    def _clipboard_segment(self) -> Segment | None:
+        return self.clipboard_controller.internal_segment
+
+    @_clipboard_segment.setter
+    def _clipboard_segment(self, value: Segment | None) -> None:
+        self.clipboard_controller.internal_segment = value
 
     def _build_ui(self) -> None:
         # Load CSS and icons
@@ -324,7 +305,7 @@ class MainWindow(Adw.ApplicationWindow):
 
         self.connect("close-request", on_window_close_request)
 
-    def _get_segment_thumbnails(self, seg: Segment, target_count: int) -> list[Optional[Path]]:
+    def _get_segment_thumbnails(self, seg: Segment, target_count: int) -> list[Path | None]:
         return self.thumbnail_service.get_thumbnails_for_segment(
             seg.source_path, seg.start_time, seg.end_time, max_thumbs=target_count
         )
@@ -515,42 +496,19 @@ class MainWindow(Adw.ApplicationWindow):
         self.timeline.selected_segment_id = segment_id
         self.paste_segment()
 
-    def _on_segment_selection_changed(self, segment_id: Optional[str]) -> None:
+    def _on_segment_selection_changed(self, segment_id: str | None) -> None:
         self._update_ui_state()
 
     def _setup_clipboard_listener(self) -> None:
         """Listen for system clipboard updates to update paste button sensitivity."""
-        try:
-            display = Gdk.Display.get_default()
-            if display:
-                cb = display.get_clipboard()
-                cb.connect("changed", self._on_clipboard_changed)
-        except Exception as e:
-            print(f"Could not connect clipboard listener: {e}")
+        self.clipboard_controller.setup_listener()
 
     def _on_clipboard_changed(self, clipboard: Gdk.Clipboard) -> None:
         self._update_ui_state()
 
     def _has_pasteable_content(self) -> bool:
         """Check if internal clipboard or desktop clipboard contains pasteable media."""
-        if self._clipboard_segment is not None:
-            return True
-        try:
-            display = Gdk.Display.get_default()
-            if display:
-                cb = display.get_clipboard()
-                fmts = cb.get_formats()
-                if (
-                    fmts.contain_gtype(Gdk.Texture)
-                    or fmts.contain_gtype(Gdk.FileList)
-                    or fmts.contain_mime_type("text/uri-list")
-                    or fmts.contain_mime_type("image/png")
-                    or fmts.contain_mime_type("image/jpeg")
-                ):
-                    return True
-        except Exception:
-            pass
-        return False
+        return self.clipboard_controller.has_pasteable_content()
 
     def _update_ui_state(self) -> None:
         has_video = not self.timeline.is_empty
@@ -676,7 +634,7 @@ class MainWindow(Adw.ApplicationWindow):
         texture.save_to_png(str(temp_path))
         return temp_path
 
-    def import_media_files(self, paths: List[Path], replace: Optional[bool] = None) -> None:
+    def import_media_files(self, paths: list[Path], replace: bool | None = None) -> None:
         """Import a list of video or image paths, opening if empty or appending if active."""
         if not paths:
             return
@@ -741,7 +699,7 @@ class MainWindow(Adw.ApplicationWindow):
 
     def _on_window_drop(self, target: Gtk.DropTarget, value, x: float, y: float) -> bool:
         self._set_drop_highlight(False)
-        paths: List[Path] = []
+        paths: list[Path] = []
 
         if isinstance(value, Gdk.FileList):
             for gfile in value.get_files():
@@ -771,7 +729,7 @@ class MainWindow(Adw.ApplicationWindow):
         return True
 
     def _show_image_import_dialog(self, image_path: Path, replace: bool) -> None:
-        def on_confirm(duration: float, audio_path: Optional[Path], audio_start: float):
+        def on_confirm(duration: float, audio_path: Path | None, audio_start: float):
             self.load_video(
                 image_path,
                 replace=replace,
@@ -793,7 +751,7 @@ class MainWindow(Adw.ApplicationWindow):
         video_path: Path,
         replace: bool = True,
         duration: float = 1.0,
-        audio_path: Optional[Path | str] = None,
+        audio_path: Path | str | None = None,
         audio_start_time: float = 0.0,
     ) -> None:
         """Inspect media metadata and add it to the timeline."""
@@ -919,143 +877,19 @@ class MainWindow(Adw.ApplicationWindow):
 
     def _copy_to_system_clipboard(self, source_path: Path) -> None:
         """Export local media file to desktop system clipboard."""
-        try:
-            display = Gdk.Display.get_default()
-            if not display:
-                return
-            cb = display.get_clipboard()
-            if source_path.exists():
-                gfile = Gio.File.new_for_path(str(source_path.resolve()))
-                fl = Gdk.FileList.new_from_list([gfile])
-                cp = Gdk.ContentProvider.new_for_value(GObject.Value(Gdk.FileList, fl))
-                cb.set_content(cp)
-        except Exception as e:
-            print(f"Could not copy file to system clipboard: {e}")
+        self.clipboard_controller.copy_to_system_clipboard(source_path)
 
     def copy_selected_segment(self) -> None:
         """Copy currently selected segment to internal clipboard and system clipboard."""
-        if not self.timeline.selected_segment_id:
-            return
-        seg = self.timeline.get_segment(self.timeline.selected_segment_id)
-        if not seg:
-            return
-        self._clipboard_segment = seg.copy()
-        self._copy_to_system_clipboard(seg.source_path)
-        self._update_ui_state()
+        self.clipboard_controller.copy_selected()
 
     def cut_selected_segment(self) -> None:
         """Cut currently selected segment to internal clipboard and system clipboard."""
-        if not self.timeline.selected_segment_id:
-            return
-        seg = self.timeline.get_segment(self.timeline.selected_segment_id)
-        if not seg:
-            return
-
-        self._clipboard_segment = seg.copy()
-        self._copy_to_system_clipboard(seg.source_path)
-        self.timeline.save_state(self.current_global_time)
-        if self.timeline.delete_segment(seg.id):
-            self.current_global_time = clamp(self.current_global_time, 0.0, self.timeline.total_duration)
-            self.player.sync_timeline_change(self.current_global_time)
-            self.timeline_widget.rebuild_filmstrip()
-            self._update_ui_state()
-
-    def _paste_internal_segment(self) -> None:
-        """Paste segment from internal clipboard after current selection."""
-        if not self._clipboard_segment:
-            return
-        self.timeline.save_state(self.current_global_time)
-        pasted = self.timeline.paste_segment(
-            self._clipboard_segment,
-            after_segment_id=self.timeline.selected_segment_id,
-        )
-        new_idx = self.timeline.get_segment_index(pasted.id)
-        self.current_global_time = self.timeline.get_segment_global_start(new_idx)
-        self.player.sync_timeline_change(self.current_global_time)
-        self.timeline_widget.rebuild_filmstrip()
-        self._update_ui_state()
+        self.clipboard_controller.cut_selected()
 
     def paste_segment(self) -> None:
         """Universal paste: paste internal segment, clipboard image, or clipboard files/URIs."""
-        display = Gdk.Display.get_default()
-        cb = display.get_clipboard() if display else None
-
-        # 1. If internal segment is available and clipboard was set locally
-        if self._clipboard_segment and (cb is None or cb.is_local()):
-            self._paste_internal_segment()
-            return
-
-        # 2. If system clipboard has content
-        if cb is not None:
-            fmts = cb.get_formats()
-
-            # A. Texture / Image
-            if fmts.contain_gtype(Gdk.Texture) or fmts.contain_mime_type("image/png") or fmts.contain_mime_type("image/jpeg"):
-                cb.read_texture_async(None, self._on_clipboard_texture_read)
-                return
-
-            # B. File list
-            if fmts.contain_gtype(Gdk.FileList):
-                cb.read_value_async(Gdk.FileList, GLib.PRIORITY_DEFAULT, None, self._on_clipboard_file_list_read)
-                return
-
-            # C. Text / URI list
-            if fmts.contain_gtype(str) or fmts.contain_mime_type("text/uri-list") or fmts.contain_mime_type("text/plain"):
-                cb.read_text_async(None, self._on_clipboard_text_read)
-                return
-
-        # 3. Fallback to internal segment if available
-        if self._clipboard_segment:
-            self._paste_internal_segment()
-            return
-
-        # 4. Nothing on clipboard
-        self._show_toast(_("Clipboard does not contain any video or image"))
-
-    def _on_clipboard_texture_read(self, cb: Gdk.Clipboard, res: Gio.AsyncResult) -> None:
-        try:
-            texture = cb.read_texture_finish(res)
-            if texture:
-                temp_path = self._save_texture_to_temp_file(texture)
-                self.import_media_files([temp_path], replace=self.timeline.is_empty)
-                return
-        except Exception as e:
-            print(f"Error reading texture from clipboard: {e}")
-        self._show_toast(_("Failed to read image from clipboard"))
-
-    def _on_clipboard_file_list_read(self, cb: Gdk.Clipboard, res: Gio.AsyncResult) -> None:
-        try:
-            val = cb.read_value_finish(res)
-            if val:
-                paths = []
-                for gfile in val.get_files():
-                    p = gfile.get_path()
-                    if p:
-                        paths.append(Path(p))
-                if paths:
-                    self.import_media_files(paths, replace=self.timeline.is_empty)
-                    return
-        except Exception as e:
-            print(f"Error reading file list from clipboard: {e}")
-        if self._clipboard_segment:
-            self._paste_internal_segment()
-        else:
-            self._show_toast(_("Clipboard does not contain any video or image"))
-
-    def _on_clipboard_text_read(self, cb: Gdk.Clipboard, res: Gio.AsyncResult) -> None:
-        try:
-            text = cb.read_text_finish(res)
-            if text:
-                paths = parse_uri_list(text)
-                if paths:
-                    self.import_media_files(paths, replace=self.timeline.is_empty)
-                    return
-        except Exception as e:
-            print(f"Error reading text/URIs from clipboard: {e}")
-        if self._clipboard_segment:
-            self._paste_internal_segment()
-        else:
-            self._show_toast(_("Clipboard does not contain any video or image"))
+        self.clipboard_controller.paste()
 
     def open_crop_rotate_selected_segment(self) -> None:
         """Open Crop & Rotate modal dialog for the selected segment."""
@@ -1063,7 +897,7 @@ class MainWindow(Adw.ApplicationWindow):
             return
         self.open_crop_rotate_dialog(self.timeline.selected_segment_id)
 
-    def open_crop_rotate_dialog(self, segment_id: Optional[str] = None) -> None:
+    def open_crop_rotate_dialog(self, segment_id: str | None = None) -> None:
         """Open Crop & Rotate modal dialog for the given segment ID or selected segment."""
         target_id = segment_id or self.timeline.selected_segment_id
         if not target_id:
@@ -1124,7 +958,7 @@ class MainWindow(Adw.ApplicationWindow):
         )
         dialog.present()
 
-    def _export_video_dialog(self, settings: Optional[ExportSettings] = None) -> None:
+    def _export_video_dialog(self, settings: ExportSettings | None = None) -> None:
         if self.timeline.is_empty:
             return
 
@@ -1184,7 +1018,7 @@ class MainWindow(Adw.ApplicationWindow):
 
         dialog.save(self, None, on_save_finish)
 
-    def _start_export(self, destination: Path, settings: Optional[ExportSettings] = None) -> None:
+    def _start_export(self, destination: Path, settings: ExportSettings | None = None) -> None:
         self.player.pause()
 
         # Build Export Dialog Modal (non-closable during export: must wait or click cancel)
@@ -1242,7 +1076,7 @@ class MainWindow(Adw.ApplicationWindow):
         box.append(lbl_details)
 
         # Pulse timer while waiting for the first progress percentage
-        pulse_timer_id: Optional[int] = None
+        pulse_timer_id: int | None = None
         has_received_progress = False
 
         def on_pulse() -> bool:
@@ -1291,7 +1125,7 @@ class MainWindow(Adw.ApplicationWindow):
                 total=format_time(self.timeline.total_duration),
             ))
 
-        def on_done(success: bool, error: Optional[str]) -> None:
+        def on_done(success: bool, error: str | None) -> None:
             nonlocal can_close
             can_close = True
             stop_pulse()

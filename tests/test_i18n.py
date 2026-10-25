@@ -1,14 +1,11 @@
 """Unit tests for the internationalization (i18n) module."""
 
-import os
-import pytest
 from video_cut.i18n import (
     _,
-    set_language,
-    get_current_locale,
-    get_supported_locales,
-    detect_system_locale,
     _normalize_lang,
+    detect_system_locale,
+    get_current_locale,
+    set_language,
 )
 
 

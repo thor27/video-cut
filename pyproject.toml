@@ -29,3 +29,27 @@ version = {attr = "video_cut.__version__"}
 testpaths = ["tests"]
 pythonpath = ["src"]
 
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # pyflakes
+    "I",   # isort
+    "UP",  # pyupgrade (modern Python syntax)
+    "B",   # flake8-bugbear
+    "C4",  # flake8-comprehensions
+]
+ignore = [
+    "E501",  # line too long (handled by formatter/readable wrapping)
+    "E402",  # module level import not at top of file (needed for gi.require_version)
+    "B008",  # do not perform function calls in argument defaults
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["video_cut"]
+
+

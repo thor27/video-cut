@@ -1,8 +1,8 @@
 """Unit tests for models.py."""
 
-import pytest
 from pathlib import Path
-from video_cut.models import Segment, ProjectTimeline
+
+from video_cut.models import ProjectTimeline, Segment
 
 
 def test_segment_creation_and_duration():
@@ -120,6 +120,7 @@ def test_timeline_delete():
 def test_timeline_undo_redo():
     timeline = ProjectTimeline()
     s1 = timeline.add_video("/tmp/v1.mp4", 10.0)
+    assert s1.duration == 10.0
 
     # 1. Save state before split
     timeline.save_state(global_time=4.0)

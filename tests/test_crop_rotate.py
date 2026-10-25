@@ -1,20 +1,20 @@
 """Automated tests for Crop & Rotate feature."""
 
-import pytest
 from pathlib import Path
 from unittest.mock import MagicMock
+
 import gi
 
 gi.require_version("Gtk", "4.0")
 gi.require_version("Gdk", "4.0")
 gi.require_version("Adw", "1")
 gi.require_version("GdkPixbuf", "2.0")
-from gi.repository import Gtk, Gdk, Adw, GdkPixbuf
+from gi.repository import Gdk, GdkPixbuf, Gtk
 
-from video_cut.models import Segment, ProjectTimeline
-from video_cut.services.export_service import ExportService
-from video_cut.crop_rotate_dialog import CropRotateDialog, ASPECT_PRESETS
+from video_cut.crop_rotate_dialog import ASPECT_PRESETS, CropRotateDialog
 from video_cut.i18n import _
+from video_cut.models import ProjectTimeline, Segment
+from video_cut.services.export_service import ExportService
 
 
 def test_segment_transform_defaults():
