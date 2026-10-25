@@ -437,3 +437,37 @@ def test_header_fullscreen_and_sandwich_menu():
     app.run(["test"])
 
 
+def test_about_dialog_metadata():
+    app = Adw.Application(application_id="io.github.thomaz.videocut.test_about")
+
+    def run_test(app):
+        win = MainWindow(application=app)
+        try:
+            # Monkeypatch Adw.AboutWindow to capture kwargs
+            original_about = Adw.AboutWindow
+            captured = {}
+
+            def mock_about(**kwargs):
+                captured.update(kwargs)
+                return original_about(**kwargs)
+
+            Adw.AboutWindow = mock_about
+            try:
+                win._show_about_dialog()
+            finally:
+                Adw.AboutWindow = original_about
+
+            assert captured.get("website") == "https://github.com/thor27/video-cut"
+            assert captured.get("issue_url") == "https://github.com/thor27/video-cut/issues"
+            assert captured.get("support_url") == "https://github.com/thor27/video-cut/discussions"
+            assert "Thomaz Reis" in (captured.get("copyright") or "")
+            assert "Thomaz Reis" in (captured.get("developers") or [])
+        finally:
+            win.close()
+            app.quit()
+
+    app.connect("activate", run_test)
+    app.run(["test"])
+
+
+
