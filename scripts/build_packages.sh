@@ -25,6 +25,7 @@ Options:
   --appimage    Build only AppImage (.AppImage) package
   --snap        Build only Snap (.snap) package
   --flatpak     Build/validate Flatpak package
+  --windows     Build Windows standalone package (.zip / .exe)
   --source      Build source tarball and zip archives
   --clean       Clean build/ and dist/ directories
   -h, --help    Show this help message
@@ -38,6 +39,7 @@ DO_DEB=0
 DO_APPIMAGE=0
 DO_SNAP=0
 DO_FLATPAK=0
+DO_WINDOWS=0
 DO_SOURCE=0
 DO_CLEAN=0
 
@@ -68,6 +70,9 @@ else
                 ;;
             --flatpak)
                 DO_FLATPAK=1
+                ;;
+            --windows)
+                DO_WINDOWS=1
                 ;;
             --source)
                 DO_SOURCE=1
@@ -128,7 +133,13 @@ if [ "$DO_FLATPAK" -eq 1 ]; then
     "${SCRIPTS_DIR}/build_flatpak.sh"
 fi
 
-# 4. Source Archives
+# 5. Windows Standalone Package
+if [ "$DO_WINDOWS" -eq 1 ]; then
+    echo ""
+    "${SCRIPTS_DIR}/build_windows.sh"
+fi
+
+# 6. Source Archives
 if [ "$DO_SOURCE" -eq 1 ]; then
     echo ""
     echo "==> Creating Source Code Archives for Video Cut v${VERSION}..."

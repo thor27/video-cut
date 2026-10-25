@@ -1239,9 +1239,12 @@ class MainWindow(Adw.ApplicationWindow):
         except Exception:
             pass
 
-        # 3. Fallback to subprocess xdg-open
+        # 3. Fallback to OS native default launcher
         try:
-            subprocess.Popen(["xdg-open", str(file_path.resolve())])
+            if hasattr(os, "startfile"):
+                os.startfile(str(file_path.resolve()))
+            else:
+                subprocess.Popen(["xdg-open", str(file_path.resolve())])
         except Exception as e:
             print(f"Failed to open video in default player: {e}")
 

@@ -5,6 +5,8 @@ import subprocess
 from dataclasses import dataclass
 from pathlib import Path
 
+from ..utils import SUBPROCESS_FLAGS, get_ffprobe_path
+
 
 @dataclass
 class VideoMetadata:
@@ -31,7 +33,7 @@ class ProbeService:
             return None
 
         cmd = [
-            "ffprobe",
+            get_ffprobe_path(),
             "-v",
             "error",
             "-select_streams",
@@ -44,7 +46,13 @@ class ProbeService:
         ]
 
         try:
-            result = subprocess.run(cmd, capture_output=True, text=True, check=True)
+            result = subprocess.run(
+                cmd,
+                capture_output=True,
+                text=True,
+                check=True,
+                creationflags=SUBPROCESS_FLAGS,
+            )
             data = json.loads(result.stdout)
 
             streams = data.get("streams", [])
@@ -89,7 +97,7 @@ class ProbeService:
             return None
 
         cmd = [
-            "ffprobe",
+            get_ffprobe_path(),
             "-v",
             "error",
             "-show_entries",
@@ -99,7 +107,13 @@ class ProbeService:
             str(path),
         ]
         try:
-            result = subprocess.run(cmd, capture_output=True, text=True, check=True)
+            result = subprocess.run(
+                cmd,
+                capture_output=True,
+                text=True,
+                check=True,
+                creationflags=SUBPROCESS_FLAGS,
+            )
             data = json.loads(result.stdout)
             fmt = data.get("format", {})
             dur_str = fmt.get("duration")
@@ -117,7 +131,7 @@ class ProbeService:
             return False
 
         cmd = [
-            "ffprobe",
+            get_ffprobe_path(),
             "-v",
             "error",
             "-select_streams",
@@ -129,7 +143,14 @@ class ProbeService:
             str(path),
         ]
         try:
-            res = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True, check=True)
+            res = subprocess.run(
+                cmd,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.DEVNULL,
+                text=True,
+                check=True,
+                creationflags=SUBPROCESS_FLAGS,
+            )
             data = json.loads(res.stdout)
             return len(data.get("streams", [])) > 0
         except Exception:

@@ -19,6 +19,7 @@ Pre-built packages are available on the **[Releases Page](https://github.com/tho
 
 - 📦 **[AppImage (`VideoCut-0.2.0-x86_64.AppImage`)](https://github.com/thor27/video-cut/releases/latest)** — Standalone portable package (runs on any modern Linux distribution without installation).
 - 📦 **[Debian / Ubuntu Package (`video-cut_0.2.0_all.deb`)](https://github.com/thor27/video-cut/releases/latest)** — Install via `sudo apt install ./video-cut_0.2.0_all.deb`.
+- 📦 **Windows Standalone (`.zip` / `.exe`)** — Standalone Windows executable and installer (see [WINDOWS_BUILD.md](WINDOWS_BUILD.md)).
 - 📦 **[Source Archives (`.tar.gz` / `.zip`)](https://github.com/thor27/video-cut/releases/latest)** — Full source distribution.
 
 All version releases, assets, and changelogs are available on the **[GitHub Versions Page](https://github.com/thor27/video-cut/releases)**.
@@ -122,6 +123,7 @@ Build distribution packages directly using the scripts in `scripts/`:
 ./scripts/build_appimage.sh   # Builds dist/VideoCut-*.AppImage
 ./scripts/build_snap.sh       # Builds dist/video-cut_*.snap (requires snapcraft)
 ./scripts/build_flatpak.sh    # Builds dist/VideoCut-*.flatpak (requires flatpak-builder)
+./scripts/build_windows.sh    # Builds dist/VideoCut-*.zip and Setup.exe (Windows / MSYS2)
 ```
 
 Generated packages are placed in the `dist/` directory:
@@ -129,6 +131,7 @@ Generated packages are placed in the `dist/` directory:
 - **AppImage (`.AppImage`)**: Standalone binary `./dist/VideoCut-*.AppImage`
 - **Snap Package (`.snap`)**: Install locally via `sudo snap install --dangerous ./dist/video-cut_*.snap`
 - **Flatpak (`.flatpak`)**: Install locally via `flatpak install --user ./dist/VideoCut-*.flatpak` (see [FLATHUB_PUBLISHING.md](FLATHUB_PUBLISHING.md) for Flathub guide)
+- **Windows Package (`.zip` / `.exe`)**: Standalone portable archive and installer for Windows (see [WINDOWS_BUILD.md](WINDOWS_BUILD.md))
 
 #### Versioning
 

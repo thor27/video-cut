@@ -13,6 +13,7 @@ from gi.repository import GLib
 
 from ..i18n import _
 from ..models import ExportSettings, Segment
+from ..utils import SUBPROCESS_FLAGS, get_ffmpeg_path
 from .probe_service import ProbeService
 
 
@@ -27,10 +28,11 @@ class FFmpegCapabilities:
         if cls._encoders is None:
             try:
                 res = subprocess.run(
-                    ["ffmpeg", "-encoders"],
+                    [get_ffmpeg_path(), "-encoders"],
                     stdout=subprocess.PIPE,
                     stderr=subprocess.DEVNULL,
                     text=True,
+                    creationflags=SUBPROCESS_FLAGS,
                 )
                 encoders = set()
                 for line in res.stdout.splitlines():
@@ -47,10 +49,11 @@ class FFmpegCapabilities:
         if cls._muxers is None:
             try:
                 res = subprocess.run(
-                    ["ffmpeg", "-muxers"],
+                    [get_ffmpeg_path(), "-muxers"],
                     stdout=subprocess.PIPE,
                     stderr=subprocess.DEVNULL,
                     text=True,
+                    creationflags=SUBPROCESS_FLAGS,
                 )
                 muxers = set()
                 for line in res.stdout.splitlines():
@@ -180,7 +183,7 @@ class ExportService:
         target_height = target_height - (target_height % 2)
 
         # 3. Assemble command inputs
-        cmd = ["ffmpeg", "-y"]
+        cmd = [get_ffmpeg_path(), "-y"]
         for p in unique_paths:
             min_s = path_to_min_start[p]
             if min_s > 0.0:
@@ -338,6 +341,7 @@ class ExportService:
                     stderr=subprocess.PIPE,
                     text=True,
                     bufsize=1,
+                    creationflags=SUBPROCESS_FLAGS,
                 )
 
                 stderr_lines: list[str] = []

@@ -5,18 +5,50 @@ import shutil
 import subprocess
 import sys
 import uuid
+from pathlib import Path
 
+# Subprocess creation flag: hide console window on Windows GUI executions
 SUBPROCESS_FLAGS: int = subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0
+
+
+def get_binary_path(name: str) -> str:
+    """Find binary executable in PyInstaller bundle, local directory, or system PATH."""
+    candidates: list[Path] = []
+    if getattr(sys, "frozen", False) and hasattr(sys, "_MEIPASS"):
+        meipass = Path(sys._MEIPASS)
+        candidates.extend([
+            meipass / name,
+            meipass / f"{name}.exe",
+            meipass / "bin" / name,
+            meipass / "bin" / f"{name}.exe",
+        ])
+    exe_dir = Path(sys.executable).parent
+    candidates.extend([
+        exe_dir / name,
+        exe_dir / f"{name}.exe",
+        exe_dir / "bin" / name,
+        exe_dir / "bin" / f"{name}.exe",
+    ])
+    for c in candidates:
+        if c.is_file():
+            return str(c)
+
+    which = shutil.which(name)
+    if which:
+        return which
+    return name
 
 
 def get_ffmpeg_path() -> str:
     """Return resolved path to ffmpeg executable."""
-    return shutil.which("ffmpeg") or "ffmpeg"
+    return get_binary_path("ffmpeg")
 
 
 def get_ffprobe_path() -> str:
     """Return resolved path to ffprobe executable."""
-    return shutil.which("ffprobe") or "ffprobe"
+    return get_binary_path("ffprobe")
+
+SUBPROCESS_FLAGS: int = subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0
 
 
 def format_time(seconds: float, show_millis: bool = True) -> str:
