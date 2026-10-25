@@ -44,7 +44,34 @@ The easiest way to build the standalone Windows `.exe` is via the automated CI/C
 
 ---
 
-## 3. Local Build on Windows (via MSYS2)
+## 3. Local Build on Linux (via Wine & MSYS2 Runtime)
+
+You can build the Windows standalone package **directly on Linux** without needing a Windows machine or VM:
+
+### Prerequisites (Ubuntu/Debian)
+```bash
+sudo apt update
+sudo apt install -y wine tar zstd curl python3
+```
+
+### Run Build
+From the repository root:
+```bash
+./scripts/build_windows.sh
+```
+
+The script will automatically:
+1. Download and cache the required MSYS2 UCRT64 Windows runtime packages (Python 3.14, GTK 4, Libadwaita, GStreamer, FFmpeg, Pillow) into `build/msys2_cache/`.
+2. Extract the Windows runtime into `build/windows_root/`.
+3. Compile translation catalogs and schemas.
+4. Execute PyInstaller under Wine using `packaging/windows/videocut.spec`.
+5. Bundle `ffmpeg.exe` and `ffprobe.exe` directly into the package.
+6. Generate `dist/VideoCut-<version>-Windows-x86_64.zip`.
+7. Perform an automated smoke test running `VideoCut.exe` under Wine to verify that the GUI initializes properly.
+
+---
+
+## 4. Local Build on Windows (via MSYS2)
 
 If you are developing or building on a Windows machine:
 

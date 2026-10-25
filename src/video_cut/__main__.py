@@ -10,47 +10,66 @@ def _init_windows_environment() -> None:
     if sys.platform != "win32":
         return
 
+    if os.environ.get("GDK_BACKEND") in ("wayland", "x11", None):
+        os.environ["GDK_BACKEND"] = "win32"
+    if "WAYLAND_DISPLAY" in os.environ:
+        del os.environ["WAYLAND_DISPLAY"]
+
     if getattr(sys, "frozen", False):
         base_dir = Path(getattr(sys, "_MEIPASS", Path(sys.executable).parent))
     else:
         base_dir = Path(__file__).resolve().parent.parent.parent
 
+    roots = [
+        base_dir,
+        Path(sys.prefix),
+        Path(sys.executable).parent.parent,
+        Path(sys.executable).parent,
+    ]
+
     # 1. Typelibs path
-    for t_dir in [
-        base_dir / "lib" / "girepository-1.0",
-        base_dir / "girepository-1.0",
-    ]:
-        if t_dir.is_dir():
-            os.environ["GI_TYPELIB_PATH"] = str(t_dir)
-            break
+    if "GI_TYPELIB_PATH" not in os.environ:
+        for r in roots:
+            for t_dir in [r / "lib" / "girepository-1.0", r / "girepository-1.0"]:
+                if t_dir.is_dir():
+                    os.environ["GI_TYPELIB_PATH"] = str(t_dir)
+                    break
+            if "GI_TYPELIB_PATH" in os.environ:
+                break
 
     # 2. GLib Schemas (crucial for Adw / GTK themes & settings)
-    for s_dir in [
-        base_dir / "share" / "glib-2.0" / "schemas",
-        base_dir / "glib-2.0" / "schemas",
-    ]:
-        if s_dir.is_dir():
-            os.environ["GSETTINGS_SCHEMA_DIR"] = str(s_dir)
-            break
+    if "GSETTINGS_SCHEMA_DIR" not in os.environ:
+        for r in roots:
+            for s_dir in [r / "share" / "glib-2.0" / "schemas", r / "glib-2.0" / "schemas"]:
+                if s_dir.is_dir() and (s_dir / "gschemas.compiled").is_file():
+                    os.environ["GSETTINGS_SCHEMA_DIR"] = str(s_dir)
+                    break
+            if "GSETTINGS_SCHEMA_DIR" in os.environ:
+                break
 
     # 3. GdkPixbuf loaders
-    for p_cache in [
-        base_dir / "lib" / "gdk-pixbuf-2.0" / "2.10.0" / "loaders.cache",
-        base_dir / "gdk-pixbuf-2.0" / "loaders.cache",
-    ]:
-        if p_cache.is_file():
-            os.environ["GDK_PIXBUF_MODULE_FILE"] = str(p_cache)
-            break
+    if "GDK_PIXBUF_MODULE_FILE" not in os.environ:
+        for r in roots:
+            for p_cache in [
+                r / "lib" / "gdk-pixbuf-2.0" / "2.10.0" / "loaders.cache",
+                r / "gdk-pixbuf-2.0" / "loaders.cache",
+            ]:
+                if p_cache.is_file():
+                    os.environ["GDK_PIXBUF_MODULE_FILE"] = str(p_cache)
+                    break
+            if "GDK_PIXBUF_MODULE_FILE" in os.environ:
+                break
 
     # 4. GStreamer plugins
-    for gst_dir in [
-        base_dir / "lib" / "gstreamer-1.0",
-        base_dir / "gstreamer-1.0",
-    ]:
-        if gst_dir.is_dir():
-            os.environ["GST_PLUGIN_PATH"] = str(gst_dir)
-            os.environ["GST_PLUGIN_SYSTEM_PATH"] = str(gst_dir)
-            break
+    if "GST_PLUGIN_PATH" not in os.environ:
+        for r in roots:
+            for gst_dir in [r / "lib" / "gstreamer-1.0", r / "gstreamer-1.0"]:
+                if gst_dir.is_dir():
+                    os.environ["GST_PLUGIN_PATH"] = str(gst_dir)
+                    os.environ["GST_PLUGIN_SYSTEM_PATH"] = str(gst_dir)
+                    break
+            if "GST_PLUGIN_PATH" in os.environ:
+                break
 
     # 5. GStreamer registry in user APPDATA to avoid read-only or temp collisions
     appdata = os.environ.get("LOCALAPPDATA") or os.environ.get("APPDATA") or str(Path.home())
@@ -66,7 +85,10 @@ _init_windows_environment()
 
 from gi.repository import GLib  # noqa: E402
 
-from .app import VideoCutApplication  # noqa: E402
+try:
+    from .app import VideoCutApplication  # noqa: E402
+except ImportError:
+    from video_cut.app import VideoCutApplication  # noqa: E402
 
 
 def main() -> int:
