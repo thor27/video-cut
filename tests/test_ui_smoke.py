@@ -12,7 +12,7 @@ from video_cut.window import MainWindow
 
 
 def test_ui_smoke():
-    app = Adw.Application(application_id="io.github.thomaz.videocut.test")
+    app = Adw.Application(application_id="io.github.thor27.video-cut.test")
 
     def run_test(app):
         win = None
@@ -159,7 +159,7 @@ def test_ui_smoke():
 
 
 def test_export_dialog_non_closable():
-    app = Adw.Application(application_id="io.github.thomaz.videocut.test.exportclose")
+    app = Adw.Application(application_id="io.github.thor27.video-cut.test.exportclose")
 
     def run_test(app):
         win = MainWindow(application=app)
@@ -214,7 +214,7 @@ def test_export_dialog_non_closable():
 
 
 def test_export_opens_in_default_player(tmp_path):
-    app = Adw.Application(application_id="io.github.thomaz.videocut.test.openplayer")
+    app = Adw.Application(application_id="io.github.thor27.video-cut.test.openplayer")
 
     def run_test(app):
         win = MainWindow(application=app)
@@ -259,7 +259,7 @@ def test_export_opens_in_default_player(tmp_path):
 
 
 def test_thumbnail_progress_toast():
-    app = Adw.Application(application_id="io.github.thomaz.videocut.test_toast")
+    app = Adw.Application(application_id="io.github.thor27.video-cut.test_toast")
 
     def run_test(app):
         win = MainWindow(application=app)
@@ -308,7 +308,7 @@ def test_thumbnail_progress_toast():
 
 
 def test_player_controls_margin_at_minimum_window_size():
-    app = Adw.Application(application_id="io.github.thomaz.videocut.test_margin")
+    app = Adw.Application(application_id="io.github.thor27.video-cut.test_margin")
 
     def run_test(app):
         win = MainWindow(application=app)
@@ -351,7 +351,7 @@ def test_player_controls_margin_at_minimum_window_size():
 
 
 def test_header_fullscreen_and_sandwich_menu():
-    app = Adw.Application(application_id="io.github.thomaz.videocut.test_header")
+    app = Adw.Application(application_id="io.github.thor27.video-cut.test_header")
 
     def run_test(app):
         win = MainWindow(application=app)
@@ -438,7 +438,7 @@ def test_header_fullscreen_and_sandwich_menu():
 
 
 def test_about_dialog_metadata():
-    app = Adw.Application(application_id="io.github.thomaz.videocut.test_about")
+    app = Adw.Application(application_id="io.github.thor27.video-cut.test_about")
 
     def run_test(app):
         win = MainWindow(application=app)

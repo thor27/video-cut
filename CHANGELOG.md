@@ -25,8 +25,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### 📦 Packaging & Multi-Platform Distribution
 - **Flatpak Support**:
-  - Added Flatpak manifest (`io.github.thomaz.videocut.yaml`) targeting the GNOME 47 runtime.
-  - Added AppStream metainfo specification (`io.github.thomaz.videocut.metainfo.xml`).
+  - Added Flatpak manifest (`io.github.thor27.video-cut.yaml`) targeting the GNOME 47 runtime.
+  - Added AppStream metainfo specification (`io.github.thor27.video-cut.metainfo.xml`).
   - Added automated build script (`scripts/build_flatpak.sh`) and Flathub publishing guide (`FLATHUB_PUBLISHING.md`).
 - **Snapcraft Multi-Platform Refinements**:
   - Explicitly configured target platforms for 64-bit architectures (`amd64`, `arm64`) to prevent build failures on unsupported 32-bit `armhf` architectures.

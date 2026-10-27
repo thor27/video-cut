@@ -65,8 +65,8 @@ echo "==> Updating Video Cut version: ${CURRENT_VERSION} -> ${NEW_VERSION}"
 # Update src/video_cut/__init__.py
 sed -i "s/__version__ = \"${CURRENT_VERSION}\"/__version__ = \"${NEW_VERSION}\"/" "${INIT_FILE}"
 
-# Update io.github.thomaz.videocut.metainfo.xml if present
-METAINFO="${REPO_ROOT}/io.github.thomaz.videocut.metainfo.xml"
+# Update io.github.thor27.video-cut.metainfo.xml if present
+METAINFO="${REPO_ROOT}/io.github.thor27.video-cut.metainfo.xml"
 if [ -f "${METAINFO}" ]; then
     TODAY="$(date +%Y-%m-%d)"
     if grep -q "version=\"${NEW_VERSION}\"" "${METAINFO}"; then

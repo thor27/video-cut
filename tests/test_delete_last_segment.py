@@ -12,7 +12,7 @@ from video_cut.window import MainWindow
 
 
 def test_delete_last_segment_returns_to_empty_state_and_undo():
-    app = Adw.Application(application_id="io.github.thomaz.videocut.test.deletelast")
+    app = Adw.Application(application_id="io.github.thor27.video-cut.test.deletelast")
     err = []
 
     def run_test(app):

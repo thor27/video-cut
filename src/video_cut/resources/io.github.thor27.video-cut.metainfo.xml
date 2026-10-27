@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!-- Copyright 2026 Thomaz Reis <thor27@gmail.com> -->
 <component type="desktop-application">
-  <id>io.github.thomaz.videocut</id>
+  <id>io.github.thor27.video-cut</id>
   <metadata_license>CC0-1.0</metadata_license>
   <project_license>GPL-3.0-or-later</project_license>
   <name>Video Cut</name>
@@ -27,7 +27,7 @@
     </ul>
   </description>
 
-  <launchable type="desktop-id">io.github.thomaz.videocut.desktop</launchable>
+  <launchable type="desktop-id">io.github.thor27.video-cut.desktop</launchable>
 
   <developer id="io.github.thomaz">
     <name>Thomaz Reis</name>

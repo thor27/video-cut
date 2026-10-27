@@ -35,7 +35,7 @@ def test_timeline_paste_segment():
 
 
 def test_clipboard_ui_and_selection():
-    app = Adw.Application(application_id="io.github.thomaz.videocut.test.clipboard")
+    app = Adw.Application(application_id="io.github.thor27.video-cut.test.clipboard")
 
     def run_test(app):
         win = None

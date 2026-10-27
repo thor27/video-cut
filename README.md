@@ -133,7 +133,7 @@ Generated packages are placed in the `dist/` directory:
 
 #### Versioning
 
-Video Cut uses a single source of truth for versioning defined in [`src/video_cut/__init__.py`](src/video_cut/__init__.py). Python packaging metadata (`pyproject.toml`), AppStream MetaInfo (`io.github.thomaz.videocut.metainfo.xml`), Snapcraft (`snap/snapcraft.yaml`), and all packaging scripts automatically adopt this version.
+Video Cut uses a single source of truth for versioning defined in [`src/video_cut/__init__.py`](src/video_cut/__init__.py). Python packaging metadata (`pyproject.toml`), AppStream MetaInfo (`io.github.thor27.video-cut.metainfo.xml`), Snapcraft (`snap/snapcraft.yaml`), and all packaging scripts automatically adopt this version.
 
 ```bash
 ./scripts/set_version.sh --show    # Display current version

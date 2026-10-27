@@ -13,7 +13,7 @@ from video_cut.window import MainWindow
 
 
 def test_playback_after_split():
-    app = Adw.Application(application_id="io.github.thomaz.videocut.testsplitplay")
+    app = Adw.Application(application_id="io.github.thor27.video-cut.testsplitplay")
 
     def run_test(app):
         win = None
@@ -68,7 +68,7 @@ def test_reordered_segments_playback_no_seek_spam():
     from video_cut.models import ProjectTimeline, Segment
     from video_cut.player import VideoPlayerController
 
-    app = Adw.Application(application_id="io.github.thomaz.videocut.testreorderplay")
+    app = Adw.Application(application_id="io.github.thor27.video-cut.testreorderplay")
 
     def run_test(app):
         pic = Gtk.Picture()

@@ -88,8 +88,8 @@ class MainWindow(Adw.ApplicationWindow):
         if res_dir.exists():
             icon_theme = Gtk.IconTheme.get_for_display(Gdk.Display.get_default())
             icon_theme.add_search_path(str(res_dir))
-        Gtk.Window.set_default_icon_name("io.github.thomaz.videocut")
-        self.set_icon_name("io.github.thomaz.videocut")
+        Gtk.Window.set_default_icon_name("io.github.thor27.video-cut")
+        self.set_icon_name("io.github.thor27.video-cut")
 
         # ToolbarView layout
         self.toolbar_view = Adw.ToolbarView()
@@ -1276,7 +1276,7 @@ class MainWindow(Adw.ApplicationWindow):
             transient_for=self,
             modal=True,
             application_name=_("Video Cut"),
-            application_icon="io.github.thomaz.videocut",
+            application_icon="io.github.thor27.video-cut",
             developer_name="Thomaz Reis",
             version=__version__,
             comments=_(

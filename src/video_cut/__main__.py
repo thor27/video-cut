@@ -8,7 +8,7 @@ from .app import VideoCutApplication
 
 
 def main() -> int:
-    GLib.set_prgname("io.github.thomaz.videocut")
+    GLib.set_prgname("io.github.thor27.video-cut")
     GLib.set_application_name("Video Cut")
 
     initial_video = None

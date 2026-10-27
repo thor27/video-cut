@@ -2,11 +2,11 @@
 Name=Video Cut
 Comment=Easy-to-use tool to cut and merge videos, add images, crop, and rotate
 Exec=video-cut %U
-Icon=io.github.thomaz.videocut
+Icon=io.github.thor27.video-cut
 Terminal=false
 Type=Application
 Categories=AudioVideo;Video;AudioVideoEditing;
 MimeType=video/mp4;video/x-matroska;video/webm;video/quicktime;image/jpeg;image/png;
 StartupNotify=true
-StartupWMClass=io.github.thomaz.videocut
+StartupWMClass=io.github.thor27.video-cut
 Keywords=video;cut;video-cut;editor;trim;clip;movie;crop;rotate;merge;images;

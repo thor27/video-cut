@@ -37,7 +37,7 @@ def sample_image(tmp_path):
 
 
 def test_load_image_initial_and_add(sample_image):
-    app = Adw.Application(application_id="io.github.thomaz.videocut.test.image")
+    app = Adw.Application(application_id="io.github.thor27.video-cut.test.image")
     test_error = None
 
     def run_test(app):
@@ -180,7 +180,7 @@ def test_load_image_with_soundtrack_and_duration(tmp_path, sample_image):
         stderr=subprocess.DEVNULL,
     )
 
-    app = Adw.Application(application_id="io.github.thomaz.videocut.test.image.soundtrack")
+    app = Adw.Application(application_id="io.github.thor27.video-cut.test.image.soundtrack")
     test_error = None
 
     def run_test(app):

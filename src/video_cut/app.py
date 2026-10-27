@@ -18,11 +18,11 @@ class VideoCutApplication(Adw.Application):
 
     def __init__(self, initial_video: str | None = None) -> None:
         if not GLib.get_prgname():
-            GLib.set_prgname("io.github.thomaz.videocut")
+            GLib.set_prgname("io.github.thor27.video-cut")
         if not GLib.get_application_name():
             GLib.set_application_name(_("Video Cut"))
         super().__init__(
-            application_id="io.github.thomaz.videocut",
+            application_id="io.github.thor27.video-cut",
             flags=Gio.ApplicationFlags.HANDLES_OPEN | Gio.ApplicationFlags.NON_UNIQUE,
         )
         self.initial_video = initial_video
@@ -36,7 +36,7 @@ class VideoCutApplication(Adw.Application):
                 icon_theme = Gtk.IconTheme.get_for_display(display)
                 icon_theme.add_search_path(str(res_dir))
 
-        Gtk.Window.set_default_icon_name("io.github.thomaz.videocut")
+        Gtk.Window.set_default_icon_name("io.github.thor27.video-cut")
 
         self.set_accels_for_action("win.new_window", ["<Control>n"])
         self.set_accels_for_action("win.open", ["<Control>o"])

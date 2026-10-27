@@ -14,7 +14,7 @@ from video_cut.timeline_widget import TimelineWidget
 
 
 def test_segment_card_needle_and_margins():
-    app = Adw.Application(application_id="io.github.thomaz.videocut.test.needle")
+    app = Adw.Application(application_id="io.github.thor27.video-cut.test.needle")
     err = []
 
     def run_test(app):
@@ -136,7 +136,7 @@ def test_segment_card_needle_and_margins():
 
 
 def test_timeline_scrub_clamp():
-    app = Adw.Application(application_id="io.github.thomaz.videocut.test.timeline")
+    app = Adw.Application(application_id="io.github.thor27.video-cut.test.timeline")
     err = []
 
     def run_test(app):
@@ -202,7 +202,7 @@ def test_timeline_scrub_clamp():
 
 
 def test_drag_preview_and_single_segment_delete_prevention():
-    app = Adw.Application(application_id="io.github.thomaz.videocut.test.dragpreview")
+    app = Adw.Application(application_id="io.github.thor27.video-cut.test.dragpreview")
     err = []
 
     def run_test(app):
@@ -352,7 +352,7 @@ def test_drag_preview_and_single_segment_delete_prevention():
 
 
 def test_split_pill_hover_and_context_menu_top_left():
-    app = Adw.Application(application_id="io.github.thomaz.videocut.test.split_pill")
+    app = Adw.Application(application_id="io.github.thor27.video-cut.test.split_pill")
     err = []
 
     def run_test(app):
@@ -470,7 +470,7 @@ def test_split_pill_hover_and_context_menu_top_left():
 def test_split_pill_left_boundary_not_clipped_in_timeline():
     """Verify that in the timeline, the split pill at ratio 0.0 has positive coordinate and is never clipped by scrolled_window."""
     from video_cut.window import MainWindow
-    app = Adw.Application(application_id="io.github.thomaz.videocut.test.unclipped_pill")
+    app = Adw.Application(application_id="io.github.thor27.video-cut.test.unclipped_pill")
     err = []
 
     def run_test(app):
@@ -511,7 +511,7 @@ def test_split_pill_centralization_across_languages():
     from video_cut.window import MainWindow
 
     for lang in ["en_US", "pt_BR", "fr"]:
-        app = Adw.Application(application_id=f"io.github.thomaz.videocut.test.pill_center_{lang}")
+        app = Adw.Application(application_id=f"io.github.thor27.video-cut.test.pill_center_{lang}")
         err = []
 
         def run_test(app, target_lang=lang, err_list=err):

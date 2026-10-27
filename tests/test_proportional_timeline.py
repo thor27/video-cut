@@ -91,7 +91,7 @@ def test_segment_card_responsive_header():
 
 
 def test_proportional_timeline_ui_integration():
-    app = Adw.Application(application_id="io.github.thomaz.videocut.test.proportional")
+    app = Adw.Application(application_id="io.github.thor27.video-cut.test.proportional")
 
     def run_test(app):
         win = None
@@ -150,7 +150,7 @@ def test_proportional_timeline_ui_integration():
 def test_window_does_not_grow_infinitely():
     """Verify recalculate_layout does not enter a growth loop after opening video and splitting."""
     from gi.repository import Gio
-    app = Adw.Application(application_id="io.github.thomaz.videocut.test.growth_check", flags=Gio.ApplicationFlags.NON_UNIQUE)
+    app = Adw.Application(application_id="io.github.thor27.video-cut.test.growth_check", flags=Gio.ApplicationFlags.NON_UNIQUE)
 
     def run_test(app):
         win = None
@@ -177,7 +177,7 @@ def test_window_does_not_grow_infinitely():
 def test_all_actions_recalculate_proportions_and_no_scroll():
     """Verify delete, split, paste, add video, and resize all recalculate within window size with zero horizontal scroll."""
     from gi.repository import Gio
-    app = Adw.Application(application_id="io.github.thomaz.videocut.test.actions_recalc", flags=Gio.ApplicationFlags.NON_UNIQUE)
+    app = Adw.Application(application_id="io.github.thor27.video-cut.test.actions_recalc", flags=Gio.ApplicationFlags.NON_UNIQUE)
 
     def run_test(app):
         win = None
@@ -236,7 +236,7 @@ def test_all_actions_recalculate_proportions_and_no_scroll():
 
 
 def test_thumbnail_sync_on_split_and_placeholders():
-    app = Adw.Application(application_id="io.github.thomaz.videocut.test_split_thumbs")
+    app = Adw.Application(application_id="io.github.thor27.video-cut.test_split_thumbs")
 
     def run_test(app):
         win = None
@@ -309,7 +309,7 @@ def test_thumbnail_sync_on_split_and_placeholders():
 def test_small_segment_minimum_thumb_size():
     """Verify that narrow segments display only 1 thumbnail to prevent tiny illegible slivers."""
     from gi.repository import Gio
-    app = Adw.Application(application_id="io.github.thomaz.videocut.test_min_thumb_size", flags=Gio.ApplicationFlags.NON_UNIQUE)
+    app = Adw.Application(application_id="io.github.thor27.video-cut.test_min_thumb_size", flags=Gio.ApplicationFlags.NON_UNIQUE)
 
     def run_test(app):
         win = None

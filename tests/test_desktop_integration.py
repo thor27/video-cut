@@ -46,7 +46,7 @@ def test_desktop_drag_and_drop():
     v1 = Path("/tmp/test_video.mp4")
     v2 = Path("/tmp/test_video2.mp4")
 
-    app = Adw.Application(application_id="io.github.thomaz.videocut.test.dnd")
+    app = Adw.Application(application_id="io.github.thor27.video-cut.test.dnd")
     err = []
 
     def run_test(app):
@@ -115,7 +115,7 @@ def test_universal_copy_and_paste():
     v1 = Path("/tmp/test_video.mp4")
     v2 = Path("/tmp/test_video2.mp4")
 
-    app = Adw.Application(application_id="io.github.thomaz.videocut.test.clipboard.universal")
+    app = Adw.Application(application_id="io.github.thor27.video-cut.test.clipboard.universal")
     err = []
 
     def run_test(app):

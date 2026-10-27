@@ -51,23 +51,23 @@ EOF
 chmod 755 "${APPDIR}/usr/bin/video-cut"
 
 # 4. Copy Desktop Entry (at root of AppDir and in usr/share/applications)
-cp "${REPO_ROOT}/src/video_cut/resources/io.github.thomaz.videocut.desktop" \
-   "${APPDIR}/io.github.thomaz.videocut.desktop"
-cp "${REPO_ROOT}/src/video_cut/resources/io.github.thomaz.videocut.desktop" \
-   "${APPDIR}/usr/share/applications/io.github.thomaz.videocut.desktop"
-chmod 644 "${APPDIR}/io.github.thomaz.videocut.desktop" \
-          "${APPDIR}/usr/share/applications/io.github.thomaz.videocut.desktop"
+cp "${REPO_ROOT}/src/video_cut/resources/io.github.thor27.video-cut.desktop" \
+   "${APPDIR}/io.github.thor27.video-cut.desktop"
+cp "${REPO_ROOT}/src/video_cut/resources/io.github.thor27.video-cut.desktop" \
+   "${APPDIR}/usr/share/applications/io.github.thor27.video-cut.desktop"
+chmod 644 "${APPDIR}/io.github.thor27.video-cut.desktop" \
+          "${APPDIR}/usr/share/applications/io.github.thor27.video-cut.desktop"
 
 # 5. Copy Icons (at root of AppDir and in usr/share/icons)
-cp "${REPO_ROOT}/src/video_cut/resources/icon_256.png" "${APPDIR}/io.github.thomaz.videocut.png"
-cp "${REPO_ROOT}/src/video_cut/resources/io.github.thomaz.videocut.svg" "${APPDIR}/io.github.thomaz.videocut.svg"
-ln -sf "io.github.thomaz.videocut.png" "${APPDIR}/.DirIcon"
+cp "${REPO_ROOT}/src/video_cut/resources/icon_256.png" "${APPDIR}/io.github.thor27.video-cut.png"
+cp "${REPO_ROOT}/src/video_cut/resources/io.github.thor27.video-cut.svg" "${APPDIR}/io.github.thor27.video-cut.svg"
+ln -sf "io.github.thor27.video-cut.png" "${APPDIR}/.DirIcon"
 
 mkdir -p "${APPDIR}/usr/share/pixmaps"
 cp "${REPO_ROOT}/src/video_cut/resources/icon_512.png" "${APPDIR}/usr/share/pixmaps/video-cut.png"
-cp "${REPO_ROOT}/src/video_cut/resources/icon_512.png" "${APPDIR}/usr/share/pixmaps/io.github.thomaz.videocut.png"
-cp "${REPO_ROOT}/src/video_cut/resources/io.github.thomaz.videocut.svg" "${APPDIR}/usr/share/pixmaps/video-cut.svg"
-cp "${REPO_ROOT}/src/video_cut/resources/io.github.thomaz.videocut.svg" "${APPDIR}/usr/share/pixmaps/io.github.thomaz.videocut.svg"
+cp "${REPO_ROOT}/src/video_cut/resources/icon_512.png" "${APPDIR}/usr/share/pixmaps/io.github.thor27.video-cut.png"
+cp "${REPO_ROOT}/src/video_cut/resources/io.github.thor27.video-cut.svg" "${APPDIR}/usr/share/pixmaps/video-cut.svg"
+cp "${REPO_ROOT}/src/video_cut/resources/io.github.thor27.video-cut.svg" "${APPDIR}/usr/share/pixmaps/io.github.thor27.video-cut.svg"
 chmod 644 "${APPDIR}/usr/share/pixmaps/"*
 
 mkdir -p "${APPDIR}/usr/share/icons/hicolor/scalable/actions"
@@ -75,15 +75,15 @@ cp "${REPO_ROOT}/src/video_cut/resources/hicolor/scalable/actions/video-split-sy
    "${APPDIR}/usr/share/icons/hicolor/scalable/actions/video-split-symbolic.svg"
 chmod 644 "${APPDIR}/usr/share/icons/hicolor/scalable/actions/"*
 
-cp "${REPO_ROOT}/src/video_cut/resources/io.github.thomaz.videocut.svg" \
-   "${APPDIR}/usr/share/icons/hicolor/scalable/apps/io.github.thomaz.videocut.svg"
-cp "${REPO_ROOT}/src/video_cut/resources/io.github.thomaz.videocut.svg" \
+cp "${REPO_ROOT}/src/video_cut/resources/io.github.thor27.video-cut.svg" \
+   "${APPDIR}/usr/share/icons/hicolor/scalable/apps/io.github.thor27.video-cut.svg"
+cp "${REPO_ROOT}/src/video_cut/resources/io.github.thor27.video-cut.svg" \
    "${APPDIR}/usr/share/icons/hicolor/scalable/apps/video-cut.svg"
 
 for size in 16 24 32 48 64 128 256 512; do
     if [ -f "${REPO_ROOT}/src/video_cut/resources/icon_${size}.png" ]; then
         cp "${REPO_ROOT}/src/video_cut/resources/icon_${size}.png" \
-           "${APPDIR}/usr/share/icons/hicolor/${size}x${size}/apps/io.github.thomaz.videocut.png"
+           "${APPDIR}/usr/share/icons/hicolor/${size}x${size}/apps/io.github.thor27.video-cut.png"
         cp "${REPO_ROOT}/src/video_cut/resources/icon_${size}.png" \
            "${APPDIR}/usr/share/icons/hicolor/${size}x${size}/apps/video-cut.png"
     fi

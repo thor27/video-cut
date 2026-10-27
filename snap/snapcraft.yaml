@@ -21,8 +21,8 @@ apps:
   video-cut:
     command: bin/video-cut
     extensions: [gnome]
-    common-id: io.github.thomaz.videocut
-    desktop: usr/share/applications/io.github.thomaz.videocut.desktop
+    common-id: io.github.thor27.video-cut
+    desktop: usr/share/applications/io.github.thor27.video-cut.desktop
     environment:
       LD_LIBRARY_PATH: $SNAP/gnome-platform/usr/lib/x86_64-linux-gnu:$SNAP/gnome-platform/lib/x86_64-linux-gnu:$SNAP/gnome-platform/usr/lib/aarch64-linux-gnu:$SNAP/gnome-platform/lib/aarch64-linux-gnu:$SNAP/usr/lib/x86_64-linux-gnu/blas:$SNAP/usr/lib/x86_64-linux-gnu/lapack:$SNAP/usr/lib/aarch64-linux-gnu/blas:$SNAP/usr/lib/aarch64-linux-gnu/lapack:$LD_LIBRARY_PATH
       GST_PLUGIN_SYSTEM_PATH_1_0: $SNAP/gnome-platform/usr/lib/x86_64-linux-gnu/gstreamer-1.0:$SNAP/usr/lib/x86_64-linux-gnu/gstreamer-1.0:$SNAP/gnome-platform/usr/lib/aarch64-linux-gnu/gstreamer-1.0:$SNAP/usr/lib/aarch64-linux-gnu/gstreamer-1.0
@@ -79,20 +79,20 @@ parts:
       # Also install style.css, desktop file, and icons into standard system paths
       install -D -m 644 src/video_cut/style.css \
         ${CRAFT_PART_INSTALL}/usr/share/video-cut/style.css
-      install -D -m 644 src/video_cut/resources/io.github.thomaz.videocut.desktop \
-        ${CRAFT_PART_INSTALL}/usr/share/applications/io.github.thomaz.videocut.desktop
-      install -D -m 644 src/video_cut/resources/io.github.thomaz.videocut.svg \
-        ${CRAFT_PART_INSTALL}/usr/share/icons/hicolor/scalable/apps/io.github.thomaz.videocut.svg
+      install -D -m 644 src/video_cut/resources/io.github.thor27.video-cut.desktop \
+        ${CRAFT_PART_INSTALL}/usr/share/applications/io.github.thor27.video-cut.desktop
+      install -D -m 644 src/video_cut/resources/io.github.thor27.video-cut.svg \
+        ${CRAFT_PART_INSTALL}/usr/share/icons/hicolor/scalable/apps/io.github.thor27.video-cut.svg
       install -D -m 644 src/video_cut/resources/hicolor/scalable/actions/video-split-symbolic.svg \
         ${CRAFT_PART_INSTALL}/usr/share/icons/hicolor/scalable/actions/video-split-symbolic.svg
       install -D -m 644 src/video_cut/resources/icon_512.png \
         ${CRAFT_PART_INSTALL}/usr/share/pixmaps/video-cut.png
       install -D -m 644 src/video_cut/resources/icon_512.png \
-        ${CRAFT_PART_INSTALL}/usr/share/pixmaps/io.github.thomaz.videocut.png
+        ${CRAFT_PART_INSTALL}/usr/share/pixmaps/io.github.thor27.video-cut.png
       for size in 16 24 32 48 64 128 256 512; do
         if [ -f "src/video_cut/resources/icon_${size}.png" ]; then
           install -D -m 644 src/video_cut/resources/icon_${size}.png \
-            ${CRAFT_PART_INSTALL}/usr/share/icons/hicolor/${size}x${size}/apps/io.github.thomaz.videocut.png
+            ${CRAFT_PART_INSTALL}/usr/share/icons/hicolor/${size}x${size}/apps/io.github.thor27.video-cut.png
         fi
       done
     override-prime: |

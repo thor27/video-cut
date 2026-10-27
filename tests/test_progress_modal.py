@@ -11,7 +11,7 @@ from video_cut.progress_modal import ProgressModal
 
 def test_progress_modal_lifecycle():
     # ProgressModal requires an Adw.Application or GTK init
-    _ = Adw.Application.new("io.github.thomaz.videocut.test_modal", 0)
+    _ = Adw.Application.new("io.github.thor27.video-cut.test_modal", 0)
     cancelled = False
 
     def on_cancel():

@@ -54,18 +54,18 @@ EOF
 chmod 755 "${PKG_DIR}/usr/bin/video-cut"
 
 # 4. Copy Desktop Entry
-cp "${REPO_ROOT}/src/video_cut/resources/io.github.thomaz.videocut.desktop" \
-   "${PKG_DIR}/usr/share/applications/io.github.thomaz.videocut.desktop"
-chmod 644 "${PKG_DIR}/usr/share/applications/io.github.thomaz.videocut.desktop"
+cp "${REPO_ROOT}/src/video_cut/resources/io.github.thor27.video-cut.desktop" \
+   "${PKG_DIR}/usr/share/applications/io.github.thor27.video-cut.desktop"
+chmod 644 "${PKG_DIR}/usr/share/applications/io.github.thor27.video-cut.desktop"
 
 # 5. Copy Icons and Pixmaps
 mkdir -p "${PKG_DIR}/usr/share/pixmaps"
-cp "${REPO_ROOT}/src/video_cut/resources/io.github.thomaz.videocut.svg" \
-   "${PKG_DIR}/usr/share/pixmaps/io.github.thomaz.videocut.svg"
-cp "${REPO_ROOT}/src/video_cut/resources/io.github.thomaz.videocut.svg" \
+cp "${REPO_ROOT}/src/video_cut/resources/io.github.thor27.video-cut.svg" \
+   "${PKG_DIR}/usr/share/pixmaps/io.github.thor27.video-cut.svg"
+cp "${REPO_ROOT}/src/video_cut/resources/io.github.thor27.video-cut.svg" \
    "${PKG_DIR}/usr/share/pixmaps/video-cut.svg"
 cp "${REPO_ROOT}/src/video_cut/resources/icon_512.png" \
-   "${PKG_DIR}/usr/share/pixmaps/io.github.thomaz.videocut.png"
+   "${PKG_DIR}/usr/share/pixmaps/io.github.thor27.video-cut.png"
 cp "${REPO_ROOT}/src/video_cut/resources/icon_512.png" \
    "${PKG_DIR}/usr/share/pixmaps/video-cut.png"
 chmod 644 "${PKG_DIR}/usr/share/pixmaps/"*
@@ -75,9 +75,9 @@ mkdir -p "${PKG_DIR}/usr/share/icons/hicolor/scalable/actions"
 cp "${REPO_ROOT}/src/video_cut/resources/hicolor/scalable/actions/video-split-symbolic.svg" \
    "${PKG_DIR}/usr/share/icons/hicolor/scalable/actions/video-split-symbolic.svg"
 chmod 644 "${PKG_DIR}/usr/share/icons/hicolor/scalable/actions/"*
-cp "${REPO_ROOT}/src/video_cut/resources/io.github.thomaz.videocut.svg" \
-   "${PKG_DIR}/usr/share/icons/hicolor/scalable/apps/io.github.thomaz.videocut.svg"
-cp "${REPO_ROOT}/src/video_cut/resources/io.github.thomaz.videocut.svg" \
+cp "${REPO_ROOT}/src/video_cut/resources/io.github.thor27.video-cut.svg" \
+   "${PKG_DIR}/usr/share/icons/hicolor/scalable/apps/io.github.thor27.video-cut.svg"
+cp "${REPO_ROOT}/src/video_cut/resources/io.github.thor27.video-cut.svg" \
    "${PKG_DIR}/usr/share/icons/hicolor/scalable/apps/video-cut.svg"
 chmod 644 "${PKG_DIR}/usr/share/icons/hicolor/scalable/apps/"*
 
@@ -85,7 +85,7 @@ chmod 644 "${PKG_DIR}/usr/share/icons/hicolor/scalable/apps/"*
 for size in 16 24 32 48 64 128 256 512; do
     if [ -f "${REPO_ROOT}/src/video_cut/resources/icon_${size}.png" ]; then
         cp "${REPO_ROOT}/src/video_cut/resources/icon_${size}.png" \
-           "${PKG_DIR}/usr/share/icons/hicolor/${size}x${size}/apps/io.github.thomaz.videocut.png"
+           "${PKG_DIR}/usr/share/icons/hicolor/${size}x${size}/apps/io.github.thor27.video-cut.png"
         cp "${REPO_ROOT}/src/video_cut/resources/icon_${size}.png" \
            "${PKG_DIR}/usr/share/icons/hicolor/${size}x${size}/apps/video-cut.png"
         chmod 644 "${PKG_DIR}/usr/share/icons/hicolor/${size}x${size}/apps/"*

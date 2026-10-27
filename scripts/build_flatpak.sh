@@ -7,9 +7,9 @@ DIST_DIR="${REPO_ROOT}/dist"
 BUILD_DIR="${REPO_ROOT}/build/flatpak"
 REPO_DIR="${REPO_ROOT}/build/flatpak-repo"
 STATE_DIR="${REPO_ROOT}/build/flatpak-state"
-MANIFEST="${REPO_ROOT}/io.github.thomaz.videocut.yaml"
-METAINFO="${REPO_ROOT}/io.github.thomaz.videocut.metainfo.xml"
-DESKTOP_FILE="${REPO_ROOT}/src/video_cut/resources/io.github.thomaz.videocut.desktop"
+MANIFEST="${REPO_ROOT}/io.github.thor27.video-cut.yaml"
+METAINFO="${REPO_ROOT}/io.github.thor27.video-cut.metainfo.xml"
+DESKTOP_FILE="${REPO_ROOT}/src/video_cut/resources/io.github.thor27.video-cut.desktop"
 
 # Extract version from src/video_cut/__init__.py
 VERSION="$(grep -m1 '^__version__' "${REPO_ROOT}/src/video_cut/__init__.py" | cut -d'"' -f2)"
@@ -17,7 +17,7 @@ if [ -z "$VERSION" ]; then
     VERSION="0.1.0"
 fi
 
-APP_ID="io.github.thomaz.videocut"
+APP_ID="io.github.thor27.video-cut"
 OUTPUT_BUNDLE="${DIST_DIR}/VideoCut-${VERSION}.flatpak"
 
 VALIDATE_ONLY=0
@@ -125,7 +125,7 @@ if [ -z "$BUILDER_CMD" ]; then
     echo ""
     echo "Note for Flathub publication:"
     echo "Flathub builds apps on remote build infrastructure when you submit"
-    echo "the manifest (io.github.thomaz.videocut.yaml). Local building is"
+    echo "the manifest (io.github.thor27.video-cut.yaml). Local building is"
     echo "only required for local testing."
     echo "================================================================="
     exit 0
