@@ -20,8 +20,8 @@ apps:
     common-id: io.github.thomaz.videocut
     desktop: usr/share/applications/io.github.thomaz.videocut.desktop
     environment:
-      LD_LIBRARY_PATH: $SNAP/gnome-platform/usr/lib/x86_64-linux-gnu:$SNAP/gnome-platform/lib/x86_64-linux-gnu:$SNAP/usr/lib/x86_64-linux-gnu/blas:$SNAP/usr/lib/x86_64-linux-gnu/lapack:$LD_LIBRARY_PATH
-      GST_PLUGIN_SYSTEM_PATH_1_0: $SNAP/gnome-platform/usr/lib/x86_64-linux-gnu/gstreamer-1.0:$SNAP/usr/lib/x86_64-linux-gnu/gstreamer-1.0
+      LD_LIBRARY_PATH: $SNAP/gnome-platform/usr/lib/x86_64-linux-gnu:$SNAP/gnome-platform/lib/x86_64-linux-gnu:$SNAP/gnome-platform/usr/lib/aarch64-linux-gnu:$SNAP/gnome-platform/lib/aarch64-linux-gnu:$SNAP/gnome-platform/usr/lib/arm-linux-gnueabihf:$SNAP/gnome-platform/lib/arm-linux-gnueabihf:$SNAP/usr/lib/x86_64-linux-gnu/blas:$SNAP/usr/lib/x86_64-linux-gnu/lapack:$SNAP/usr/lib/aarch64-linux-gnu/blas:$SNAP/usr/lib/aarch64-linux-gnu/lapack:$SNAP/usr/lib/arm-linux-gnueabihf/blas:$SNAP/usr/lib/arm-linux-gnueabihf/lapack:$LD_LIBRARY_PATH
+      GST_PLUGIN_SYSTEM_PATH_1_0: $SNAP/gnome-platform/usr/lib/x86_64-linux-gnu/gstreamer-1.0:$SNAP/usr/lib/x86_64-linux-gnu/gstreamer-1.0:$SNAP/gnome-platform/usr/lib/aarch64-linux-gnu/gstreamer-1.0:$SNAP/usr/lib/aarch64-linux-gnu/gstreamer-1.0:$SNAP/gnome-platform/usr/lib/arm-linux-gnueabihf/gstreamer-1.0:$SNAP/usr/lib/arm-linux-gnueabihf/gstreamer-1.0
     plugs:
       - home
       - removable-media
@@ -53,6 +53,9 @@ parts:
       - -usr/lib/*/libpixman*
       - -usr/lib/*/libdatrie*
       - -usr/lib/*/libthai*
+      - -usr/lib/*/libdirect*
+      - -usr/lib/*/libfusion*
+      - -usr/lib/*/libvoodoo*
     override-pull: |
       craftctl default
       VERSION="$(grep -m1 '^__version__' src/video_cut/__init__.py | cut -d'"' -f2)"
@@ -91,11 +94,24 @@ parts:
     override-prime: |
       craftctl default
       find "${CRAFT_PRIME}" -name "video-split-symbolic.svg" -not -path "*/hicolor/*" -delete
-      for arch in x86_64-linux-gnu aarch64-linux-gnu; do
-        if [ -d "${CRAFT_PRIME}/usr/lib/${arch}/blas" ]; then
-          ln -sf blas/libblas.so.3 "${CRAFT_PRIME}/usr/lib/${arch}/libblas.so.3"
+      # Remove any DirectFB libraries that trigger executable stack warnings on armhf
+      find "${CRAFT_PRIME}" -name "libdirect*.so*" -delete || true
+      find "${CRAFT_PRIME}" -name "libfusion*.so*" -delete || true
+      find "${CRAFT_PRIME}" -name "libvoodoo*.so*" -delete || true
+
+      # Strip executable stack flag from all ELF binaries/shared libraries across all architectures
+      python3 scripts/clear_execstack.py "${CRAFT_PRIME}" || true
+
+      # Set up blas and lapack symlinks for any architecture
+      for d in "${CRAFT_PRIME}"/usr/lib/*-linux-gnu*/blas "${CRAFT_PRIME}"/usr/lib/*-linux-gnueabihf*/blas; do
+        if [ -d "$d" ]; then
+          libdir="$(dirname "$d")"
+          ln -sf blas/libblas.so.3 "${libdir}/libblas.so.3"
         fi
-        if [ -d "${CRAFT_PRIME}/usr/lib/${arch}/lapack" ]; then
-          ln -sf lapack/liblapack.so.3 "${CRAFT_PRIME}/usr/lib/${arch}/liblapack.so.3"
+      done
+      for d in "${CRAFT_PRIME}"/usr/lib/*-linux-gnu*/lapack "${CRAFT_PRIME}"/usr/lib/*-linux-gnueabihf*/lapack; do
+        if [ -d "$d" ]; then
+          libdir="$(dirname "$d")"
+          ln -sf lapack/liblapack.so.3 "${libdir}/liblapack.so.3"
         fi
       done
