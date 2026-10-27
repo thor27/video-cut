@@ -112,8 +112,8 @@ modules:
       - install -Dm644 src/video_cut/resources/icon_512.png /app/share/icons/hicolor/512x512/apps/io.github.thomaz.videocut.png
     sources:
       - type: archive
-        url: https://github.com/thor27/video-cut/releases/download/v0.2.0/video-cut-0.2.0.tar.gz
-        sha256: f04610ac52937a45011ee6c8bed1df868f760aa018e6c7ea6e737199587c6999
+        url: https://github.com/thor27/video-cut/releases/download/v0.3.0/video-cut-0.3.0.tar.gz
+        sha256: 5152f33f25e05c79bd09034935d667febc678c80ef90eae4b4eb0005eac14312
 ```
 
 ### Step 3.5: Commit and Push
