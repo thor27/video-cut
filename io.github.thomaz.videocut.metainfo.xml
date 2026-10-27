@@ -53,6 +53,22 @@
   </screenshots>
 
   <releases>
+    <release version="0.3.0" date="2026-10-27">
+      <url type="details">https://github.com/thor27/video-cut/releases/tag/v0.3.0</url>
+      <description>
+        <p>Highlights of version 0.3.0:</p>
+        <ul>
+          <li>Official Flatpak distribution support targeting the GNOME 49 runtime</li>
+          <li>Instant Crop &amp; Rotate dialog opening (&lt; 20ms) with progressive background frame loading</li>
+          <li>Dual-mode full-quality preview frame (direct player capture or keyframe thumbnail)</li>
+          <li>Ultra-fast Cairo ARGB32 image surface creation via direct NumPy memory mapping (16ms vs 226ms)</li>
+          <li>Non-blocking asynchronous image import with reusable ProgressModal dialog</li>
+          <li>Modular ClipboardController architecture and automated benchmark test suite</li>
+          <li>Enhanced About window with community links, issue tracker, and project metadata</li>
+          <li>64-bit architecture restrictions and DirectFB exclusions for Snap packages</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.2.0" date="2026-10-24">
       <url type="details">https://github.com/thor27/video-cut/releases/tag/v0.2.0</url>
       <description>

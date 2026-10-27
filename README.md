@@ -17,8 +17,9 @@ An easy-to-use, fast, and lightweight video editor to cut and merge videos, add 
 
 Pre-built packages are available on the **[Releases Page](https://github.com/thor27/video-cut/releases/latest)**:
 
-- 📦 **[AppImage (`VideoCut-0.2.0-x86_64.AppImage`)](https://github.com/thor27/video-cut/releases/latest)** — Standalone portable package (runs on any modern Linux distribution without installation).
-- 📦 **[Debian / Ubuntu Package (`video-cut_0.2.0_all.deb`)](https://github.com/thor27/video-cut/releases/latest)** — Install via `sudo apt install ./video-cut_0.2.0_all.deb`.
+- 📦 **[Flatpak Bundle (`VideoCut-0.3.0.flatpak`)](https://github.com/thor27/video-cut/releases/latest)** — Standalone Flatpak bundle (or via Flathub).
+- 📦 **[AppImage (`VideoCut-0.3.0-x86_64.AppImage`)](https://github.com/thor27/video-cut/releases/latest)** — Standalone portable package (runs on any modern Linux distribution without installation).
+- 📦 **[Debian / Ubuntu Package (`video-cut_0.3.0_all.deb`)](https://github.com/thor27/video-cut/releases/latest)** — Install via `sudo apt install ./video-cut_0.3.0_all.deb`.
 - 📦 **[Source Archives (`.tar.gz` / `.zip`)](https://github.com/thor27/video-cut/releases/latest)** — Full source distribution.
 
 All version releases, assets, and changelogs are available on the **[GitHub Versions Page](https://github.com/thor27/video-cut/releases)**.

@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [Unreleased] (Changes since 0.2.0)
+## [0.3.0] - 2026-10-27
 
 ### ⚡ Performance & Responsiveness
 - **Instant Crop & Rotate Dialog**: Dialog presentation is now instantaneous (< 20 ms) upon clicking the button, presenting immediately with an animated loading spinner overlay while frames load progressively in the background.
