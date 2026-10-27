@@ -6,6 +6,7 @@ REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 DIST_DIR="${REPO_ROOT}/dist"
 BUILD_DIR="${REPO_ROOT}/build/flatpak"
 REPO_DIR="${REPO_ROOT}/build/flatpak-repo"
+STATE_DIR="${REPO_ROOT}/build/flatpak-state"
 MANIFEST="${REPO_ROOT}/io.github.thomaz.videocut.yaml"
 METAINFO="${REPO_ROOT}/io.github.thomaz.videocut.metainfo.xml"
 DESKTOP_FILE="${REPO_ROOT}/src/video_cut/resources/io.github.thomaz.videocut.desktop"
@@ -111,7 +112,7 @@ BUILDER_CMD=""
 if command -v flatpak-builder >/dev/null 2>&1; then
     BUILDER_CMD="flatpak-builder"
 elif flatpak info org.flatpak.Builder >/dev/null 2>&1; then
-    BUILDER_CMD="flatpak run org.flatpak.Builder"
+    BUILDER_CMD="flatpak run org.flatpak.Builder --disable-rofiles-fuse"
 fi
 
 if [ -z "$BUILDER_CMD" ]; then
@@ -133,10 +134,10 @@ fi
 # 5. Clean build directories if requested
 if [ "$CLEAN_BUILD" -eq 1 ]; then
     echo "==> Cleaning Flatpak build directories..."
-    rm -rf "${BUILD_DIR}" "${REPO_DIR}"
+    rm -rf "${BUILD_DIR}" "${REPO_DIR}" "${STATE_DIR}"
 fi
 
-mkdir -p "${DIST_DIR}" "${BUILD_DIR}" "${REPO_DIR}"
+mkdir -p "${DIST_DIR}" "${BUILD_DIR}" "${REPO_DIR}" "${STATE_DIR}"
 
 echo "================================================================="
 echo " Building Flatpak for ${APP_ID} v${VERSION}..."
@@ -151,7 +152,7 @@ fi
 $BUILDER_CMD \
     --force-clean \
     --repo="${REPO_DIR}" \
-    --state-dir="${BUILD_DIR}/.flatpak-builder" \
+    --state-dir="${STATE_DIR}" \
     ${EXTRA_ARGS} \
     "${BUILD_DIR}" \
     "${MANIFEST}"

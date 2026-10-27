@@ -53,3 +53,8 @@ modules:
     sources:
       - type: dir
         path: .
+        skip:
+          - .git
+          - .venv
+          - build
+          - dist
