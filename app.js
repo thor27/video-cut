@@ -143,10 +143,11 @@ document.addEventListener('DOMContentLoaded', () => {
   const simplicityImg = document.getElementById('feat-simplicity-img');
   const cropImg = document.getElementById('feat-crop-img');
   const imageImg = document.getElementById('feat-image-img');
+  const overlayImg = document.getElementById('feat-overlay-img');
 
   const updateImagesForTheme = (isDark) => {
-    // When dark theme: hero, crop, mixed media are dark; simplicity is light
-    // When light theme: hero, crop, mixed media are light; simplicity is dark
+    // When dark theme: hero, crop, mixed media, overlay are dark; simplicity is light
+    // When light theme: hero, crop, mixed media, overlay are light; simplicity is dark
     if (heroImg) {
       heroImg.src = isDark ? 'assets/screenshot_hero_dark.png' : 'assets/screenshot_hero_light.png';
       const pic = heroImg.parentElement;
@@ -170,6 +171,12 @@ document.addEventListener('DOMContentLoaded', () => {
       const pic = imageImg.parentElement;
       const src = pic ? pic.querySelector('source') : null;
       if (src) src.srcset = isDark ? 'assets/screenshot_image_import_dark.png' : 'assets/screenshot_image_import_light.png';
+    }
+    if (overlayImg) {
+      overlayImg.src = isDark ? 'assets/screenshot_overlay_dark.png' : 'assets/screenshot_overlay_light.png';
+      const pic = overlayImg.parentElement;
+      const src = pic ? pic.querySelector('source') : null;
+      if (src) src.srcset = isDark ? 'assets/screenshot_overlay_dark.png' : 'assets/screenshot_overlay_light.png';
     }
 
     if (themeToggleBtn) {

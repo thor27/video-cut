@@ -3,9 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Video Cut — Fast, Lossless Video Trimming &amp; Editing for Linux (GTK4 / Libadwaita)</title>
-  <meta name="description" content="Fast, lightweight, and lossless video editor for Linux desktops. Trim, split, crop to 9:16 or 16:9, rotate, and combine videos and photos with zero quality loss. Native GTK4/Libadwaita.">
-  <meta name="keywords" content="video cut, video editor, linux video editor, gtk4, libadwaita, lossless video cut, ffmpeg, appimage, snap, flatpak, fast video trimmer">
+  <title>Video Cut — Frame-Accurate Video Trimming, Overlays &amp; Editing for Linux (GTK4 / Libadwaita)</title>
+  <meta name="description" content="Fast, lightweight video editor for Linux desktops. Trim, split, crop to 9:16 or 16:9, rotate, add rich text and graphic overlays, and combine videos and photos. Native GTK4/Libadwaita.">
+  <meta name="keywords" content="video cut, video editor, linux video editor, gtk4, libadwaita, video overlay, ffmpeg, appimage, snap, flatpak, frame-accurate video trimmer">
   <meta name="author" content="Thomaz de Oliveira dos Reis">
   <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1">
   <link rel="canonical" href="https://thor27.github.io/video-cut/">
@@ -13,8 +13,8 @@
   <!-- Open Graph / Facebook / Discord -->
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://thor27.github.io/video-cut/">
-  <meta property="og:title" content="Video Cut — Fast, Lossless Video Trimming &amp; Editing for Linux">
-  <meta property="og:description" content="Trim, split, crop, rotate, and combine video clips and photos with zero quality loss. Native GTK4 &amp; Libadwaita video editor for Linux.">
+  <meta property="og:title" content="Video Cut — Frame-Accurate Video Trimming, Overlays &amp; Editing for Linux">
+  <meta property="og:description" content="Trim, split, crop, rotate, add rich text and graphic overlays, and combine video clips and photos. Native GTK4 &amp; Libadwaita video editor for Linux.">
   <meta property="og:image" content="https://thor27.github.io/video-cut/assets/video-cut-banner.jpg">
   <meta property="og:image:width" content="1200">
   <meta property="og:image:height" content="630">
@@ -24,8 +24,8 @@
   <!-- Twitter -->
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:url" content="https://thor27.github.io/video-cut/">
-  <meta name="twitter:title" content="Video Cut — Fast, Lossless Video Trimming &amp; Editing for Linux">
-  <meta name="twitter:description" content="Trim, split, crop, rotate, and combine video clips and photos with zero quality loss. Native GTK4 &amp; Libadwaita video editor for Linux.">
+  <meta name="twitter:title" content="Video Cut — Frame-Accurate Video Trimming, Overlays &amp; Editing for Linux">
+  <meta name="twitter:description" content="Trim, split, crop, rotate, add rich text and graphic overlays, and combine video clips and photos. Native GTK4 &amp; Libadwaita video editor for Linux.">
   <meta name="twitter:image" content="https://thor27.github.io/video-cut/assets/video-cut-banner.jpg">
   <meta name="twitter:image:alt" content="Video Cut — Linux Video Editor Interface">
 
@@ -63,17 +63,20 @@
           "price": "0",
           "priceCurrency": "USD"
         },
-        "description": "Trim, split, crop, rotate, and combine video clips and photos with zero quality loss. Fast, native GTK4/Libadwaita video editor for Linux desktops.",
-        "softwareVersion": "0.3.0",
+        "description": "Trim, split, crop, rotate, add rich text and graphic overlays, and combine video clips and photos. Fast, native GTK4/Libadwaita video editor for Linux desktops.",
+        "softwareVersion": "0.4.0",
         "license": "https://www.gnu.org/licenses/gpl-3.0.html",
         "downloadUrl": "https://github.com/thor27/video-cut/releases",
         "screenshot": [
           "https://thor27.github.io/video-cut/assets/screenshot_hero_dark.png",
-          "https://thor27.github.io/video-cut/assets/screenshot_hero_light.png"
+          "https://thor27.github.io/video-cut/assets/screenshot_hero_light.png",
+          "https://thor27.github.io/video-cut/assets/screenshot_overlay_dark.png",
+          "https://thor27.github.io/video-cut/assets/screenshot_overlay_light.png"
         ],
         "featureList": [
-          "Lossless cutting and trimming via FFmpeg stream copy",
-          "Lossless splitting at cursor position",
+          "Frame-accurate cutting and trimming with millisecond precision",
+          "Precision splitting at playhead position",
+          "Rich video overlays with text, shapes, media, and audio",
           "Aspect ratio framing presets (16:9, 9:16, 4:3, 1:1, 21:9)",
           "Rotation and flipping tools",
           "Mixed media support for videos, photos, and audio tracks",
@@ -91,10 +94,18 @@
         "mainEntity": [
           {
             "@type": "Question",
-            "name": "What makes Video Cut \"lossless\"?",
+            "name": "How does Video Cut export and process video?",
             "acceptedAnswer": {
               "@type": "Answer",
-              "text": "When trimming or splitting video segments without re-encoding, Video Cut uses FFmpeg stream copy mode (-c copy). Video and audio streams are copied directly without decoding and recompression, resulting in zero quality degradation and near-instant processing."
+              "text": "Video Cut uses FFmpeg's powerful filter complex to perform frame-accurate cuts down to the millisecond, apply precise crops, rotations, and render rich graphical overlays. It encodes using modern high-quality codecs (H.264, H.265, AV1, VP9, or ProRes) with high-fidelity quality presets."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Can I add text, shapes, and graphic overlays?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Yes! Video Cut 0.4.0 introduces a full-featured Video Overlay Editor. You can add multiline text with custom fonts and shadows, geometric shapes, PNG/SVG/GIF graphics, picture-in-picture videos, and synchronized audio overlays with multi-element alignment and distribution tools."
             }
           },
           {
@@ -135,7 +146,7 @@
   }
   </script>
 </head>
-<body data-version="0.3.0">
+<body data-version="0.4.0">
 
   <!-- Header / Navigation -->
   <header class="site-header">
@@ -190,7 +201,7 @@
       <div class="hero-content">
         <div class="badge-pill">
           <span class="badge-dot"></span>
-          <span>v0.3.0 is out · Free &amp; Open Source</span>
+          <span>v0.4.0 is out · Free &amp; Open Source</span>
         </div>
 
         <h1 class="hero-title">
@@ -199,14 +210,14 @@
         </h1>
 
         <p class="hero-subtitle">
-          Trim, split, merge, crop, and rotate video clips and images without quality loss.
+          Trim, split, merge, crop, rotate, and add rich graphic overlays to video clips and images.
           A native GTK4 and Libadwaita experience built specifically for modern Linux desktops.
         </p>
 
         <!-- Dynamic Hero CTA container (AppImage default / Snap if Ubuntu) -->
         <div class="hero-cta-wrapper" id="hero-cta-wrapper">
           <div class="hero-cta-primary" id="hero-cta-primary">
-            <a href="https://github.com/thor27/video-cut/releases/download/v0.3.0/VideoCut-0.3.0-x86_64.AppImage"
+            <a href="https://github.com/thor27/video-cut/releases/download/v0.4.0/VideoCut-0.4.0-x86_64.AppImage"
                class="btn btn-primary btn-lg"
                id="primary-download-btn">
               <svg class="icon btn-icon" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -216,7 +227,7 @@
               </svg>
               <span class="btn-text-group">
                 <span class="btn-main-text" id="primary-btn-title">Download AppImage</span>
-                <span class="btn-sub-text" id="primary-btn-sub">v0.3.0 · 64-bit Linux · Portable</span>
+                <span class="btn-sub-text" id="primary-btn-sub">v0.4.0 · 64-bit Linux · Portable</span>
               </span>
             </a>
           </div>
@@ -260,10 +271,18 @@
     <div class="container">
       <div class="highlights-grid">
         <div class="highlight-item">
-          <div class="highlight-icon">⚡</div>
+          <div class="highlight-icon">✂️</div>
           <div class="highlight-info">
-            <h3>Instant Cutting</h3>
-            <p>Cut clips at exact keyframe boundaries in seconds.</p>
+            <h3>Frame-Accurate Cutting</h3>
+            <p>Cut and slice clips at exact timestamps with millisecond precision.</p>
+          </div>
+        </div>
+
+        <div class="highlight-item">
+          <div class="highlight-icon">✨</div>
+          <div class="highlight-info">
+            <h3>Rich Video Overlays</h3>
+            <p>Add text, shapes, GIFs, stickers, PIP videos, and synced audio.</p>
           </div>
         </div>
 
@@ -271,15 +290,7 @@
           <div class="highlight-icon">🎯</div>
           <div class="highlight-info">
             <h3>Visual Crop &amp; Rotate</h3>
-            <p>Rotate by 90° increments, flip axes, and crop.</p>
-          </div>
-        </div>
-
-        <div class="highlight-item">
-          <div class="highlight-icon">🖼️</div>
-          <div class="highlight-info">
-            <h3>Photo &amp; Image Import</h3>
-            <p>Mix photos and still slides directly into video timelines with customizable duration.</p>
+            <p>Rotate by 90° increments, flip axes, and crop to 9:16 or 16:9.</p>
           </div>
         </div>
 
@@ -315,7 +326,7 @@
           <ul class="feature-list">
             <li><strong>Native GNOME Integration:</strong> Fits right into modern Linux desktops with dark mode support and responsive UI.</li>
             <li><strong>Straightforward Workflow:</strong> Simple visual timeline that lets you get straight to editing without unnecessary complexity.</li>
-            <li><strong>Multi-Segment Trimming:</strong> Mark cut ranges, rearrange clips, and export without quality loss.</li>
+            <li><strong>Multi-Segment Trimming:</strong> Mark cut ranges, rearrange clips, and export with frame-accurate precision.</li>
           </ul>
         </div>
         <div class="feature-preview">
@@ -367,6 +378,30 @@
           <picture class="theme-picture">
             <source srcset="assets/screenshot_image_import_light.png" media="(prefers-color-scheme: light)">
             <img src="assets/screenshot_image_import_dark.png" alt="Image import and photo timeline feature in Video Cut" class="feature-img shadow-lg" loading="lazy" id="feat-image-img">
+          </picture>
+        </div>
+      </div>
+
+      <!-- Feature 4: Video Overlay Editor -->
+      <div class="feature-row feature-row-reversed">
+        <div class="feature-text">
+          <span class="feature-kicker">Creative Overlays &amp; Graphics</span>
+          <h3 class="feature-heading">Rich Text, Shapes, Media &amp; Audio Overlays</h3>
+          <p>
+            Elevate your videos with powerful on-screen annotations and visual elements. The built-in Video Overlay Editor gives you multi-layer creative control right inside the app.
+          </p>
+          <ul class="feature-list">
+            <li><strong>Typography &amp; Titles:</strong> Add multiline text with custom fonts, colors, border outlines, background pills, and drop shadows.</li>
+            <li><strong>Vector Shapes:</strong> Draw rectangles, circles, stars, hearts, speech bubbles, and arrows with customizable fill, stroke, and rounded corners.</li>
+            <li><strong>Stickers &amp; Media PIP:</strong> Overlay PNG transparent logos, SVG graphics, animated GIFs, or picture-in-picture videos anywhere on the canvas.</li>
+            <li><strong>Audio Tracks:</strong> Add background music, sound effects, or voiceovers synchronized with your clip's timeline.</li>
+            <li><strong>Canvas Tools:</strong> Multi-select elements with marquee selection, align to edges or center, distribute evenly, and arrange layer ordering.</li>
+          </ul>
+        </div>
+        <div class="feature-preview">
+          <picture class="theme-picture">
+            <source srcset="assets/screenshot_overlay_light.png" media="(prefers-color-scheme: light)">
+            <img src="assets/screenshot_overlay_dark.png" alt="Video Overlay Editor in Video Cut showing text, shapes, and media elements" class="feature-img shadow-lg" loading="lazy" id="feat-overlay-img">
           </picture>
         </div>
       </div>
@@ -430,19 +465,31 @@
       <div class="section-header">
         <h2 class="section-title">Frequently Asked Questions</h2>
         <p class="section-subtitle">
-          Everything you need to know about Video Cut, lossless trimming, formats, and installation.
+          Everything you need to know about Video Cut, frame-accurate trimming, overlays, formats, and installation.
         </p>
       </div>
 
       <div class="faq-list">
         <details class="faq-item" open>
           <summary class="faq-question">
-            <span>What makes Video Cut "lossless"?</span>
+            <span>How does Video Cut process and export videos?</span>
             <span class="faq-icon" aria-hidden="true">▾</span>
           </summary>
           <div class="faq-answer">
             <p>
-              When trimming or splitting video segments without re-encoding, Video Cut uses FFmpeg's stream copy mode (<code>-c copy</code>). Video and audio streams are extracted directly at keyframes without decoding and re-compressing frames. This means <strong>zero loss of image quality</strong>, original bitrate retention, and export speeds that are practically instantaneous.
+              Video Cut leverages FFmpeg's filter complex to perform <strong>frame-accurate cuts down to the millisecond</strong>, apply transformations like crop and rotation, and composite rich graphics. Because clips are re-encoded through modern codecs (H.264, H.265, AV1, VP9, or Apple ProRes), cuts land precisely on the exact frame you choose without keyframe boundary restrictions, maintaining pristine high-fidelity output quality with customizable presets.
+            </p>
+          </div>
+        </details>
+
+        <details class="faq-item">
+          <summary class="faq-question">
+            <span>Can I add text, shapes, and graphic overlays to my videos?</span>
+            <span class="faq-icon" aria-hidden="true">▾</span>
+          </summary>
+          <div class="faq-answer">
+            <p>
+              Yes! Video Cut 0.4.0 includes a dedicated <strong>Video Overlay Editor</strong>. You can add multiline titles with custom fonts, colors, outlines, and shadows; draw vector shapes (rectangles, circles, stars, speech bubbles); import PNG logos, SVG graphics, and animated GIFs; place picture-in-picture video clips; and synchronize background audio tracks. Alignment, distribution, and marquee multi-selection tools make arranging layers effortless.
             </p>
           </div>
         </details>
@@ -510,7 +557,7 @@
       <div class="section-header">
         <h2 class="section-title">Download Video Cut for Linux</h2>
         <p class="section-subtitle">
-          Choose the package format that best suits your distribution. Current version: <span class="version-tag">v0.3.0</span>
+          Choose the package format that best suits your distribution. Current version: <span class="version-tag">v0.4.0</span>
         </p>
       </div>
 
@@ -528,14 +575,14 @@
             Runs out of the box on Fedora, Arch, Debian, openSUSE, and any modern Linux distribution. No installation required.
           </p>
           <div class="card-actions">
-            <a href="https://github.com/thor27/video-cut/releases/download/v0.3.0/VideoCut-0.3.0-x86_64.AppImage"
+            <a href="https://github.com/thor27/video-cut/releases/download/v0.4.0/VideoCut-0.4.0-x86_64.AppImage"
                class="btn btn-primary btn-block"
                id="card-download-appimage">
               Download
             </a>
           </div>
           <div class="card-help">
-            <code>chmod +x VideoCut-0.3.0-x86_64.AppImage && ./VideoCut-0.3.0-x86_64.AppImage</code>
+            <code>chmod +x VideoCut-0.4.0-x86_64.AppImage && ./VideoCut-0.4.0-x86_64.AppImage</code>
           </div>
         </div>
 
@@ -579,7 +626,7 @@
             </a>
           </div>
           <div class="card-help">
-            <code>flatpak install --user ./VideoCut-0.3.0.flatpak</code>
+            <code>flatpak install --user ./VideoCut-0.4.0.flatpak</code>
           </div>
         </div>
 
@@ -642,7 +689,7 @@
           <span class="footer-brand-title">Video Cut</span>
         </div>
         <p class="footer-tagline">
-          Fast, simple, and lossless video editor built natively for Linux with GTK4 and Libadwaita.
+          Fast, simple, and frame-accurate video editor built natively for Linux with GTK4 and Libadwaita.
         </p>
       </div>
 

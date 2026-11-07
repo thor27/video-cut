@@ -1,8 +1,8 @@
 # Video Cut
 
-> Fast, lightweight, and lossless video editor built natively for Linux with GTK4 and Libadwaita.
+> Fast, lightweight, and modern video editor built natively for Linux with GTK4 and Libadwaita.
 
-Video Cut is a free and open-source desktop video editor designed specifically for modern Linux desktops (GNOME / Libadwaita). It enables users to cut, trim, split, merge, crop, rotate, and combine video clips and still images without painful render times or quality loss.
+Video Cut is a free and open-source desktop video editor designed specifically for modern Linux desktops (GNOME / Libadwaita). It enables users to cut, trim, split, merge, crop, rotate, add rich graphic overlays, and combine video clips and still images with frame-accurate precision.
 
 - **Website**: https://thor27.github.io/video-cut/
 - **Repository**: https://github.com/thor27/video-cut
@@ -12,29 +12,37 @@ Video Cut is a free and open-source desktop video editor designed specifically f
 
 ## Key Capabilities
 
-1. **Lossless Cutting & Keyframe Splitting**:
-   - Split video segments with keyframe boundary snapping.
+1. **Frame-Accurate Cutting & Timeline Editing**:
+   - Split and trim video segments with millisecond precision down to the exact frame.
    - Reorder, duplicate, copy/paste, or delete clips on a visual multi-segment timeline.
-   - Stream copy export mode to preserve original video/audio quality without re-encoding.
+   - Multi-format timeline mixing video clips and still images seamlessly.
 
-2. **Visual Crop & Rotate**:
+2. **Video Overlay Editor (New in v0.4.0)**:
+   - **Text Overlays**: Multiline typography with customizable system fonts, sizes, text alignments, colors, border outlines, background pills, and drop shadows.
+   - **Vector Shapes**: Draw rectangles, circles, stars, hearts, speech bubbles, and arrows with configurable fill, stroke color, border width, and rounded corners.
+   - **Media & PIP**: Overlay transparent PNG logos, SVG graphics, animated GIFs, or picture-in-picture video clips anywhere on the canvas.
+   - **Audio Overlays**: Attach synchronized background music, sound effects, or voiceover audio tracks.
+   - **Canvas Controls**: Marquee multi-selection, alignment tools (left, center, right, top, middle, bottom), horizontal/vertical distribution, layer reordering, and live interactive canvas handles.
+
+3. **Visual Crop & Rotate**:
    - Interactive crop selection rectangle with real-time preview.
    - Quick aspect ratio presets: 16:9 (Widescreen), 9:16 (TikTok / YouTube Shorts / Instagram Reels), 1:1 (Square), 4:3, 21:9.
    - 90°, 180°, 270° clockwise and counter-clockwise rotation.
    - Horizontal and vertical flipping (mirroring).
 
-3. **Mixed Media & Photo Import**:
+4. **Mixed Media & Photo Import**:
    - Import still photos and images (PNG, JPEG, WebP) directly into video timelines.
    - Configure per-image display duration.
    - Attach soundtrack audio files (MP3, WAV, AAC, FLAC, Ogg) with configurable start offset and duration slicing.
 
-4. **Advanced Export & Codecs**:
-   - Supports popular containers: MP4 (.mp4), Matroska (.mkv), WebM (.webm).
-   - Hardware-accelerated and software video codecs: H.264 / AVC, H.265 / HEVC, VP9, AV1.
+5. **Advanced Export & Codecs**:
+   - Powered by FFmpeg filter complex for compositing and encoding.
+   - Supported containers: MP4 (.mp4), Matroska (.mkv), WebM (.webm).
+   - Video codecs: H.264 / AVC, H.265 / HEVC, VP9, AV1, Apple ProRes.
    - Audio codecs: AAC, MP3, Opus, FLAC, Vorbis.
-   - Configurable CRF quality, bitrates, resolutions, and frame rates.
+   - Configurable CRF quality presets, bitrates, resolutions, and frame rates.
 
-5. **Native GNOME Desktop Integration**:
+6. **Native GNOME Desktop Integration**:
    - Native GTK4 and Libadwaita design language.
    - Dynamic system dark and light theme following.
    - Keyboard navigation and drag-and-drop support.
@@ -42,7 +50,7 @@ Video Cut is a free and open-source desktop video editor designed specifically f
 
 ## Packaging & Installation
 
-- **AppImage**: Download portable VideoCut-0.3.0-x86_64.AppImage directly from GitHub Releases.
+- **AppImage**: Download portable VideoCut-0.4.0-x86_64.AppImage directly from GitHub Releases.
 - **Snap**: Install from the Canonical Snap Store: `sudo snap install video-cut`
 - **Flatpak**: Available as a standalone .flatpak bundle from GitHub Releases.
 - **Source Code**: Clone `https://github.com/thor27/video-cut.git` and run with Python 3.11+ and PyGObject.
