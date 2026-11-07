@@ -22,7 +22,6 @@ Video Cut is a free and open-source desktop video editor designed specifically f
    - **Vector Shapes**: Draw rectangles and circles/ellipses with configurable fill color, stroke color, border width, and rounded corners.
    - **Media & PIP**: Overlay transparent PNG logos, SVG graphics, animated GIFs, or picture-in-picture video clips anywhere on the canvas.
    - **Audio Overlays**: Attach background music, sound effects, or soundtrack audio tracks with volume control.
-   - **Canvas Controls**: Marquee multi-selection, alignment tools (left, center, right, top, middle, bottom), horizontal/vertical distribution, layer reordering, and live interactive canvas handles.
 
 3. **Visual Crop & Rotate**:
    - Interactive crop selection rectangle with real-time preview.
