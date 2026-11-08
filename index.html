@@ -220,10 +220,8 @@
             <a href="https://github.com/thor27/video-cut/releases/download/v0.4.0/VideoCut-0.4.0-x86_64.AppImage"
                class="btn btn-primary btn-lg"
                id="primary-download-btn">
-              <svg class="icon btn-icon" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                <polyline points="7 10 12 15 17 10"></polyline>
-                <line x1="12" y1="15" x2="12" y2="3"></line>
+              <svg class="icon btn-icon" viewBox="0 0 24 24" width="22" height="22" fill="currentColor" aria-hidden="true">
+                <path d="M1.64 0C.735 0 0 .736 0 1.64v20.72C0 23.265.736 24 1.64 24h20.72c.904 0 1.64-.736 1.64-1.64V1.64C24 .735 23.264 0 22.36 0Zm8.56 2.42h3.6v3.6h1.912L12 10.22l-3.713-4.2H10.2Zm1.331 8.4h1.313c.103 0 .169.177.169.394v1.368c.417.096.81.266 1.162.488l.975-.975c.153-.153.32-.223.394-.15l.918.919c.074.073.004.24-.15.393l-.975.975c.223.352.393.745.488 1.163h1.369c.217 0 .394.065.394.169v1.312c0 .104-.177.169-.394.169h-1.369a3.74 3.74 0 0 1-.487 1.162l.974.975c.154.154.224.32.15.394l-.918.919c-.074.073-.24.003-.394-.15l-.975-.975a3.74 3.74 0 0 1-1.163.487v1.37c0 .216-.065.393-.168.393H11.53c-.103 0-.169-.177-.169-.394v-1.369a3.74 3.74 0 0 1-1.162-.487l-.975.975c-.153.153-.32.223-.394.15l-.918-.919c-.074-.073-.004-.24.15-.394l.974-.975a3.74 3.74 0 0 1-.487-1.162H7.181c-.217 0-.393-.065-.393-.169v-1.312c0-.104.176-.17.393-.17H8.55a3.74 3.74 0 0 1 .487-1.162l-.974-.975c-.154-.153-.224-.32-.15-.393l.918-.92c.074-.072.24-.002.394.15l.975.976a3.74 3.74 0 0 1 1.163-.488v-1.368c0-.217.065-.394.168-.394zm.656 3.731c-.917 0-1.668.752-1.668 1.669s.751 1.669 1.669 1.669c.917 0 1.668-.752 1.668-1.67 0-.916-.751-1.668-1.669-1.668z"/>
               </svg>
               <span class="btn-text-group">
                 <span class="btn-main-text" id="primary-btn-title">Download AppImage</span>
@@ -236,14 +234,21 @@
             <span class="secondary-hint" id="secondary-hint">Also available as:</span>
             <div class="secondary-links" id="secondary-links">
               <a href="https://snapcraft.io/video-cut" class="secondary-link" id="secondary-snap-link" target="_blank" rel="noopener">
-                <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" class="inline-icon">
-                  <path d="M11.64 0l-7.2 4.16 8.35 4.82v9.64l4.16-2.4V4.82L11.64 0zM3.46 5.86L0 7.85l7.2 4.16 3.46-2-7.2-4.15zm17.08 6.32l-3.46 2 7.2 4.16 3.46-2-7.2-4.16zM11.64 12l-7.2 4.16 7.2 4.16 7.2-4.16-7.2-4.16z"/>
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" class="inline-icon" aria-hidden="true">
+                  <path d="M8.17 11.335a.106.106 0 0 0-.173.022L1.754 23.466a.105.105 0 0 0 .032.133c.04.029.101.027.138-.012l8.89-9.11a.107.107 0 0 0 .005-.144l-2.649-3Zm9.76-3.519L.146.39C.041.346-.047.478.028.56l12.034 12.874a.11.11 0 0 0 .075.034.102.102 0 0 0 .075-.03L17.96 7.99a.106.106 0 0 0-.032-.174Zm6.047.547-2.188-4.405a.21.21 0 0 0-.189-.117h-8.77a.212.212 0 0 0-.08.408l10.96 4.405a.211.211 0 0 0 .268-.29z"/>
                 </svg>
                 Snap Store
               </a>
               <span class="divider">·</span>
-              <a href="https://github.com/thor27/video-cut/releases" class="secondary-link" target="_blank" rel="noopener">
-                Other Packages &amp; Releases &rarr;
+              <a href="#card-flatpak" class="secondary-link" id="secondary-flatpak-link">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" class="inline-icon" aria-hidden="true">
+                  <path d="M12 0c-.556 0-1.111.144-1.61.432l-7.603 4.39a3.217 3.217 0 0 0-1.61 2.788v8.78c0 1.151.612 2.212 1.61 2.788l7.603 4.39a3.217 3.217 0 0 0 3.22 0l7.603-4.39a3.217 3.217 0 0 0 1.61-2.788V7.61a3.217 3.217 0 0 0-1.61-2.788L13.61.432A3.218 3.218 0 0 0 12 0Zm0 2.358c.15 0 .299.039.431.115l7.604 4.39c.132.077.24.187.315.316L12 12v9.642a.863.863 0 0 1-.431-.116l-7.604-4.39a.866.866 0 0 1-.431-.746V7.61c0-.153.041-.302.116-.43L12 12Z"/>
+                </svg>
+                Flatpak
+              </a>
+              <span class="divider">·</span>
+              <a href="#download" class="secondary-link">
+                Other Packages &rarr;
               </a>
             </div>
           </div>
@@ -565,8 +570,8 @@
         <div class="download-card featured-card" id="card-appimage">
           <div class="card-badge">Universal</div>
           <div class="card-icon-box">
-            <svg viewBox="0 0 24 24" width="36" height="36" fill="currentColor">
-              <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14.5v-5H8l4-4 4 4h-3v5h-2z"/>
+            <svg viewBox="0 0 24 24" width="36" height="36" fill="currentColor" aria-hidden="true">
+              <path d="M1.64 0C.735 0 0 .736 0 1.64v20.72C0 23.265.736 24 1.64 24h20.72c.904 0 1.64-.736 1.64-1.64V1.64C24 .735 23.264 0 22.36 0Zm8.56 2.42h3.6v3.6h1.912L12 10.22l-3.713-4.2H10.2Zm1.331 8.4h1.313c.103 0 .169.177.169.394v1.368c.417.096.81.266 1.162.488l.975-.975c.153-.153.32-.223.394-.15l.918.919c.074.073.004.24-.15.393l-.975.975c.223.352.393.745.488 1.163h1.369c.217 0 .394.065.394.169v1.312c0 .104-.177.169-.394.169h-1.369a3.74 3.74 0 0 1-.487 1.162l.974.975c.154.154.224.32.15.394l-.918.919c-.074.073-.24.003-.394-.15l-.975-.975a3.74 3.74 0 0 1-1.163.487v1.37c0 .216-.065.393-.168.393H11.53c-.103 0-.169-.177-.169-.394v-1.369a3.74 3.74 0 0 1-1.162-.487l-.975.975c-.153.153-.32.223-.394.15l-.918-.919c-.074-.073-.004-.24.15-.394l.974-.975a3.74 3.74 0 0 1-.487-1.162H7.181c-.217 0-.393-.065-.393-.169v-1.312c0-.104.176-.17.393-.17H8.55a3.74 3.74 0 0 1 .487-1.162l-.974-.975c-.154-.153-.224-.32-.15-.393l.918-.92c.074-.072.24-.002.394.15l.975.976a3.74 3.74 0 0 1 1.163-.488v-1.368c0-.217.065-.394.168-.394zm.656 3.731c-.917 0-1.668.752-1.668 1.669s.751 1.669 1.669 1.669c.917 0 1.668-.752 1.668-1.67 0-.916-.751-1.668-1.669-1.668z"/>
             </svg>
           </div>
           <h3 class="card-title">AppImage</h3>
@@ -589,8 +594,8 @@
         <div class="download-card" id="card-snap">
           <div class="card-badge">Ubuntu / Canonical</div>
           <div class="card-icon-box">
-            <svg viewBox="0 0 24 24" width="36" height="36" fill="currentColor">
-              <path d="M11.64 0l-7.2 4.16 8.35 4.82v9.64l4.16-2.4V4.82L11.64 0zM3.46 5.86L0 7.85l7.2 4.16 3.46-2-7.2-4.15zm17.08 6.32l-3.46 2 7.2 4.16 3.46-2-7.2-4.16zM11.64 12l-7.2 4.16 7.2 4.16 7.2-4.16-7.2-4.16z"/>
+            <svg viewBox="0 0 24 24" width="36" height="36" fill="currentColor" aria-hidden="true">
+              <path d="M8.17 11.335a.106.106 0 0 0-.173.022L1.754 23.466a.105.105 0 0 0 .032.133c.04.029.101.027.138-.012l8.89-9.11a.107.107 0 0 0 .005-.144l-2.649-3Zm9.76-3.519L.146.39C.041.346-.047.478.028.56l12.034 12.874a.11.11 0 0 0 .075.034.102.102 0 0 0 .075-.03L17.96 7.99a.106.106 0 0 0-.032-.174Zm6.047.547-2.188-4.405a.21.21 0 0 0-.189-.117h-8.77a.212.212 0 0 0-.08.408l10.96 4.405a.211.211 0 0 0 .268-.29z"/>
             </svg>
           </div>
           <h3 class="card-title">Snap Store</h3>
@@ -611,8 +616,8 @@
         <div class="download-card" id="card-flatpak">
           <div class="card-badge">Sandboxed</div>
           <div class="card-icon-box">
-            <svg viewBox="0 0 24 24" width="36" height="36" fill="currentColor">
-              <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+            <svg viewBox="0 0 24 24" width="36" height="36" fill="currentColor" aria-hidden="true">
+              <path d="M12 0c-.556 0-1.111.144-1.61.432l-7.603 4.39a3.217 3.217 0 0 0-1.61 2.788v8.78c0 1.151.612 2.212 1.61 2.788l7.603 4.39a3.217 3.217 0 0 0 3.22 0l7.603-4.39a3.217 3.217 0 0 0 1.61-2.788V7.61a3.217 3.217 0 0 0-1.61-2.788L13.61.432A3.218 3.218 0 0 0 12 0Zm0 2.358c.15 0 .299.039.431.115l7.604 4.39c.132.077.24.187.315.316L12 12v9.642a.863.863 0 0 1-.431-.116l-7.604-4.39a.866.866 0 0 1-.431-.746V7.61c0-.153.041-.302.116-.43L12 12Z"/>
             </svg>
           </div>
           <h3 class="card-title">Flatpak Bundle</h3>
