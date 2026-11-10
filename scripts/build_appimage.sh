@@ -8,10 +8,12 @@ BUILD_DIR="${REPO_ROOT}/build"
 APPDIR="${BUILD_DIR}/AppDir"
 TOOLS_DIR="${BUILD_DIR}/tools"
 
-# Extract version from src/video_cut/__init__.py
-VERSION="$(grep -m1 '^__version__' "${REPO_ROOT}/src/video_cut/__init__.py" | cut -d'"' -f2)"
+# Extract version from src/video_cut/__init__.py or environment
+if [ -z "${VERSION:-}" ]; then
+    VERSION="$(grep -m1 '^__version__' "${REPO_ROOT}/src/video_cut/__init__.py" | cut -d'"' -f2)"
+fi
 if [ -z "$VERSION" ]; then
-    VERSION="0.1.0"
+    VERSION="devel"
 fi
 
 OUTPUT_APPIMAGE="${DIST_DIR}/VideoCut-${VERSION}-x86_64.AppImage"

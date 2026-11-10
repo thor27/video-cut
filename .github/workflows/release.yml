@@ -26,6 +26,9 @@ jobs:
       - name: Build All Distribution Packages & Source Archives
         run: |
           chmod +x scripts/*.sh packaging/appimage/AppRun
+          RELEASE_VER="${GITHUB_REF_NAME#v}"
+          export VERSION="${RELEASE_VER}"
+          ./scripts/set_version.sh "${RELEASE_VER}" || true
           ./scripts/build_packages.sh --all
 
       - name: Generate SHA256SUMS

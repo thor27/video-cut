@@ -6,11 +6,23 @@ REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 DIST_DIR="${REPO_ROOT}/dist"
 SCRIPTS_DIR="${REPO_ROOT}/scripts"
 
-# Extract version from src/video_cut/__init__.py
-VERSION="$(grep -m1 '^__version__' "${REPO_ROOT}/src/video_cut/__init__.py" | cut -d'"' -f2)"
-if [ -z "$VERSION" ]; then
-    VERSION="0.1.0"
+# Extract version from src/video_cut/__init__.py or environment/git tag
+if [ -z "${VERSION:-}" ]; then
+    VERSION="$(grep -m1 '^__version__' "${REPO_ROOT}/src/video_cut/__init__.py" | cut -d'"' -f2)"
 fi
+# Auto-detect git release tag if VERSION is devel or empty and HEAD is tagged
+if [ -n "${GITHUB_REF_NAME:-}" ] && [[ "${GITHUB_REF_NAME}" =~ ^v[0-9] ]]; then
+    VERSION="${GITHUB_REF_NAME#v}"
+elif [ "$VERSION" = "devel" ] || [ -z "$VERSION" ]; then
+    GIT_TAG="$(git -C "${REPO_ROOT}" describe --tags --exact-match 2>/dev/null || true)"
+    if [[ "${GIT_TAG}" =~ ^v[0-9] ]]; then
+        VERSION="${GIT_TAG#v}"
+    fi
+fi
+if [ -z "$VERSION" ]; then
+    VERSION="devel"
+fi
+export VERSION
 
 show_help() {
     cat << EOF

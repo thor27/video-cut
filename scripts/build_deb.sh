@@ -6,19 +6,30 @@ REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 DIST_DIR="${REPO_ROOT}/dist"
 BUILD_DIR="${REPO_ROOT}/build/deb"
 
-# Extract version from src/video_cut/__init__.py
-VERSION="$(grep -m1 '^__version__' "${REPO_ROOT}/src/video_cut/__init__.py" | cut -d'"' -f2)"
+# Extract version from src/video_cut/__init__.py or environment
+if [ -z "${VERSION:-}" ]; then
+    VERSION="$(grep -m1 '^__version__' "${REPO_ROOT}/src/video_cut/__init__.py" | cut -d'"' -f2)"
+fi
 if [ -z "$VERSION" ]; then
-    VERSION="0.1.0"
+    VERSION="devel"
+fi
+
+# Sanitize version for Debian package (Debian policy: version must start with a digit)
+DEB_VERSION="${VERSION}"
+if ! [[ "${DEB_VERSION}" =~ ^[0-9] ]]; then
+    DEB_VERSION="0.0.0~${DEB_VERSION}"
+else
+    # Normalize .devX or -dev to ~devX for proper Debian pre-release sorting
+    DEB_VERSION="$(echo "${DEB_VERSION}" | sed -E 's/\.(dev[0-9]*)/~\1/; s/-devel/~devel/; s/\+devel/~devel/')"
 fi
 
 ARCH="all"
 PKG_NAME="video-cut"
-PKG_FULLNAME="${PKG_NAME}_${VERSION}_${ARCH}"
+PKG_FULLNAME="${PKG_NAME}_${DEB_VERSION}_${ARCH}"
 PKG_DIR="${BUILD_DIR}/${PKG_FULLNAME}"
 OUTPUT_DEB="${DIST_DIR}/${PKG_FULLNAME}.deb"
 
-echo "==> Building Debian package for ${PKG_NAME} v${VERSION} (${ARCH})..."
+echo "==> Building Debian package for ${PKG_NAME} v${DEB_VERSION} (${ARCH})..."
 
 # Clean build directory
 rm -rf "${PKG_DIR}"
@@ -98,7 +109,7 @@ INSTALLED_SIZE="$(du -sk "${PKG_DIR}" | cut -f1)"
 # 7. Generate DEBIAN/control
 cat << EOF > "${PKG_DIR}/DEBIAN/control"
 Package: ${PKG_NAME}
-Version: ${VERSION}
+Version: ${DEB_VERSION}
 Section: video
 Priority: optional
 Architecture: ${ARCH}
