@@ -23,6 +23,7 @@ from .progress_modal import ProgressModal
 from .services.export_service import ExportService
 from .services.image_service import ImageService
 from .services.probe_service import ProbeService, VideoMetadata
+from .services.project_service import ProjectService
 from .services.thumbnail_service import ThumbnailService
 from .timeline_widget import TimelineWidget
 from .utils import clamp, format_time
@@ -46,6 +47,11 @@ class MainWindow(Adw.ApplicationWindow):
         self.current_global_time: float = 0.0
         self._thumb_toast: Adw.Toast | None = None
         self._thumb_toast_label: Gtk.Label | None = None
+
+        # Project state
+        self.current_project_path: Path | None = None
+        self.is_dirty: bool = False
+        self.connect("close-request", self._on_close_request)
 
         # Build UI layout
         self._build_ui()
@@ -124,6 +130,18 @@ class MainWindow(Adw.ApplicationWindow):
         self.action_open.connect("activate", lambda *_: self._open_video_dialog())
         self.add_action(self.action_open)
 
+        self.action_open_project = Gio.SimpleAction.new("open_project", None)
+        self.action_open_project.connect("activate", lambda *_: self.open_project_dialog())
+        self.add_action(self.action_open_project)
+
+        self.action_save_project = Gio.SimpleAction.new("save_project", None)
+        self.action_save_project.connect("activate", lambda *_: self.save_project())
+        self.add_action(self.action_save_project)
+
+        self.action_save_project_as = Gio.SimpleAction.new("save_project_as", None)
+        self.action_save_project_as.connect("activate", lambda *_: self.save_project_as())
+        self.add_action(self.action_save_project_as)
+
         self.action_adv_export = Gio.SimpleAction.new("advanced_export", None)
         self.action_adv_export.connect("activate", lambda *_: self._open_advanced_export_dialog())
         self.action_adv_export.set_enabled(False)
@@ -141,7 +159,13 @@ class MainWindow(Adw.ApplicationWindow):
         menu = Gio.Menu.new()
         file_section = Gio.Menu.new()
         file_section.append(_("New Window"), "win.new_window")
-        file_section.append(_("Open..."), "win.open")
+        file_section.append(_("Open Media..."), "win.open")
+        file_section.append(_("Open Project..."), "win.open_project")
+        file_section.append(_("Save Project"), "win.save_project")
+        file_section.append(_("Save Project As..."), "win.save_project_as")
+
+        self.recent_menu = Gio.Menu.new()
+        file_section.append_submenu(_("Recent Projects"), self.recent_menu)
         menu.append_section(None, file_section)
 
         export_section = Gio.Menu.new()
@@ -158,6 +182,7 @@ class MainWindow(Adw.ApplicationWindow):
         self.btn_menu.set_menu_model(menu)
         self.btn_menu.set_focusable(False)
         self.btn_menu.add_css_class("flat")
+        self._update_recent_projects_menu()
 
         # Export button (suggested action)
         self.btn_export = Gtk.Button(label=_("Export..."))
@@ -199,9 +224,18 @@ class MainWindow(Adw.ApplicationWindow):
         self.btn_open_empty = Gtk.Button(label=_("Open Video or Image"))
         self.btn_open_empty.add_css_class("suggested-action")
         self.btn_open_empty.add_css_class("pill")
-        self.btn_open_empty.set_halign(Gtk.Align.CENTER)
         self.btn_open_empty.connect("clicked", lambda _: self._open_video_dialog())
-        self.empty_status.set_child(self.btn_open_empty)
+
+        self.btn_open_project_empty = Gtk.Button(label=_("Open Project..."))
+        self.btn_open_project_empty.add_css_class("pill")
+        self.btn_open_project_empty.connect("clicked", lambda _: self.open_project_dialog())
+
+        empty_btn_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
+        empty_btn_box.set_halign(Gtk.Align.CENTER)
+        empty_btn_box.append(self.btn_open_empty)
+        empty_btn_box.append(self.btn_open_project_empty)
+
+        self.empty_status.set_child(empty_btn_box)
         self.player_stack.add_named(self.empty_status, "empty")
 
         # Video Picture page
@@ -366,6 +400,7 @@ class MainWindow(Adw.ApplicationWindow):
                 self.timeline.save_state(self.current_global_time)
                 if self.timeline.move_left(self.timeline.selected_segment_id):
                     self.timeline_widget.rebuild_filmstrip()
+                    self._mark_dirty()
                     self._update_ui_state()
                 return True
             self.player.step(-1.0, self.current_global_time)
@@ -377,6 +412,7 @@ class MainWindow(Adw.ApplicationWindow):
                 self.timeline.save_state(self.current_global_time)
                 if self.timeline.move_right(self.timeline.selected_segment_id):
                     self.timeline_widget.rebuild_filmstrip()
+                    self._mark_dirty()
                     self._update_ui_state()
                 return True
             self.player.step(1.0, self.current_global_time)
@@ -417,9 +453,20 @@ class MainWindow(Adw.ApplicationWindow):
             self.unfullscreen()
             return True
 
-        # Ctrl+O: Open
-        if ctrl and keyval in (Gdk.KEY_o, Gdk.KEY_O):
-            self._open_video_dialog()
+        # Ctrl+S: Save Project (Ctrl+Shift+S: Save Project As)
+        if ctrl and not alt and keyval in (Gdk.KEY_s, Gdk.KEY_S):
+            if shift:
+                self.save_project_as()
+            else:
+                self.save_project()
+            return True
+
+        # Ctrl+O: Open Project (Ctrl+Shift+O: Open Media)
+        if ctrl and not alt and keyval in (Gdk.KEY_o, Gdk.KEY_O):
+            if shift:
+                self._open_video_dialog()
+            else:
+                self.open_project_dialog()
             return True
 
         # Ctrl+E: Export
@@ -436,6 +483,7 @@ class MainWindow(Adw.ApplicationWindow):
             self.current_global_time = restored
             self.player.sync_timeline_change(self.current_global_time)
             self.timeline_widget.rebuild_filmstrip()
+            self._mark_dirty()
             self._update_ui_state()
 
     def redo(self) -> None:
@@ -445,6 +493,7 @@ class MainWindow(Adw.ApplicationWindow):
             self.current_global_time = restored
             self.player.sync_timeline_change(self.current_global_time)
             self.timeline_widget.rebuild_filmstrip()
+            self._mark_dirty()
             self._update_ui_state()
 
     def _on_playback_state_changed(self, is_playing: bool) -> None:
@@ -551,18 +600,32 @@ class MainWindow(Adw.ApplicationWindow):
             self.window_title.set_subtitle(_("Video Editor"))
             self.hide_thumbnail_progress()
 
+    def _create_project_file_filters(self) -> Gio.ListStore:
+        filters = Gio.ListStore.new(Gtk.FileFilter)
+        filter_vcut = Gtk.FileFilter.new()
+        filter_vcut.set_name(_("Video Cut Projects (*.vcut)"))
+        filter_vcut.add_pattern("*.vcut")
+        filters.append(filter_vcut)
+
+        filter_all = Gtk.FileFilter.new()
+        filter_all.set_name(_("All Files"))
+        filter_all.add_pattern("*")
+        filters.append(filter_all)
+        return filters
+
     def _create_media_file_filters(self) -> Gio.ListStore:
         filters = Gio.ListStore.new(Gtk.FileFilter)
 
         # All supported media
         filter_all = Gtk.FileFilter.new()
-        filter_all.set_name(_("All Supported Media (Videos & Images)"))
+        filter_all.set_name(_("All Supported Media (Videos, Images & Projects)"))
         filter_all.add_mime_type("video/*")
         filter_all.add_mime_type("image/*")
         filter_all.add_mime_type("image/svg+xml")
         for ext in (
             "*.mp4", "*.mkv", "*.mov", "*.webm", "*.avi",
             "*.png", "*.jpg", "*.jpeg", "*.webp", "*.bmp", "*.tiff", "*.gif", "*.svg",
+            "*.vcut",
         ):
             filter_all.add_pattern(ext)
         filters.append(filter_all)
@@ -584,7 +647,286 @@ class MainWindow(Adw.ApplicationWindow):
             filter_image.add_pattern(ext)
         filters.append(filter_image)
 
+        # Projects only
+        filter_project = Gtk.FileFilter.new()
+        filter_project.set_name(_("Video Cut Projects (*.vcut)"))
+        filter_project.add_pattern("*.vcut")
+        filters.append(filter_project)
+
         return filters
+
+    def _update_window_title(self) -> None:
+        dirty_flag = " *" if self.is_dirty else ""
+        if self.current_project_path:
+            title = f"{self.current_project_path.name}{dirty_flag} — Video Cut"
+        elif not self.timeline.is_empty:
+            title = f"{_('Untitled Project')}{dirty_flag} — Video Cut"
+        else:
+            title = "Video Cut"
+        self.set_title(title)
+        if hasattr(self, "window_title"):
+            if not self.timeline.is_empty:
+                first_seg = self.timeline.segments[0]
+                proj_name = self.current_project_path.name if self.current_project_path else first_seg.source_name
+                count = len(self.timeline.segments)
+                self.window_title.set_title(f"{proj_name}{dirty_flag}")
+                self.window_title.set_subtitle(f"{count} segment{'s' if count > 1 else ''} • Total {format_time(self.timeline.total_duration)}")
+            else:
+                self.window_title.set_title(_("Video Cut"))
+                self.window_title.set_subtitle(_("Video Editor"))
+
+    def _mark_dirty(self) -> None:
+        self.is_dirty = True
+        self._update_window_title()
+
+    def _update_recent_projects_menu(self) -> None:
+        if not hasattr(self, "recent_menu"):
+            return
+        self.recent_menu.remove_all()
+        recents = ProjectService.get_recent_projects()
+        if not recents:
+            item = Gio.MenuItem.new(_("(No Recent Projects)"), None)
+            self.recent_menu.append_item(item)
+            return
+
+        for idx, p in enumerate(recents[:8]):
+            action_name = f"open_recent_{idx}"
+            act = self.lookup_action(action_name)
+            if act is None:
+                act = Gio.SimpleAction.new(action_name, None)
+                self.add_action(act)
+            act.connect("activate", self._make_recent_handler(p))
+            self.recent_menu.append(p.name, f"win.{action_name}")
+
+    def _make_recent_handler(self, p: Path):
+        return lambda *_: self.open_project_file(p)
+
+    def _on_close_request(self, window) -> bool:
+        if self.is_dirty and not self.timeline.is_empty:
+            def proceed_close():
+                self.is_dirty = False
+                self.close()
+            self._prompt_unsaved_changes(on_proceed=proceed_close)
+            return True
+        return False
+
+    def _prompt_unsaved_changes(self, on_proceed: Callable[[], None]) -> None:
+        dialog = Adw.AlertDialog.new(
+            _("Unsaved Changes"),
+            _("Do you want to save changes to the current project before proceeding?"),
+        )
+        dialog.add_response("cancel", _("Cancel"))
+        dialog.add_response("discard", _("Discard"))
+        dialog.add_response("save", _("Save"))
+        dialog.set_response_appearance("save", Adw.ResponseAppearance.SUGGESTED)
+        dialog.set_response_appearance("discard", Adw.ResponseAppearance.DESTRUCTIVE)
+
+        def on_response(dlg, resp):
+            if resp == "discard":
+                self.is_dirty = False
+                on_proceed()
+            elif resp == "save":
+                if self.current_project_path:
+                    self._save_project_to_path(self.current_project_path)
+                    on_proceed()
+                else:
+                    file_dlg = Gtk.FileDialog.new()
+                    file_dlg.set_title(_("Save Project As"))
+                    file_dlg.set_filters(self._create_project_file_filters())
+                    suggested_name = "project.vcut"
+                    if not self.timeline.is_empty and self.timeline.segments:
+                        suggested_name = f"{self.timeline.segments[0].stem}.vcut"
+                    file_dlg.set_initial_name(suggested_name)
+
+                    def on_save_finish(d, res):
+                        try:
+                            gfile = d.save_finish(res)
+                            if gfile:
+                                save_p = Path(gfile.get_path())
+                                if save_p.suffix.lower() != ".vcut":
+                                    save_p = save_p.with_suffix(".vcut")
+                                self._save_project_to_path(save_p)
+                                on_proceed()
+                        except Exception:
+                            pass
+
+                    file_dlg.save(self, None, on_save_finish)
+
+        dialog.choose(self, None, on_response)
+
+    def save_project(self) -> None:
+        """Save the current project to its active file, or prompt for path if untitled."""
+        if self.current_project_path:
+            self._save_project_to_path(self.current_project_path)
+        else:
+            self.save_project_as()
+
+    def save_project_as(self) -> None:
+        """Prompt user for destination file and save the project as a .vcut file."""
+        dialog = Gtk.FileDialog.new()
+        dialog.set_title(_("Save Project As"))
+        dialog.set_filters(self._create_project_file_filters())
+
+        suggested_name = "project.vcut"
+        if self.current_project_path:
+            suggested_name = self.current_project_path.name
+        elif not self.timeline.is_empty and self.timeline.segments:
+            suggested_name = f"{self.timeline.segments[0].stem}.vcut"
+        dialog.set_initial_name(suggested_name)
+
+        def on_save_finish(dlg, res):
+            try:
+                gfile = dlg.save_finish(res)
+                if gfile:
+                    save_path = Path(gfile.get_path())
+                    if save_path.suffix.lower() != ".vcut":
+                        save_path = save_path.with_suffix(".vcut")
+                    self._save_project_to_path(save_path)
+            except Exception as e:
+                if "dismissed" not in str(e).lower():
+                    self._show_toast(_("Failed to save project: {error}").format(error=e))
+
+        dialog.save(self, None, on_save_finish)
+
+    def _save_project_to_path(self, target_path: Path) -> None:
+        try:
+            ProjectService.save_project(
+                project_path=target_path,
+                timeline=self.timeline,
+                current_global_time=self.current_global_time,
+                app_version=__version__,
+            )
+            self.current_project_path = target_path
+            self.is_dirty = False
+            self._update_window_title()
+            self._update_recent_projects_menu()
+            self._show_toast(_("Project saved successfully"))
+        except Exception as e:
+            self._show_toast(_("Error saving project: {error}").format(error=e))
+
+    def open_project_dialog(self) -> None:
+        """Prompt to open a .vcut project file, checking for unsaved changes first."""
+        if self.is_dirty and not self.timeline.is_empty:
+            self._prompt_unsaved_changes(on_proceed=self._do_open_project_dialog)
+        else:
+            self._do_open_project_dialog()
+
+    def _do_open_project_dialog(self) -> None:
+        dialog = Gtk.FileDialog.new()
+        dialog.set_title(_("Open Project"))
+        dialog.set_filters(self._create_project_file_filters())
+
+        def on_open_finish(dlg, res):
+            try:
+                gfile = dlg.open_finish(res)
+                if gfile:
+                    self.open_project_file(Path(gfile.get_path()))
+            except Exception as e:
+                if "dismissed" not in str(e).lower():
+                    self._show_toast(_("Error opening project: {error}").format(error=e))
+
+        dialog.open(self, None, on_open_finish)
+
+    def open_project_file(self, project_path: Path) -> None:
+        """Open and load a .vcut project file into the editor."""
+        if self.is_dirty and not self.timeline.is_empty:
+            self._prompt_unsaved_changes(on_proceed=lambda: self._do_load_project(project_path))
+        else:
+            self._do_load_project(project_path)
+
+    def _do_load_project(self, project_path: Path) -> None:
+        try:
+            if self.player.is_playing:
+                self.player.pause()
+
+            segments, global_time, selected_id, missing = ProjectService.load_project(project_path)
+
+            if missing:
+                self._show_missing_media_dialog(project_path, segments, global_time, selected_id, missing)
+                return
+
+            self._apply_loaded_project(project_path, segments, global_time, selected_id)
+        except Exception as e:
+            self._show_toast(_("Failed to load project: {error}").format(error=e))
+
+    def _show_missing_media_dialog(
+        self,
+        project_path: Path,
+        segments: list[Segment],
+        global_time: float,
+        selected_id: str | None,
+        missing: list[str],
+    ) -> None:
+        dialog = Adw.AlertDialog.new(
+            _("Missing Media Files"),
+            _("The following referenced files could not be found:\n\n{files}\n\nWould you like to locate the missing files or load the project anyway?").format(
+                files="\n".join(f"• {f}" for f in missing[:5]) + (f"\n...and {len(missing)-5} more" if len(missing) > 5 else "")
+            ),
+        )
+        dialog.add_response("load_anyway", _("Load Anyway"))
+        dialog.add_response("relink", _("Locate Missing File..."))
+        dialog.add_response("cancel", _("Cancel"))
+        dialog.set_response_appearance("relink", Adw.ResponseAppearance.SUGGESTED)
+        dialog.set_response_appearance("cancel", Adw.ResponseAppearance.DESTRUCTIVE)
+
+        def on_response(dlg, resp):
+            if resp == "load_anyway":
+                self._apply_loaded_project(project_path, segments, global_time, selected_id)
+            elif resp == "relink":
+                first_missing = missing[0]
+                relink_dlg = Gtk.FileDialog.new()
+                relink_dlg.set_title(_("Locate '{filename}'").format(filename=Path(first_missing).name))
+                relink_dlg.set_filters(self._create_media_file_filters())
+
+                def on_relink_finish(d, res):
+                    try:
+                        gfile = d.open_finish(res)
+                        if gfile:
+                            new_path = Path(gfile.get_path())
+                            relink_map = {first_missing: new_path}
+                            ProjectService.relink_missing_media(segments, relink_map)
+                            rem = [f for f in missing if f != first_missing]
+                            if rem:
+                                self._show_missing_media_dialog(project_path, segments, global_time, selected_id, rem)
+                            else:
+                                self._apply_loaded_project(project_path, segments, global_time, selected_id)
+                    except Exception:
+                        pass
+
+                relink_dlg.open(self, None, on_relink_finish)
+
+        dialog.choose(self, None, on_response)
+
+    def _apply_loaded_project(
+        self,
+        project_path: Path,
+        segments: list[Segment],
+        global_time: float,
+        selected_id: str | None,
+    ) -> None:
+        self.timeline.clear()
+        self.timeline.segments = segments
+        self.timeline.selected_segment_id = selected_id or (segments[0].id if segments else None)
+
+        self.current_project_path = project_path
+        self.is_dirty = False
+        self.current_global_time = global_time
+
+        if segments:
+            self.player_stack.set_visible_child_name("player")
+            self.player.load_initial()
+            self.player.seek_to_global_time(global_time)
+            self.timeline_widget.rebuild_filmstrip()
+            self.timeline_widget.update_playhead(global_time)
+        else:
+            self.player.clear()
+            self.player_stack.set_visible_child_name("empty")
+            self.timeline_widget.rebuild_filmstrip()
+
+        self._update_ui_state()
+        self._update_window_title()
+        self._update_recent_projects_menu()
+        self._show_toast(_("Loaded project '{name}'").format(name=project_path.name))
 
     def _open_video_dialog(self) -> None:
         dialog = Gtk.FileDialog.new()
@@ -640,8 +982,15 @@ class MainWindow(Adw.ApplicationWindow):
             self._show_toast(_("No valid media files found"))
             return
 
+        if len(valid_paths) == 1 and valid_paths[0].suffix.lower() == ".vcut":
+            self.open_project_file(valid_paths[0])
+            return
+
         if replace is None:
             replace = self.timeline.is_empty
+
+        if replace:
+            self.current_project_path = None
 
         # Single image import -> prompt duration & soundtrack dialog
         if len(valid_paths) == 1 and ImageService.is_image(valid_paths[0]):
@@ -964,6 +1313,7 @@ class MainWindow(Adw.ApplicationWindow):
             )
 
         self.timeline_widget.rebuild_filmstrip()
+        self._mark_dirty()
         self._update_ui_state()
 
         if replace:
@@ -1008,6 +1358,7 @@ class MainWindow(Adw.ApplicationWindow):
         self.player.sync_timeline_change(self.current_global_time)
         self.timeline_widget.hide_split_pill()
         self.timeline_widget.rebuild_filmstrip()
+        self._mark_dirty()
         self._update_ui_state()
 
     def delete_selected_segment(self) -> None:
@@ -1036,6 +1387,7 @@ class MainWindow(Adw.ApplicationWindow):
             self.current_global_time = clamp(self.current_global_time, 0.0, self.timeline.total_duration)
             self.player.sync_timeline_change(self.current_global_time)
             self.timeline_widget.rebuild_filmstrip()
+            self._mark_dirty()
             self._update_ui_state()
 
     def _copy_to_system_clipboard(self, source_path: Path) -> None:
@@ -1103,6 +1455,7 @@ class MainWindow(Adw.ApplicationWindow):
                     s.vflip = vflip
             self.player.refresh_current_transform()
             self.timeline_widget.rebuild_filmstrip()
+            self._mark_dirty()
             self._update_ui_state()
             if len(target_ids) > 1:
                 self._show_toast(_("Crop & Rotate applied to {count} clips").format(count=len(target_ids)))
@@ -1157,6 +1510,7 @@ class MainWindow(Adw.ApplicationWindow):
                     s.overlays = [item.clone() for item in items]
             self.player.refresh_current_transform()
             self.timeline_widget.rebuild_filmstrip()
+            self._mark_dirty()
             self._update_ui_state()
             if len(target_ids) > 1:
                 self._show_toast(_("Overlays applied to {count} clips").format(count=len(target_ids)))
@@ -1174,6 +1528,7 @@ class MainWindow(Adw.ApplicationWindow):
 
     def _on_timeline_structure_changed(self) -> None:
         self.player.sync_timeline_change(self.current_global_time)
+        self._mark_dirty()
         self._update_ui_state()
 
     def _open_advanced_export_dialog(self) -> None:

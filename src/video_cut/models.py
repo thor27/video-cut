@@ -87,18 +87,25 @@ class OverlayItem:
     audio_volume: float = 1.0   # Audio volume multiplier (0.0 to 2.0, default 1.0 = 100%)
 
     @classmethod
-    def from_dict(cls, data: object) -> OverlayItem | None:
-        """Build an item from an untrusted mapping such as clipboard JSON.
+    def from_dict(
+        cls,
+        data: object,
+        base_dir: Path | None = None,
+        preserve_id: bool = False,
+    ) -> OverlayItem | None:
+        """Build an item from an untrusted mapping such as clipboard JSON or project file.
 
-        Unknown keys are dropped, a value of the wrong type rejects the whole
-        item, the item type must be one the editor knows, and the id is always
-        regenerated.
+        Unknown keys are dropped, and a value of the wrong type rejects the whole item.
         """
         if not isinstance(data, dict):
             return None
         kwargs: dict[str, object] = {}
         for f in fields(cls):
-            if f.name == "id" or f.name not in data:
+            if f.name == "id":
+                if preserve_id and "id" in data and isinstance(data["id"], str):
+                    kwargs["id"] = data["id"]
+                continue
+            if f.name not in data:
                 continue
             value = data[f.name]
             if not _accepts_overlay_value(f, value):
@@ -106,10 +113,32 @@ class OverlayItem:
             kwargs[f.name] = value
         if kwargs.get("item_type", "text") not in OVERLAY_ITEM_TYPES:
             return None
+
+        # Resolve media path if relative and base_dir is supplied
+        if base_dir and kwargs.get("media_path"):
+            cand = (base_dir / str(kwargs["media_path"])).resolve()
+            if cand.exists():
+                kwargs["media_path"] = cand
+
         try:
             return cls(**kwargs)
         except (TypeError, ValueError):
             return None
+
+    def to_dict(self, base_dir: Path | None = None) -> dict[str, object]:
+        """Convert overlay item to a serializable dictionary."""
+        d: dict[str, object] = {}
+        for f in fields(self):
+            val = getattr(self, f.name)
+            if isinstance(val, Path):
+                val = str(val)
+            d[f.name] = val
+        if base_dir and self.media_path:
+            try:
+                d["media_relative_path"] = str(Path(self.media_path).relative_to(base_dir))
+            except ValueError:
+                pass
+        return d
 
     def __post_init__(self) -> None:
         if self.media_path is not None:
@@ -232,6 +261,117 @@ class Segment:
             orig_image_path=self.orig_image_path,
             overlays=[item.copy() for item in self.overlays],
         )
+
+    def to_dict(self, base_dir: Path | None = None) -> dict[str, object]:
+        """Convert segment to a serializable dictionary for project files."""
+        d: dict[str, object] = {
+            "id": self.id,
+            "source_path": str(self.source_path),
+            "source_duration": self.source_duration,
+            "start_time": self.start_time,
+            "end_time": self.end_time,
+            "display_name": self.display_name,
+            "crop": list(self.crop) if self.crop is not None else None,
+            "rotation": self.rotation,
+            "hflip": self.hflip,
+            "vflip": self.vflip,
+            "orig_image_path": str(self.orig_image_path) if self.orig_image_path else None,
+            "overlays": [ov.to_dict(base_dir=base_dir) for ov in self.overlays],
+        }
+        if base_dir:
+            try:
+                d["source_relative_path"] = str(self.source_path.relative_to(base_dir))
+            except ValueError:
+                pass
+            if self.orig_image_path:
+                try:
+                    d["orig_image_relative_path"] = str(self.orig_image_path.relative_to(base_dir))
+                except ValueError:
+                    pass
+        return d
+
+    @classmethod
+    def from_dict(
+        cls,
+        data: object,
+        base_dir: Path | None = None,
+    ) -> Segment | None:
+        """Create a Segment instance from serialized project dictionary."""
+        if not isinstance(data, dict):
+            return None
+
+        # Resolve source path
+        raw_source = data.get("source_relative_path") or data.get("source_path")
+        if not raw_source:
+            return None
+
+        src_path = Path(str(raw_source))
+        if base_dir:
+            if data.get("source_relative_path"):
+                cand = (base_dir / str(data["source_relative_path"])).resolve()
+                if cand.exists():
+                    src_path = cand
+            if not src_path.exists() and data.get("source_path"):
+                cand = Path(str(data["source_path"])).resolve()
+                if cand.exists():
+                    src_path = cand
+            if not src_path.exists() and data.get("source_path"):
+                cand = (base_dir / Path(str(data["source_path"])).name).resolve()
+                if cand.exists():
+                    src_path = cand
+        elif data.get("source_path"):
+            src_path = Path(str(data["source_path"]))
+
+        # Resolve optional orig_image_path
+        orig_img: Path | None = None
+        raw_orig = data.get("orig_image_relative_path") or data.get("orig_image_path")
+        if raw_orig:
+            orig_img = Path(str(raw_orig))
+            if base_dir:
+                if data.get("orig_image_relative_path"):
+                    cand = (base_dir / str(data["orig_image_relative_path"])).resolve()
+                    if cand.exists():
+                        orig_img = cand
+                if not orig_img.exists() and data.get("orig_image_path"):
+                    cand = Path(str(data["orig_image_path"])).resolve()
+                    if cand.exists():
+                        orig_img = cand
+
+        crop_val: tuple[float, float, float, float] | None = None
+        if isinstance(data.get("crop"), (list, tuple)) and len(data["crop"]) == 4:
+            crop_val = (
+                float(data["crop"][0]),
+                float(data["crop"][1]),
+                float(data["crop"][2]),
+                float(data["crop"][3]),
+            )
+
+        overlays_list: list[OverlayItem] = []
+        for raw_ov in data.get("overlays", []):
+            ov = OverlayItem.from_dict(raw_ov, base_dir=base_dir, preserve_id=True)
+            if ov is not None:
+                overlays_list.append(ov)
+
+        seg_id = str(data.get("id")) if data.get("id") else generate_id()
+
+        try:
+            return cls(
+                source_path=src_path,
+                source_duration=float(data.get("source_duration", 0.0)),
+                start_time=float(data.get("start_time", 0.0)),
+                end_time=float(data.get("end_time", 0.0)),
+                id=seg_id,
+                thumbnails=[],
+                display_name=str(data["display_name"]) if data.get("display_name") else None,
+                crop=crop_val,
+                rotation=int(data.get("rotation", 0)),
+                hflip=bool(data.get("hflip", False)),
+                vflip=bool(data.get("vflip", False)),
+                orig_image_path=orig_img,
+                overlays=overlays_list,
+            )
+        except Exception:
+            return None
 
 
 @dataclass

@@ -145,6 +145,8 @@ class ClipboardController:
         win.current_global_time = clamp(win.current_global_time, 0.0, win.timeline.total_duration)
         win.player.sync_timeline_change(win.current_global_time)
         win.timeline_widget.rebuild_filmstrip()
+        if hasattr(win, "_mark_dirty"):
+            win._mark_dirty()
         win._update_ui_state()
 
     def paste_internal_segment(self) -> None:
@@ -167,6 +169,8 @@ class ClipboardController:
             win.current_global_time = win.timeline.get_segment_global_start(new_idx)
             win.player.sync_timeline_change(win.current_global_time)
             win.timeline_widget.rebuild_filmstrip()
+            if hasattr(win, "_mark_dirty"):
+                win._mark_dirty()
             win._update_ui_state()
 
     def paste(self) -> None:

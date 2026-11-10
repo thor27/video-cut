@@ -3,6 +3,7 @@
 from .export_service import ExportService
 from .image_service import SUPPORTED_IMAGE_EXTENSIONS, ImageService
 from .probe_service import ProbeService
+from .project_service import ProjectService
 from .thumbnail_service import ThumbnailService
 
 __all__ = [
@@ -10,5 +11,6 @@ __all__ = [
     "ThumbnailService",
     "ExportService",
     "ImageService",
+    "ProjectService",
     "SUPPORTED_IMAGE_EXTENSIONS",
 ]
