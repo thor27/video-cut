@@ -47,6 +47,9 @@ class VideoCutApplication(Adw.Application):
 
         self.set_accels_for_action("win.new_window", ["<Control>n"])
         self.set_accels_for_action("win.open", ["<Control>o"])
+        self.set_accels_for_action("win.open_project", ["<Control><Shift>o"])
+        self.set_accels_for_action("win.save_project", ["<Control>s"])
+        self.set_accels_for_action("win.save_project_as", ["<Control><Shift>s"])
         self.set_accels_for_action("win.fullscreen", ["F11"])
 
         if not self.window:

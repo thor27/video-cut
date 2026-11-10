@@ -115,10 +115,21 @@ class OverlayItem:
             return None
 
         # Resolve media path if relative and base_dir is supplied
-        if base_dir and kwargs.get("media_path"):
-            cand = (base_dir / str(kwargs["media_path"])).resolve()
+        raw_media = data.get("media_relative_path") or kwargs.get("media_path")
+        if base_dir and raw_media:
+            cand = (base_dir / str(raw_media)).resolve()
             if cand.exists():
                 kwargs["media_path"] = cand
+            elif kwargs.get("media_path"):
+                cand = Path(str(kwargs["media_path"])).resolve()
+                if cand.exists():
+                    kwargs["media_path"] = cand
+                else:
+                    cand = (base_dir / Path(str(kwargs["media_path"])).name).resolve()
+                    if cand.exists():
+                        kwargs["media_path"] = cand
+        elif kwargs.get("media_path"):
+            kwargs["media_path"] = Path(str(kwargs["media_path"]))
 
         try:
             return cls(**kwargs)

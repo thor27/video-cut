@@ -1,6 +1,7 @@
 import subprocess
 from collections.abc import Callable
 from pathlib import Path
+from typing import Any
 
 import gi
 
@@ -159,14 +160,16 @@ class MainWindow(Adw.ApplicationWindow):
         menu = Gio.Menu.new()
         file_section = Gio.Menu.new()
         file_section.append(_("New Window"), "win.new_window")
-        file_section.append(_("Open Media..."), "win.open")
-        file_section.append(_("Open Project..."), "win.open_project")
-        file_section.append(_("Save Project"), "win.save_project")
-        file_section.append(_("Save Project As..."), "win.save_project_as")
-
-        self.recent_menu = Gio.Menu.new()
-        file_section.append_submenu(_("Recent Projects"), self.recent_menu)
+        file_section.append(_("Open..."), "win.open")
         menu.append_section(None, file_section)
+
+        project_section = Gio.Menu.new()
+        project_section.append(_("Open Project..."), "win.open_project")
+        project_section.append(_("Save Project"), "win.save_project")
+        project_section.append(_("Save Project As..."), "win.save_project_as")
+        self.recent_menu = Gio.Menu.new()
+        project_section.append_submenu(_("Recent Projects"), self.recent_menu)
+        menu.append_section(None, project_section)
 
         export_section = Gio.Menu.new()
         export_section.append(_("Export Options..."), "win.advanced_export")
@@ -226,16 +229,7 @@ class MainWindow(Adw.ApplicationWindow):
         self.btn_open_empty.add_css_class("pill")
         self.btn_open_empty.connect("clicked", lambda _: self._open_video_dialog())
 
-        self.btn_open_project_empty = Gtk.Button(label=_("Open Project..."))
-        self.btn_open_project_empty.add_css_class("pill")
-        self.btn_open_project_empty.connect("clicked", lambda _: self.open_project_dialog())
-
-        empty_btn_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
-        empty_btn_box.set_halign(Gtk.Align.CENTER)
-        empty_btn_box.append(self.btn_open_empty)
-        empty_btn_box.append(self.btn_open_project_empty)
-
-        self.empty_status.set_child(empty_btn_box)
+        self.empty_status.set_child(self.btn_open_empty)
         self.player_stack.add_named(self.empty_status, "empty")
 
         # Video Picture page
@@ -461,12 +455,12 @@ class MainWindow(Adw.ApplicationWindow):
                 self.save_project()
             return True
 
-        # Ctrl+O: Open Project (Ctrl+Shift+O: Open Media)
+        # Ctrl+O: Open Media (Ctrl+Shift+O: Open Project)
         if ctrl and not alt and keyval in (Gdk.KEY_o, Gdk.KEY_O):
             if shift:
-                self._open_video_dialog()
-            else:
                 self.open_project_dialog()
+            else:
+                self._open_video_dialog()
             return True
 
         # Ctrl+E: Export
@@ -721,7 +715,16 @@ class MainWindow(Adw.ApplicationWindow):
         dialog.set_response_appearance("save", Adw.ResponseAppearance.SUGGESTED)
         dialog.set_response_appearance("discard", Adw.ResponseAppearance.DESTRUCTIVE)
 
-        def on_response(dlg, resp):
+        def on_response(source: Any, result: Any) -> None:
+            if isinstance(result, str):
+                resp = result
+            else:
+                target = source if hasattr(source, "choose_finish") else dialog
+                try:
+                    resp = target.choose_finish(result)
+                except Exception:
+                    resp = None
+
             if resp == "discard":
                 self.is_dirty = False
                 on_proceed()
@@ -869,7 +872,16 @@ class MainWindow(Adw.ApplicationWindow):
         dialog.set_response_appearance("relink", Adw.ResponseAppearance.SUGGESTED)
         dialog.set_response_appearance("cancel", Adw.ResponseAppearance.DESTRUCTIVE)
 
-        def on_response(dlg, resp):
+        def on_response(source: Any, result: Any) -> None:
+            if isinstance(result, str):
+                resp = result
+            else:
+                target = source if hasattr(source, "choose_finish") else dialog
+                try:
+                    resp = target.choose_finish(result)
+                except Exception:
+                    resp = None
+
             if resp == "load_anyway":
                 self._apply_loaded_project(project_path, segments, global_time, selected_id)
             elif resp == "relink":
@@ -913,6 +925,7 @@ class MainWindow(Adw.ApplicationWindow):
         self.current_global_time = global_time
 
         if segments:
+            self._start_thumbnails_for_segments(segments)
             self.player_stack.set_visible_child_name("player")
             self.player.load_initial()
             self.player.seek_to_global_time(global_time)
@@ -927,6 +940,40 @@ class MainWindow(Adw.ApplicationWindow):
         self._update_window_title()
         self._update_recent_projects_menu()
         self._show_toast(_("Loaded project '{name}'").format(name=project_path.name))
+
+    def _start_thumbnails_for_segments(self, segments: list[Segment]) -> None:
+        """Register image thumbnails and trigger background video thumbnail generation for loaded segments."""
+        seen_videos: set[Path] = set()
+
+        for seg in segments:
+            if seg.orig_image_path and seg.orig_image_path.exists():
+                self.thumbnail_service.register_image_thumbnail(
+                    seg.source_path,
+                    seg.orig_image_path,
+                    seg.source_duration,
+                    full_image_path=seg.orig_image_path,
+                )
+                seg.thumbnails = [seg.orig_image_path]
+            elif seg.source_path.exists() and seg.source_path not in seen_videos:
+                seen_videos.add(seg.source_path)
+
+                def on_first_thumb(path: Path, first_thumb_path: Path):
+                    self.timeline_widget.recalculate_layout(force=True)
+
+                def on_thumb_progress(completed: int, total: int, thumb_p: Path):
+                    self.show_thumbnail_progress(completed, total)
+                    self.timeline_widget.recalculate_layout(force=True)
+
+                if not self.thumbnail_service.is_cached(seg.source_path):
+                    self.show_thumbnail_progress(0, 0)
+
+                self.thumbnail_service.generate_thumbnails_async(
+                    source_path=seg.source_path,
+                    duration=seg.source_duration,
+                    on_done=self._on_thumbnails_ready,
+                    on_first_thumb=on_first_thumb,
+                    on_progress=on_thumb_progress,
+                )
 
     def _open_video_dialog(self) -> None:
         dialog = Gtk.FileDialog.new()
