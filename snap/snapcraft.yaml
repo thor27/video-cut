@@ -90,6 +90,10 @@ parts:
         ${CRAFT_PART_INSTALL}/usr/share/video-cut/style.css
       install -D -m 644 src/video_cut/resources/io.github.thor27.video-cut.desktop \
         ${CRAFT_PART_INSTALL}/usr/share/applications/io.github.thor27.video-cut.desktop
+      install -D -m 644 src/video_cut/resources/io.github.thor27.video-cut.xml \
+        ${CRAFT_PART_INSTALL}/usr/share/mime/packages/io.github.thor27.video-cut.xml
+      install -D -m 644 io.github.thor27.video-cut.metainfo.xml \
+        ${CRAFT_PART_INSTALL}/usr/share/metainfo/io.github.thor27.video-cut.metainfo.xml
       install -D -m 644 src/video_cut/resources/io.github.thor27.video-cut.svg \
         ${CRAFT_PART_INSTALL}/usr/share/icons/hicolor/scalable/apps/io.github.thor27.video-cut.svg
       for icon in src/video_cut/resources/hicolor/scalable/actions/*.svg; do

@@ -164,7 +164,6 @@ class MainWindow(Adw.ApplicationWindow):
         menu.append_section(None, file_section)
 
         project_section = Gio.Menu.new()
-        project_section.append(_("Open Project..."), "win.open_project")
         project_section.append(_("Save Project"), "win.save_project")
         project_section.append(_("Save Project As..."), "win.save_project_as")
         self.recent_menu = Gio.Menu.new()
@@ -227,6 +226,7 @@ class MainWindow(Adw.ApplicationWindow):
         self.btn_open_empty = Gtk.Button(label=_("Open Video or Image"))
         self.btn_open_empty.add_css_class("suggested-action")
         self.btn_open_empty.add_css_class("pill")
+        self.btn_open_empty.set_halign(Gtk.Align.CENTER)
         self.btn_open_empty.connect("clicked", lambda _: self._open_video_dialog())
 
         self.empty_status.set_child(self.btn_open_empty)
@@ -455,12 +455,9 @@ class MainWindow(Adw.ApplicationWindow):
                 self.save_project()
             return True
 
-        # Ctrl+O: Open Media (Ctrl+Shift+O: Open Project)
+        # Ctrl+O: Open
         if ctrl and not alt and keyval in (Gdk.KEY_o, Gdk.KEY_O):
-            if shift:
-                self.open_project_dialog()
-            else:
-                self._open_video_dialog()
+            self._open_video_dialog()
             return True
 
         # Ctrl+E: Export
@@ -1035,6 +1032,14 @@ class MainWindow(Adw.ApplicationWindow):
 
         if replace is None:
             replace = self.timeline.is_empty
+
+        if replace and self.is_dirty and not self.timeline.is_empty:
+            def do_replace():
+                self.is_dirty = False
+                self.import_media_files(valid_paths, replace=True)
+
+            self._prompt_unsaved_changes(on_proceed=do_replace)
+            return
 
         if replace:
             self.current_project_path = None

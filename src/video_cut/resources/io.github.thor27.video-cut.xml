@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mime-info xmlns="http://www.freedesktop.org/standards/shared-mime-info">
+  <mime-type type="application/x-video-cut">
+    <comment>Video Cut Project</comment>
+    <comment xml:lang="pt_BR">Projeto do Video Cut</comment>
+    <comment xml:lang="es">Proyecto de Video Cut</comment>
+    <comment xml:lang="fr">Projet Video Cut</comment>
+    <sub-class-of type="application/json"/>
+    <generic-icon name="video-x-generic"/>
+    <glob pattern="*.vcut"/>
+    <magic priority="50">
+      <match type="string" offset="0:128" value="video-cut-project"/>
+    </magic>
+    <icon name="io.github.thor27.video-cut"/>
+  </mime-type>
+</mime-info>

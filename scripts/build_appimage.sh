@@ -97,13 +97,23 @@ if __name__ == "__main__":
 EOF
 chmod 755 "${APPDIR}/usr/bin/video-cut"
 
-# 4. Copy Desktop Entry (at root of AppDir and in usr/share/applications)
+# 4. Copy Desktop Entry, MIME definition, and AppStream MetaInfo
 cp "${REPO_ROOT}/src/video_cut/resources/io.github.thor27.video-cut.desktop" \
    "${APPDIR}/io.github.thor27.video-cut.desktop"
 cp "${REPO_ROOT}/src/video_cut/resources/io.github.thor27.video-cut.desktop" \
    "${APPDIR}/usr/share/applications/io.github.thor27.video-cut.desktop"
 chmod 644 "${APPDIR}/io.github.thor27.video-cut.desktop" \
           "${APPDIR}/usr/share/applications/io.github.thor27.video-cut.desktop"
+
+mkdir -p "${APPDIR}/usr/share/mime/packages"
+cp "${REPO_ROOT}/src/video_cut/resources/io.github.thor27.video-cut.xml" \
+   "${APPDIR}/usr/share/mime/packages/io.github.thor27.video-cut.xml"
+chmod 644 "${APPDIR}/usr/share/mime/packages/io.github.thor27.video-cut.xml"
+
+mkdir -p "${APPDIR}/usr/share/metainfo"
+cp "${REPO_ROOT}/io.github.thor27.video-cut.metainfo.xml" \
+   "${APPDIR}/usr/share/metainfo/io.github.thor27.video-cut.metainfo.xml"
+chmod 644 "${APPDIR}/usr/share/metainfo/io.github.thor27.video-cut.metainfo.xml"
 
 # 5. Copy Icons (at root of AppDir and in usr/share/icons)
 cp "${REPO_ROOT}/src/video_cut/resources/icon_256.png" "${APPDIR}/io.github.thor27.video-cut.png"
