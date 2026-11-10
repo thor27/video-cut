@@ -359,7 +359,7 @@ class SegmentCard(Gtk.Box):
 
     def _menu_action_select_all(self) -> None:
         if self._timeline_widget is not None:
-            self._timeline_widget.select_all()
+            self._timeline_widget.toggle_select_all()
 
     def _menu_action_split(self) -> None:
         if self.on_split:
@@ -414,6 +414,9 @@ class SegmentCard(Gtk.Box):
             selected_ids = self._timeline_widget.timeline.selected_segment_ids
 
         is_sel = (self.segment.id in selected_ids) if selected_ids else self._is_selected
+        is_all_sel = False
+        if self._timeline_widget and hasattr(self._timeline_widget, "is_all_selected"):
+            is_all_sel = self._timeline_widget.is_all_selected()
 
         if hasattr(self, "menu_select"):
             if is_sel:
@@ -425,6 +428,12 @@ class SegmentCard(Gtk.Box):
 
         if hasattr(self, "menu_select_all"):
             self.menu_select_all.set_sensitive(True)
+            if is_all_sel:
+                self.menu_select_all._lbl.set_label(_("Deselect All"))
+                self.menu_select_all._icon.set_from_icon_name("edit-clear-all-symbolic")
+            else:
+                self.menu_select_all._lbl.set_label(_("Select All"))
+                self.menu_select_all._icon.set_from_icon_name("edit-select-all-symbolic")
 
         self.menu_split.set_sensitive(True)
         self.menu_cut.set_sensitive(self.can_delete)

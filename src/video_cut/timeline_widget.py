@@ -873,6 +873,11 @@ class TimelineWidget(Gtk.Box):
             card.set_selected(s_id in selected_ids)
         self.on_selection_changed(self.timeline.selected_segment_id)
 
+    def is_all_selected(self) -> bool:
+        if self.timeline.is_empty:
+            return False
+        return len(self.timeline.selected_segment_ids) == len(self.timeline.segments)
+
     def select_all(self) -> None:
         if self.timeline.is_empty:
             return
@@ -880,6 +885,21 @@ class TimelineWidget(Gtk.Box):
         for card in self._cards.values():
             card.set_selected(True)
         self.on_selection_changed(self.timeline.selected_segment_id)
+
+    def deselect_all(self) -> None:
+        if self.timeline.is_empty:
+            return
+        self.timeline.selected_segment_ids = set()
+        self.timeline.selected_segment_id = None
+        for card in self._cards.values():
+            card.set_selected(False)
+        self.on_selection_changed(None)
+
+    def toggle_select_all(self) -> None:
+        if self.is_all_selected():
+            self.deselect_all()
+        else:
+            self.select_all()
 
     def _on_card_scrub(self, segment_id: str, source_ts: float) -> None:
         idx = self.timeline.get_segment_index(segment_id)

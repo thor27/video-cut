@@ -355,9 +355,9 @@ class MainWindow(Adw.ApplicationWindow):
             self.paste_segment()
             return True
 
-        # Select All: Ctrl+A
+        # Select All / Deselect All: Ctrl+A
         if ctrl and not shift and not alt and keyval in (Gdk.KEY_a, Gdk.KEY_A):
-            self.timeline_widget.select_all()
+            self.timeline_widget.toggle_select_all()
             return True
 
         # Left Arrow: Step back 1s, or Alt+Left: Move clip left
