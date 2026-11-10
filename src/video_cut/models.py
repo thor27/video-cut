@@ -241,6 +241,7 @@ class TimelineSnapshot:
     segments: list[Segment]
     selected_segment_id: str | None
     global_time: float
+    selected_segment_ids: set[str] = field(default_factory=set)
 
 
 class ProjectTimeline:
@@ -249,8 +250,27 @@ class ProjectTimeline:
     def __init__(self) -> None:
         self.segments: list[Segment] = []
         self.selected_segment_id: str | None = None
+        self._selected_segment_ids: set[str] = set()
         self.undo_stack: list[TimelineSnapshot] = []
         self.redo_stack: list[TimelineSnapshot] = []
+
+    @property
+    def selected_segment_ids(self) -> set[str]:
+        if not self._selected_segment_ids and self.selected_segment_id:
+            return {self.selected_segment_id}
+        return self._selected_segment_ids
+
+    @selected_segment_ids.setter
+    def selected_segment_ids(self, ids: set[str] | list[str]) -> None:
+        self._selected_segment_ids = set(ids)
+        if self._selected_segment_ids:
+            if self.selected_segment_id not in self._selected_segment_ids:
+                for seg in self.segments:
+                    if seg.id in self._selected_segment_ids:
+                        self.selected_segment_id = seg.id
+                        break
+        else:
+            self.selected_segment_id = None
 
     @property
     def is_empty(self) -> bool:
@@ -274,6 +294,7 @@ class ProjectTimeline:
             segments=[seg.copy() for seg in self.segments],
             selected_segment_id=self.selected_segment_id,
             global_time=global_time,
+            selected_segment_ids=set(self.selected_segment_ids),
         )
         self.undo_stack.append(snapshot)
         if len(self.undo_stack) > 50:
@@ -289,12 +310,14 @@ class ProjectTimeline:
             segments=[seg.copy() for seg in self.segments],
             selected_segment_id=self.selected_segment_id,
             global_time=current_global_time,
+            selected_segment_ids=set(self.selected_segment_ids),
         )
         self.redo_stack.append(current_snap)
 
         target = self.undo_stack.pop()
         self.segments = [seg.copy() for seg in target.segments]
         self.selected_segment_id = target.selected_segment_id
+        self._selected_segment_ids = set(target.selected_segment_ids)
         return target.global_time
 
     def redo(self, current_global_time: float) -> float | None:
@@ -306,12 +329,14 @@ class ProjectTimeline:
             segments=[seg.copy() for seg in self.segments],
             selected_segment_id=self.selected_segment_id,
             global_time=current_global_time,
+            selected_segment_ids=set(self.selected_segment_ids),
         )
         self.undo_stack.append(current_snap)
 
         target = self.redo_stack.pop()
         self.segments = [seg.copy() for seg in target.segments]
         self.selected_segment_id = target.selected_segment_id
+        self._selected_segment_ids = set(target.selected_segment_ids)
         return target.global_time
 
     def get_segment(self, segment_id: str) -> Segment | None:
@@ -397,7 +422,33 @@ class ProjectTimeline:
                 self.selected_segment_id = self.segments[new_idx].id
             else:
                 self.selected_segment_id = None
+        self._selected_segment_ids.discard(segment_id)
         return True
+
+    def delete_segments(self, segment_ids: set[str] | list[str], allow_last: bool = True) -> int:
+        """Remove multiple segments by ID. Returns count of removed segments."""
+        ids_to_del = set(segment_ids)
+        if not ids_to_del:
+            return 0
+        if len(self.segments) <= len(ids_to_del) and not allow_last:
+            return 0
+
+        orig_count = len(self.segments)
+        self.segments = [seg for seg in self.segments if seg.id not in ids_to_del]
+        removed_count = orig_count - len(self.segments)
+
+        self._selected_segment_ids = {sid for sid in self._selected_segment_ids if sid not in ids_to_del}
+        if self.selected_segment_id in ids_to_del:
+            if self._selected_segment_ids:
+                for seg in self.segments:
+                    if seg.id in self._selected_segment_ids:
+                        self.selected_segment_id = seg.id
+                        break
+            elif self.segments:
+                self.selected_segment_id = self.segments[-1].id
+            else:
+                self.selected_segment_id = None
+        return removed_count
 
     def reorder(self, from_index: int, to_index: int) -> bool:
         """Move segment from from_index to to_index."""
@@ -471,9 +522,29 @@ class ProjectTimeline:
         self.selected_segment_id = new_seg.id
         return new_seg
 
+    def paste_segments(
+        self,
+        segments: list[Segment],
+        after_segment_id: str | None = None,
+    ) -> list[Segment]:
+        """Paste multiple cloned segments in sequence after after_segment_id."""
+        if not segments:
+            return []
+        cloned = [seg.clone() for seg in segments]
+        insert_idx = len(self.segments)
+        if after_segment_id:
+            idx = self.get_segment_index(after_segment_id)
+            if idx != -1:
+                insert_idx = idx + 1
+        for i, s in enumerate(cloned):
+            self.segments.insert(insert_idx + i, s)
+        self.selected_segment_ids = {s.id for s in cloned}
+        return cloned
+
     def clear(self) -> None:
         self.segments.clear()
         self.selected_segment_id = None
+        self._selected_segment_ids.clear()
         self.undo_stack.clear()
         self.redo_stack.clear()
 

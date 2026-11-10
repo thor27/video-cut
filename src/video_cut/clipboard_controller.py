@@ -55,6 +55,7 @@ class ClipboardController:
     def __init__(self, window: MainWindow) -> None:
         self.window = window
         self.internal_segment: Segment | None = None
+        self.internal_segments: list[Segment] = []
 
     def setup_listener(self) -> None:
         """Listen for system clipboard updates to update paste button sensitivity."""
@@ -71,7 +72,7 @@ class ClipboardController:
 
     def has_pasteable_content(self) -> bool:
         """Check if internal clipboard or desktop clipboard contains pasteable media."""
-        if self.internal_segment is not None:
+        if self.internal_segments or self.internal_segment is not None:
             return True
         try:
             display = Gdk.Display.get_default()
@@ -92,64 +93,81 @@ class ClipboardController:
 
     def copy_to_system_clipboard(self, source_path: Path) -> None:
         """Export local media file to desktop system clipboard."""
+        self.copy_to_system_clipboard_multiple([source_path])
+
+    def copy_to_system_clipboard_multiple(self, source_paths: list[Path]) -> None:
+        """Export multiple local media files to desktop system clipboard."""
         try:
             display = Gdk.Display.get_default()
             if not display:
                 return
             cb = display.get_clipboard()
-            if source_path.exists():
-                gfile = Gio.File.new_for_path(str(source_path.resolve()))
-                fl = Gdk.FileList.new_from_list([gfile])
+            gfiles = [Gio.File.new_for_path(str(p.resolve())) for p in source_paths if p.exists()]
+            if gfiles:
+                fl = Gdk.FileList.new_from_list(gfiles)
                 cp = Gdk.ContentProvider.new_for_value(GObject.Value(Gdk.FileList, fl))
                 cb.set_content(cp)
         except Exception as e:
-            print(f"Could not copy file to system clipboard: {e}")
+            print(f"Could not copy files to system clipboard: {e}")
 
     def copy_selected(self) -> None:
-        """Copy currently selected segment to internal clipboard and system clipboard."""
+        """Copy currently selected segment(s) to internal clipboard and system clipboard."""
         win = self.window
-        if not win.timeline.selected_segment_id:
+        selected_ids = win.timeline.selected_segment_ids
+        if not selected_ids:
             return
-        seg = win.timeline.get_segment(win.timeline.selected_segment_id)
-        if not seg:
+        selected = [s.copy() for s in win.timeline.segments if s.id in selected_ids]
+        if not selected:
             return
-        self.internal_segment = seg.copy()
-        self.copy_to_system_clipboard(seg.source_path)
+        self.internal_segments = selected
+        self.internal_segment = selected[0]
+        self.copy_to_system_clipboard_multiple([s.source_path for s in selected])
         win._update_ui_state()
 
     def cut_selected(self) -> None:
-        """Cut currently selected segment to internal clipboard and system clipboard."""
+        """Cut currently selected segment(s) to internal clipboard and system clipboard."""
         win = self.window
-        if not win.timeline.selected_segment_id:
+        selected_ids = set(win.timeline.selected_segment_ids)
+        if not selected_ids:
             return
-        seg = win.timeline.get_segment(win.timeline.selected_segment_id)
-        if not seg:
+        selected = [s.copy() for s in win.timeline.segments if s.id in selected_ids]
+        if not selected:
             return
 
-        self.internal_segment = seg.copy()
-        self.copy_to_system_clipboard(seg.source_path)
+        self.internal_segments = selected
+        self.internal_segment = selected[0]
+        self.copy_to_system_clipboard_multiple([s.source_path for s in selected])
         win.timeline.save_state(win.current_global_time)
-        if win.timeline.delete_segment(seg.id):
-            win.current_global_time = clamp(win.current_global_time, 0.0, win.timeline.total_duration)
-            win.player.sync_timeline_change(win.current_global_time)
-            win.timeline_widget.rebuild_filmstrip()
-            win._update_ui_state()
-
-    def paste_internal_segment(self) -> None:
-        """Paste segment from internal clipboard after current selection."""
-        if not self.internal_segment:
-            return
-        win = self.window
-        win.timeline.save_state(win.current_global_time)
-        pasted = win.timeline.paste_segment(
-            self.internal_segment,
-            after_segment_id=win.timeline.selected_segment_id,
-        )
-        new_idx = win.timeline.get_segment_index(pasted.id)
-        win.current_global_time = win.timeline.get_segment_global_start(new_idx)
+        if len(selected_ids) == 1:
+            win.timeline.delete_segment(selected[0].id)
+        else:
+            win.timeline.delete_segments(selected_ids)
+        win.current_global_time = clamp(win.current_global_time, 0.0, win.timeline.total_duration)
         win.player.sync_timeline_change(win.current_global_time)
         win.timeline_widget.rebuild_filmstrip()
         win._update_ui_state()
+
+    def paste_internal_segment(self) -> None:
+        """Paste segments from internal clipboard after current selection."""
+        segments_to_paste = (
+            self.internal_segments
+            if self.internal_segments
+            else ([self.internal_segment] if self.internal_segment else [])
+        )
+        if not segments_to_paste:
+            return
+        win = self.window
+        win.timeline.save_state(win.current_global_time)
+        pasted = win.timeline.paste_segments(
+            segments_to_paste,
+            after_segment_id=win.timeline.selected_segment_id,
+        )
+        if pasted:
+            new_idx = win.timeline.get_segment_index(pasted[0].id)
+            win.current_global_time = win.timeline.get_segment_global_start(new_idx)
+            win.player.sync_timeline_change(win.current_global_time)
+            win.timeline_widget.rebuild_filmstrip()
+            win._update_ui_state()
 
     def paste(self) -> None:
         """Universal paste: paste internal segment, clipboard image, or clipboard files/URIs."""
@@ -157,7 +175,10 @@ class ClipboardController:
         cb = display.get_clipboard() if display else None
 
         # 1. If internal segment is available and clipboard was set locally
-        if self.internal_segment and (cb is None or cb.is_local()):
+        has_internal = bool(self.internal_segments or self.internal_segment)
+        if has_internal and (cb is None or cb.is_local()):
+            self.paste_internal_segment()
+            return
             self.paste_internal_segment()
             return
 
@@ -189,7 +210,7 @@ class ClipboardController:
                 return
 
         # 3. Fallback to internal segment if available
-        if self.internal_segment:
+        if self.internal_segments or self.internal_segment:
             self.paste_internal_segment()
             return
 
@@ -221,7 +242,7 @@ class ClipboardController:
                     return
         except Exception as e:
             print(f"Error reading file list from clipboard: {e}")
-        if self.internal_segment:
+        if self.internal_segments or self.internal_segment:
             self.paste_internal_segment()
         else:
             self.window._show_toast(_("Clipboard does not contain any video or image"))
@@ -236,7 +257,7 @@ class ClipboardController:
                     return
         except Exception as e:
             print(f"Error reading text/URIs from clipboard: {e}")
-        if self.internal_segment:
+        if self.internal_segments or self.internal_segment:
             self.paste_internal_segment()
         else:
             self.window._show_toast(_("Clipboard does not contain any video or image"))

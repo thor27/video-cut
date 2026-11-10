@@ -162,6 +162,13 @@ class TimelineWidget(Gtk.Box):
         self._is_scrubbing = False
         self._is_playing = False
         self._active_scrub_seg_id: str | None = None
+        self._anchor_segment_id: str | None = None
+
+        self._marquee_start_x: float = 0.0
+        self._marquee_start_y: float = 0.0
+        self._marquee_ctrl: bool = False
+        self._marquee_initial_selection: set[str] = set()
+        self._is_marquee_active: bool = False
 
         self.add_css_class("timeline-container")
 
@@ -426,6 +433,24 @@ class TimelineWidget(Gtk.Box):
         self.split_pill.get_margin_start = lambda: self._split_pill_x
 
         self.filmstrip_overlay.add_overlay(self.split_pill)
+
+        # Rubberband marquee selection box
+        self.marquee_box = Gtk.Box()
+        self.marquee_box.add_css_class("marquee-box")
+        self.marquee_box.set_visible(False)
+        self.marquee_box.set_can_target(False)
+        self.marquee_box.set_halign(Gtk.Align.START)
+        self.marquee_box.set_valign(Gtk.Align.START)
+        self.filmstrip_overlay.add_overlay(self.marquee_box)
+
+        # Drag gesture for rubberband marquee selection
+        self._marquee_gesture = Gtk.GestureDrag.new()
+        self._marquee_gesture.set_propagation_phase(Gtk.PropagationPhase.BUBBLE)
+        self._marquee_gesture.connect("drag-begin", self._on_marquee_drag_begin)
+        self._marquee_gesture.connect("drag-update", self._on_marquee_drag_update)
+        self._marquee_gesture.connect("drag-end", self._on_marquee_drag_end)
+        self.scrolled_window.add_controller(self._marquee_gesture)
+
         self.append(self.filmstrip_overlay)
 
         hadj = self.scrolled_window.get_hadjustment()
@@ -521,7 +546,7 @@ class TimelineWidget(Gtk.Box):
             card = SegmentCard(
                 segment=seg,
                 index=idx,
-                is_selected=(seg.id == self.timeline.selected_segment_id),
+                is_selected=(seg.id in self.timeline.selected_segment_ids),
                 on_select=self._on_segment_selected,
                 on_scrub_to_source_time=self._on_card_scrub,
                 on_move_left=self._on_card_move_left,
@@ -607,10 +632,12 @@ class TimelineWidget(Gtk.Box):
             or not self.timeline.get_segment(self.timeline.selected_segment_id)
         ):
             self.timeline.selected_segment_id = active_seg.id
+            if self._is_playing:
+                self.timeline.selected_segment_ids = {active_seg.id}
 
-        selected_id = self.timeline.selected_segment_id
+        selected_ids = self.timeline.selected_segment_ids
         for seg_id, card in self._cards.items():
-            card.set_selected(seg_id == selected_id)
+            card.set_selected(seg_id in selected_ids)
             if seg_id == active_seg.id and active_seg.duration > 0:
                 offset = active_source_ts - active_seg.start_time
                 ratio = clamp(offset / active_seg.duration, 0.0, 1.0)
@@ -838,11 +865,92 @@ class TimelineWidget(Gtk.Box):
 
         self.on_seek(self._current_time)
 
-    def _on_segment_selected(self, segment_id: str) -> None:
-        self.timeline.selected_segment_id = segment_id
+    def _on_segment_selected(self, segment_id: str, ctrl: bool = False, shift: bool = False) -> None:
+        if shift and self._anchor_segment_id:
+            idx1 = self.timeline.get_segment_index(self._anchor_segment_id)
+            idx2 = self.timeline.get_segment_index(segment_id)
+            if idx1 != -1 and idx2 != -1:
+                start_i = min(idx1, idx2)
+                end_i = max(idx1, idx2)
+                self.timeline.selected_segment_ids = {self.timeline.segments[i].id for i in range(start_i, end_i + 1)}
+                self.timeline.selected_segment_id = segment_id
+            else:
+                self.timeline.selected_segment_ids = {segment_id}
+                self.timeline.selected_segment_id = segment_id
+                self._anchor_segment_id = segment_id
+        elif ctrl:
+            cur_ids = set(self.timeline.selected_segment_ids)
+            if segment_id in cur_ids:
+                cur_ids.discard(segment_id)
+            else:
+                cur_ids.add(segment_id)
+            self.timeline.selected_segment_ids = cur_ids
+            self.timeline.selected_segment_id = segment_id if segment_id in cur_ids else (next(iter(cur_ids)) if cur_ids else None)
+            self._anchor_segment_id = segment_id
+        else:
+            self.timeline.selected_segment_ids = {segment_id}
+            self.timeline.selected_segment_id = segment_id
+            self._anchor_segment_id = segment_id
+
+        selected_ids = self.timeline.selected_segment_ids
         for s_id, card in self._cards.items():
-            card.set_selected(s_id == segment_id)
-        self.on_selection_changed(segment_id)
+            card.set_selected(s_id in selected_ids)
+        self.on_selection_changed(self.timeline.selected_segment_id)
+
+    def select_all(self) -> None:
+        if self.timeline.is_empty:
+            return
+        self.timeline.selected_segment_ids = {s.id for s in self.timeline.segments}
+        for card in self._cards.values():
+            card.set_selected(True)
+        self.on_selection_changed(self.timeline.selected_segment_id)
+
+    def _on_marquee_drag_begin(self, gesture: Gtk.GestureDrag, start_x: float, start_y: float) -> None:
+        self._marquee_start_x = start_x
+        self._marquee_start_y = start_y
+        state = gesture.get_current_event_state()
+        self._marquee_ctrl = bool(state & Gdk.ModifierType.CONTROL_MASK)
+        self._marquee_initial_selection = set(self.timeline.selected_segment_ids) if self._marquee_ctrl else set()
+        self._is_marquee_active = False
+
+    def _on_marquee_drag_update(self, gesture: Gtk.GestureDrag, offset_x: float, offset_y: float) -> None:
+        if not self._is_marquee_active and abs(offset_x) < 8 and abs(offset_y) < 8:
+            return
+        self._is_marquee_active = True
+
+        x1 = min(self._marquee_start_x, self._marquee_start_x + offset_x)
+        x2 = max(self._marquee_start_x, self._marquee_start_x + offset_x)
+        y1 = min(self._marquee_start_y, self._marquee_start_y + offset_y)
+        y2 = max(self._marquee_start_y, self._marquee_start_y + offset_y)
+
+        w = max(1, int(round(x2 - x1)))
+        h = max(1, int(round(y2 - y1)))
+
+        self.marquee_box.set_margin_start(int(round(x1)))
+        self.marquee_box.set_margin_top(int(round(y1)))
+        self.marquee_box.set_size_request(w, h)
+        self.marquee_box.set_visible(True)
+
+        new_selected = set(self._marquee_initial_selection)
+        for seg_id, card in self._cards.items():
+            res, rect = card.compute_bounds(self.scrolled_window)
+            if res:
+                cx = rect.get_x()
+                cy = rect.get_y()
+                cw = rect.get_width()
+                ch = rect.get_height()
+                if not (cx + cw < x1 or cx > x2 or cy + ch < y1 or cy > y2):
+                    new_selected.add(seg_id)
+
+        self.timeline.selected_segment_ids = new_selected
+        for s_id, card in self._cards.items():
+            card.set_selected(s_id in self.timeline.selected_segment_ids)
+
+    def _on_marquee_drag_end(self, gesture: Gtk.GestureDrag, offset_x: float, offset_y: float) -> None:
+        if self._is_marquee_active:
+            self.marquee_box.set_visible(False)
+            self._is_marquee_active = False
+            self.on_selection_changed(self.timeline.selected_segment_id)
 
     def _on_card_scrub(self, segment_id: str, source_ts: float) -> None:
         idx = self.timeline.get_segment_index(segment_id)
