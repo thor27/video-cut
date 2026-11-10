@@ -21,17 +21,19 @@ Usage:
 
 Options:
   --show, -s        Show current version
+  --devel, -d       Set development version ("devel")
   --help, -h        Show this help message
 
 Examples:
   ./scripts/set_version.sh --show
-  ./scripts/set_version.sh 0.2.0
+  ./scripts/set_version.sh devel
+  ./scripts/set_version.sh 0.5.0
   ./scripts/set_version.sh 1.0.0-rc1
 
 Note:
   Video Cut uses a single source of truth for versioning:
   'src/video_cut/__init__.py' (__version__).
-  All packaging scripts (DEB, AppImage, Snap) and pyproject.toml
+  All packaging scripts (DEB, AppImage, Snap, Flatpak) and pyproject.toml
   dynamically adopt this version.
 EOF
 }
@@ -47,11 +49,21 @@ if [ "${1:-}" = "--help" ] || [ "${1:-}" = "-h" ]; then
     exit 0
 fi
 
-NEW_VERSION="$1"
+if [ "${1:-}" = "--devel" ] || [ "${1:-}" = "-d" ]; then
+    NEW_VERSION="devel"
+else
+    NEW_VERSION="$1"
+fi
 
-# Basic validation: ensure version is reasonable (digits, dots, optional prerelease tag)
-if ! [[ "$NEW_VERSION" =~ ^[0-9]+\.[0-9]+(\.[0-9]+)?(-[a-zA-Z0-9.]+)?$ ]]; then
-    echo "ERROR: Invalid version format '${NEW_VERSION}'. Expected format like 0.2.0 or 1.0.0-rc1" >&2
+# Validation: allow "devel", "dev", or standard semver / PEP 440 prereleases
+IS_DEVEL=0
+if [ "$NEW_VERSION" = "devel" ] || [ "$NEW_VERSION" = "dev" ]; then
+    IS_DEVEL=1
+    NEW_VERSION="devel"
+elif [[ "$NEW_VERSION" =~ ^[0-9]+\.[0-9]+(\.[0-9]+)?(-[a-zA-Z0-9.]+)?$ ]]; then
+    IS_DEVEL=0
+else
+    echo "ERROR: Invalid version format '${NEW_VERSION}'. Expected format like 0.5.0, 1.0.0-rc1, or 'devel'" >&2
     exit 1
 fi
 
@@ -65,9 +77,9 @@ echo "==> Updating Video Cut version: ${CURRENT_VERSION} -> ${NEW_VERSION}"
 # Update src/video_cut/__init__.py
 sed -i "s/__version__ = \"${CURRENT_VERSION}\"/__version__ = \"${NEW_VERSION}\"/" "${INIT_FILE}"
 
-# Update io.github.thor27.video-cut.metainfo.xml if present
+# Update io.github.thor27.video-cut.metainfo.xml only for numbered release versions
 METAINFO="${REPO_ROOT}/io.github.thor27.video-cut.metainfo.xml"
-if [ -f "${METAINFO}" ]; then
+if [ "$IS_DEVEL" -eq 0 ] && [ -f "${METAINFO}" ]; then
     TODAY="$(date +%Y-%m-%d)"
     if grep -q "version=\"${NEW_VERSION}\"" "${METAINFO}"; then
         sed -i "s/version=\"${NEW_VERSION}\" date=\"[^\"]*\"/version=\"${NEW_VERSION}\" date=\"${TODAY}\"/" "${METAINFO}"
@@ -93,8 +105,12 @@ fi
 echo "==> Successfully updated version to ${NEW_VERSION}!"
 echo "    Source of truth: src/video_cut/__init__.py"
 echo ""
-echo "Next steps:"
-echo "  1. Review changes:   git diff"
-echo "  2. Run test suite:   pytest"
-echo "  3. Build packages:   ./scripts/build_packages.sh"
-echo "  4. Commit & tag:     git commit -am 'release: v${NEW_VERSION}' && git tag v${NEW_VERSION}"
+if [ "$IS_DEVEL" -eq 1 ]; then
+    echo "Development version set. Ready for feature work."
+else
+    echo "Next steps for release:"
+    echo "  1. Review changes:   git diff"
+    echo "  2. Run test suite:   pytest"
+    echo "  3. Build packages:   ./scripts/build_packages.sh"
+    echo "  4. Commit & tag:     git commit -am 'release: v${NEW_VERSION}' && git tag v${NEW_VERSION}"
+fi

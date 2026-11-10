@@ -68,7 +68,10 @@ parts:
       - -usr/lib/*/libvoodoo*
     override-pull: |
       craftctl default
-      VERSION="$(grep -m1 '^__version__' src/video_cut/__init__.py | cut -d'"' -f2)"
+      VERSION="${VERSION:-$(grep -m1 '^__version__' src/video_cut/__init__.py | cut -d'"' -f2)}"
+      if [ -z "$VERSION" ]; then
+        VERSION="devel"
+      fi
       craftctl set version="$VERSION"
     override-build: |
       craftctl default

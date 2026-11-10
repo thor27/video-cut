@@ -31,7 +31,7 @@ video-cut = "video_cut.__main__:main"
 video_cut = ["style.css", "resources/*", "resources/*/*/*/*", "locale/*/*/*"]
 
 [tool.setuptools.dynamic]
-version = {attr = "video_cut.__version__"}
+version = {attr = "video_cut.__pep440_version__"}
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
