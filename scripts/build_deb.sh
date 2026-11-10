@@ -64,10 +64,20 @@ if __name__ == "__main__":
 EOF
 chmod 755 "${PKG_DIR}/usr/bin/video-cut"
 
-# 4. Copy Desktop Entry
+# 4. Copy Desktop Entry, MIME definition, and AppStream MetaInfo
 cp "${REPO_ROOT}/src/video_cut/resources/io.github.thor27.video-cut.desktop" \
    "${PKG_DIR}/usr/share/applications/io.github.thor27.video-cut.desktop"
 chmod 644 "${PKG_DIR}/usr/share/applications/io.github.thor27.video-cut.desktop"
+
+mkdir -p "${PKG_DIR}/usr/share/mime/packages"
+cp "${REPO_ROOT}/src/video_cut/resources/io.github.thor27.video-cut.xml" \
+   "${PKG_DIR}/usr/share/mime/packages/io.github.thor27.video-cut.xml"
+chmod 644 "${PKG_DIR}/usr/share/mime/packages/io.github.thor27.video-cut.xml"
+
+mkdir -p "${PKG_DIR}/usr/share/metainfo"
+cp "${REPO_ROOT}/io.github.thor27.video-cut.metainfo.xml" \
+   "${PKG_DIR}/usr/share/metainfo/io.github.thor27.video-cut.metainfo.xml"
+chmod 644 "${PKG_DIR}/usr/share/metainfo/io.github.thor27.video-cut.metainfo.xml"
 
 # 5. Copy Icons and Pixmaps
 mkdir -p "${PKG_DIR}/usr/share/pixmaps"
@@ -130,6 +140,7 @@ chmod 644 "${PKG_DIR}/DEBIAN/control"
 cat << 'EOF' > "${PKG_DIR}/DEBIAN/triggers"
 interest-noawait /usr/share/applications
 interest-noawait /usr/share/icons/hicolor
+interest-noawait /usr/share/mime/packages
 EOF
 chmod 644 "${PKG_DIR}/DEBIAN/triggers"
 
@@ -143,6 +154,9 @@ if [ "$1" = "configure" ]; then
 
     if command -v update-desktop-database >/dev/null 2>&1; then
         update-desktop-database -q /usr/share/applications || true
+    fi
+    if command -v update-mime-database >/dev/null 2>&1; then
+        update-mime-database /usr/share/mime || true
     fi
     if command -v update-icon-caches >/dev/null 2>&1; then
         update-icon-caches /usr/share/icons/hicolor || true
@@ -163,6 +177,9 @@ if [ "$1" = "remove" ] || [ "$1" = "purge" ]; then
 
     if command -v update-desktop-database >/dev/null 2>&1; then
         update-desktop-database -q /usr/share/applications || true
+    fi
+    if command -v update-mime-database >/dev/null 2>&1; then
+        update-mime-database /usr/share/mime || true
     fi
     if command -v update-icon-caches >/dev/null 2>&1; then
         update-icon-caches /usr/share/icons/hicolor || true

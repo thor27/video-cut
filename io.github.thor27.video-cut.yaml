@@ -60,6 +60,8 @@ modules:
       - python3 -m pip install --prefix=/app --no-deps --no-build-isolation .
       # Install desktop entry
       - install -Dm644 src/video_cut/resources/io.github.thor27.video-cut.desktop -t /app/share/applications/
+      # Install MIME type definition
+      - install -Dm644 src/video_cut/resources/io.github.thor27.video-cut.xml -t /app/share/mime/packages/
       # Install AppStream metainfo
       - install -Dm644 io.github.thor27.video-cut.metainfo.xml -t /app/share/metainfo/
       # Install scalable application icon

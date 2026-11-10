@@ -119,5 +119,6 @@
 
   <provides>
     <binary>video-cut</binary>
+    <mediatype>application/x-video-cut</mediatype>
   </provides>
 </component>
