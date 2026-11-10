@@ -229,7 +229,24 @@ class MainWindow(Adw.ApplicationWindow):
         self.btn_open_empty.set_halign(Gtk.Align.CENTER)
         self.btn_open_empty.connect("clicked", lambda _: self._open_video_dialog())
 
-        self.empty_status.set_child(self.btn_open_empty)
+        self.empty_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=16)
+        self.empty_box.set_halign(Gtk.Align.CENTER)
+        self.empty_box.append(self.btn_open_empty)
+
+        self.recent_projects_clamp = Adw.Clamp()
+        self.recent_projects_clamp.set_maximum_size(440)
+        self.recent_projects_clamp.set_tightening_threshold(360)
+        self.recent_projects_clamp.set_size_request(380, -1)
+        self.recent_projects_clamp.set_margin_top(8)
+
+        self.recent_projects_group = Adw.PreferencesGroup()
+        self.recent_projects_group.set_title(_("Recent Projects"))
+        self.recent_projects_clamp.set_child(self.recent_projects_group)
+        self.recent_projects_clamp.set_visible(False)
+        self._recent_project_rows: list[Adw.ActionRow] = []
+        self.empty_box.append(self.recent_projects_clamp)
+
+        self.empty_status.set_child(self.empty_box)
         self.player_stack.add_named(self.empty_status, "empty")
 
         # Video Picture page
@@ -590,6 +607,7 @@ class MainWindow(Adw.ApplicationWindow):
             self.window_title.set_title(_("Video Cut"))
             self.window_title.set_subtitle(_("Video Editor"))
             self.hide_thumbnail_progress()
+            self._update_empty_state_recent_projects()
 
     def _create_project_file_filters(self) -> Gio.ListStore:
         filters = Gio.ListStore.new(Gtk.FileFilter)
@@ -671,10 +689,12 @@ class MainWindow(Adw.ApplicationWindow):
         self._update_window_title()
 
     def _update_recent_projects_menu(self) -> None:
+        recents = ProjectService.get_recent_projects()
+        self._update_empty_state_recent_projects(recents)
+
         if not hasattr(self, "recent_menu"):
             return
         self.recent_menu.remove_all()
-        recents = ProjectService.get_recent_projects()
         if not recents:
             item = Gio.MenuItem.new(_("(No Recent Projects)"), None)
             self.recent_menu.append_item(item)
@@ -688,6 +708,41 @@ class MainWindow(Adw.ApplicationWindow):
                 self.add_action(act)
             act.connect("activate", self._make_recent_handler(p))
             self.recent_menu.append(p.name, f"win.{action_name}")
+
+    def _update_empty_state_recent_projects(self, recents: list[Path] | None = None) -> None:
+        """Update the list of recent projects shown on the empty state screen."""
+        if not hasattr(self, "recent_projects_clamp") or not hasattr(self, "recent_projects_group"):
+            return
+
+        if recents is None:
+            recents = ProjectService.get_recent_projects()
+
+        for row in list(self._recent_project_rows):
+            self.recent_projects_group.remove(row)
+        self._recent_project_rows.clear()
+
+        if not recents:
+            self.recent_projects_clamp.set_visible(False)
+            return
+
+        home = str(Path.home())
+        for p in recents[:5]:
+            row = Adw.ActionRow()
+            row.set_title(p.name)
+            row.set_title_lines(1)
+            parent_str = str(p.parent)
+            if parent_str.startswith(home):
+                parent_str = "~" + parent_str[len(home):]
+            row.set_subtitle(parent_str)
+            row.set_subtitle_lines(1)
+            row.set_activatable(True)
+            row.add_prefix(Gtk.Image.new_from_icon_name("video-x-generic-symbolic"))
+            row.add_suffix(Gtk.Image.new_from_icon_name("go-next-symbolic"))
+            row.connect("activated", self._make_recent_handler(p))
+            self.recent_projects_group.add(row)
+            self._recent_project_rows.append(row)
+
+        self.recent_projects_clamp.set_visible(True)
 
     def _make_recent_handler(self, p: Path):
         return lambda *_: self.open_project_file(p)

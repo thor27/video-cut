@@ -215,3 +215,51 @@ def test_recent_projects_management(tmp_path: Path):
     # Cleanup
     ProjectService.clear_recent_projects()
     assert len(ProjectService.get_recent_projects()) == 0
+
+
+def test_empty_state_recent_projects_ui(tmp_path: Path):
+    import gi
+
+    gi.require_version("Gtk", "4.0")
+    gi.require_version("Adw", "1")
+    from gi.repository import Adw
+
+    from video_cut.window import MainWindow
+
+    p1 = tmp_path / "proj1.vcut"
+    p1.touch()
+
+    app = Adw.Application(application_id="io.github.thor27.video-cut.test.emptyrecents")
+    err = []
+
+    def run_test(app):
+        win = None
+        try:
+            ProjectService.clear_recent_projects()
+            win = MainWindow(application=app)
+            assert win.recent_projects_clamp.get_visible() is False
+            assert len(win._recent_project_rows) == 0
+
+            # Add recent project
+            ProjectService.add_recent_project(p1)
+            win._update_recent_projects_menu()
+            assert win.recent_projects_clamp.get_visible() is True
+            assert len(win._recent_project_rows) == 1
+            assert win._recent_project_rows[0].get_title() == "proj1.vcut"
+
+            # Clear again
+            ProjectService.clear_recent_projects()
+            win._update_recent_projects_menu()
+            assert win.recent_projects_clamp.get_visible() is False
+            assert len(win._recent_project_rows) == 0
+        except Exception as e:
+            err.append(e)
+        finally:
+            if win:
+                win.close()
+            app.quit()
+
+    app.connect("activate", run_test)
+    app.run(["test"])
+    if err:
+        raise err[0]
