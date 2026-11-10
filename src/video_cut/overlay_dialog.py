@@ -652,10 +652,10 @@ class OverlayDialog(Adw.Window):
                 name = name[:12] + "…"
             return f'{_("Video")}: {name}'
         elif item.item_type == "audio":
-            name = Path(item.media_path).name if item.media_path else _("Audio")
+            name = Path(item.media_path).name if item.media_path else _("Audio Track")
             if len(name) > 14:
                 name = name[:12] + "…"
-            return f'{_("Audio")}: {name}'
+            return f'{_("Audio Track")}: {name}'
         return item.item_type.capitalize()
 
     def _update_element_dropdown(self) -> None:
