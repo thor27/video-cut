@@ -169,9 +169,18 @@ def test_timeline_widget_ctrl_shift_and_select_all(sample_video):
             card1._menu_action_toggle_select()
             assert win.timeline.selected_segment_ids == {seg0.id, seg2.id}
 
-            # Context menu Select All
+            # Context menu shows "Select All" when not all are selected
+            card1._on_right_click(None, 1, 10, 10)
+            assert card1.menu_select_all._lbl.get_label() == "Select All"
             card1._menu_action_select_all()
             assert win.timeline.selected_segment_ids == {seg0.id, seg1.id, seg2.id}
+
+            # When all are selected, context menu shows "Deselect All"
+            card1._on_right_click(None, 1, 10, 10)
+            assert card1.menu_select_all._lbl.get_label() == "Deselect All"
+            # Clicking Deselect All deselects all clips
+            card1._menu_action_select_all()
+            assert win.timeline.selected_segment_ids == set()
         finally:
             if win:
                 win.close()
@@ -318,7 +327,17 @@ def test_ctrl_a_and_delete_shortcut(sample_video):
             win.split_at_cursor()
             assert len(win.timeline.segments) == 2
 
-            # Simulate Ctrl+A keypress
+            # Simulate Ctrl+A keypress: selects all
+            handled = win._on_key_pressed(None, Gdk.KEY_a, 0, Gdk.ModifierType.CONTROL_MASK)
+            assert handled is True
+            assert len(win.timeline.selected_segment_ids) == 2
+
+            # Second Ctrl+A keypress: deselects all
+            handled = win._on_key_pressed(None, Gdk.KEY_a, 0, Gdk.ModifierType.CONTROL_MASK)
+            assert handled is True
+            assert len(win.timeline.selected_segment_ids) == 0
+
+            # Third Ctrl+A keypress: selects all again
             handled = win._on_key_pressed(None, Gdk.KEY_a, 0, Gdk.ModifierType.CONTROL_MASK)
             assert handled is True
             assert len(win.timeline.selected_segment_ids) == 2
