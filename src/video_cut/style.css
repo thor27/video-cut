@@ -62,10 +62,17 @@ entry.time-badge,
     border-color: alpha(currentColor, 0.25);
 }
 
-.segment-selected {
+.segment-selected,
+.segment-card.segment-selected {
     border-color: @accent_color;
     box-shadow: 0 0 0 2px alpha(@accent_color, 0.35);
-    background-color: alpha(@accent_color, 0.06);
+    background-color: alpha(@accent_color, 0.08);
+}
+
+.segment-card.segment-selected:hover {
+    border-color: @accent_color;
+    box-shadow: 0 0 0 2px alpha(@accent_color, 0.45);
+    background-color: alpha(@accent_color, 0.12);
 }
 
 .segment-dragging {
@@ -76,13 +83,6 @@ entry.time-badge,
     border-color: @accent_color;
     box-shadow: 0 0 0 3px alpha(@accent_color, 0.65);
     background-color: alpha(@accent_color, 0.12);
-}
-
-
-.marquee-box {
-    background-color: alpha(@accent_color, 0.2);
-    border: 1px solid @accent_color;
-    border-radius: 4px;
 }
 
 .segment-header {

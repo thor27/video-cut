@@ -142,6 +142,36 @@ def test_timeline_widget_ctrl_shift_and_select_all(sample_video):
             assert win.timeline.selected_segment_ids == {seg0.id}
             tw.select_all()
             assert win.timeline.selected_segment_ids == {seg0.id, seg1.id, seg2.id}
+
+            # 6. Right-click context menu "Select" accumulates multi-selection
+            tw._on_segment_selected(seg0.id, ctrl=False, shift=False)
+            assert win.timeline.selected_segment_ids == {seg0.id}
+
+            card1 = tw._cards[seg1.id]
+            card1._on_right_click(None, 1, 10, 10)
+            # Verify right-clicking did NOT clear seg0
+            assert win.timeline.selected_segment_ids == {seg0.id}
+            assert card1.menu_select._lbl.get_label() == "Select"
+            # Click Select on card 1
+            card1._menu_action_toggle_select()
+            assert win.timeline.selected_segment_ids == {seg0.id, seg1.id}
+
+            # Right click and Select on card 2
+            card2 = tw._cards[seg2.id]
+            card2._on_right_click(None, 1, 10, 10)
+            assert card2.menu_select._lbl.get_label() == "Select"
+            card2._menu_action_toggle_select()
+            assert win.timeline.selected_segment_ids == {seg0.id, seg1.id, seg2.id}
+
+            # Card 1 now shows "Deselect"
+            card1._on_right_click(None, 1, 10, 10)
+            assert card1.menu_select._lbl.get_label() == "Deselect"
+            card1._menu_action_toggle_select()
+            assert win.timeline.selected_segment_ids == {seg0.id, seg2.id}
+
+            # Context menu Select All
+            card1._menu_action_select_all()
+            assert win.timeline.selected_segment_ids == {seg0.id, seg1.id, seg2.id}
         finally:
             if win:
                 win.close()

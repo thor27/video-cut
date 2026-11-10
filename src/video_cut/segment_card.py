@@ -288,14 +288,25 @@ class SegmentCard(Gtk.Box):
                 accel.add_css_class("dim-label")
                 row.append(accel)
             btn.set_child(row)
+            btn._lbl = lbl
+            btn._icon = icon
             btn.connect("clicked", lambda _: self._on_menu_item_clicked(callback))
             return btn
+
+        self.menu_select = make_menu_item("checkbox-symbolic", _("Select"), "", self._menu_action_toggle_select)
+        box.append(self.menu_select)
+
+        self.menu_select_all = make_menu_item("edit-select-all-symbolic", _("Select All"), "Ctrl+A", self._menu_action_select_all)
+        box.append(self.menu_select_all)
+
+        sep0 = Gtk.Separator(orientation=Gtk.Orientation.HORIZONTAL)
+        box.append(sep0)
 
         self.menu_split = make_menu_item("video-split-symbolic", _("Split at Cursor"), "S", self._menu_action_split)
         box.append(self.menu_split)
 
-        sep0 = Gtk.Separator(orientation=Gtk.Orientation.HORIZONTAL)
-        box.append(sep0)
+        sep1 = Gtk.Separator(orientation=Gtk.Orientation.HORIZONTAL)
+        box.append(sep1)
 
         self.menu_cut = make_menu_item("edit-cut-symbolic", _("Cut"), "Ctrl+X", self._menu_action_cut)
         box.append(self.menu_cut)
@@ -312,8 +323,8 @@ class SegmentCard(Gtk.Box):
         self.menu_overlay = make_menu_item("insert-image-symbolic", _("Overlays & Drawings..."), "O", self._menu_action_overlay)
         box.append(self.menu_overlay)
 
-        sep1 = Gtk.Separator(orientation=Gtk.Orientation.HORIZONTAL)
-        box.append(sep1)
+        sep2 = Gtk.Separator(orientation=Gtk.Orientation.HORIZONTAL)
+        box.append(sep2)
 
         self.menu_move_left = make_menu_item("go-previous-symbolic", _("Move Clip Left"), "Alt+←", self._menu_action_move_left)
         box.append(self.menu_move_left)
@@ -321,8 +332,8 @@ class SegmentCard(Gtk.Box):
         self.menu_move_right = make_menu_item("go-next-symbolic", _("Move Clip Right"), "Alt+→", self._menu_action_move_right)
         box.append(self.menu_move_right)
 
-        sep2 = Gtk.Separator(orientation=Gtk.Orientation.HORIZONTAL)
-        box.append(sep2)
+        sep3 = Gtk.Separator(orientation=Gtk.Orientation.HORIZONTAL)
+        box.append(sep3)
 
         self.menu_delete = make_menu_item("user-trash-symbolic", _("Delete"), "Del", self._menu_action_delete, is_destructive=True)
         box.append(self.menu_delete)
@@ -334,15 +345,38 @@ class SegmentCard(Gtk.Box):
         self.context_menu.popdown()
         action()
 
+    def _is_multi_selected(self) -> bool:
+        if self._timeline_widget and hasattr(self._timeline_widget, "timeline"):
+            ids = self._timeline_widget.timeline.selected_segment_ids
+            return len(ids) > 1 and self.segment.id in ids
+        return False
+
+    def _menu_action_toggle_select(self) -> None:
+        if self._timeline_widget is not None:
+            self._timeline_widget._on_segment_selected(self.segment.id, ctrl=True)
+        elif self.on_select is not None:
+            self.on_select(self.segment.id)
+
+    def _menu_action_select_all(self) -> None:
+        if self._timeline_widget is not None:
+            self._timeline_widget.select_all()
+
     def _menu_action_split(self) -> None:
         if self.on_split:
             self.on_split(self.segment.id)
 
     def _menu_action_cut(self) -> None:
-        if self.can_delete and self.on_cut:
-            self.on_cut(self.segment.id)
+        if self.can_delete:
+            if self._is_multi_selected() and hasattr(self._timeline_widget, "on_cut_selection_requested") and self._timeline_widget.on_cut_selection_requested:
+                self._timeline_widget.on_cut_selection_requested()
+                return
+            if self.on_cut:
+                self.on_cut(self.segment.id)
 
     def _menu_action_copy(self) -> None:
+        if self._is_multi_selected() and hasattr(self._timeline_widget, "on_copy_selection_requested") and self._timeline_widget.on_copy_selection_requested:
+            self._timeline_widget.on_copy_selection_requested()
+            return
         if self.on_copy:
             self.on_copy(self.segment.id)
 
@@ -367,10 +401,31 @@ class SegmentCard(Gtk.Box):
             self.on_move_right(self.segment.id)
 
     def _menu_action_delete(self) -> None:
-        if self.can_delete and self.on_delete:
-            self.on_delete(self.segment.id)
+        if self.can_delete:
+            if self._is_multi_selected() and hasattr(self._timeline_widget, "on_delete_selection_requested") and self._timeline_widget.on_delete_selection_requested:
+                self._timeline_widget.on_delete_selection_requested()
+                return
+            if self.on_delete:
+                self.on_delete(self.segment.id)
 
     def _update_context_menu_state(self) -> None:
+        selected_ids = set()
+        if self._timeline_widget and hasattr(self._timeline_widget, "timeline"):
+            selected_ids = self._timeline_widget.timeline.selected_segment_ids
+
+        is_sel = (self.segment.id in selected_ids) if selected_ids else self._is_selected
+
+        if hasattr(self, "menu_select"):
+            if is_sel:
+                self.menu_select._lbl.set_label(_("Deselect"))
+                self.menu_select._icon.set_from_icon_name("checkbox-checked-symbolic")
+            else:
+                self.menu_select._lbl.set_label(_("Select"))
+                self.menu_select._icon.set_from_icon_name("checkbox-symbolic")
+
+        if hasattr(self, "menu_select_all"):
+            self.menu_select_all.set_sensitive(True)
+
         self.menu_split.set_sensitive(True)
         self.menu_cut.set_sensitive(self.can_delete)
         self.menu_copy.set_sensitive(True)
@@ -387,7 +442,7 @@ class SegmentCard(Gtk.Box):
             self.split_pill.set_visible(False)
         if hasattr(self, "split_popover"):
             self.split_popover.popdown()
-        self.on_select(self.segment.id)
+        # Keep existing selection when opening context menu so users can accumulate multi-selections
         self._update_context_menu_state()
         rect = Gdk.Rectangle()
         rect.x = int(x)
