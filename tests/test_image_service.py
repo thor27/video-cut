@@ -296,3 +296,31 @@ def test_convert_image_to_video_async_with_metadata_and_thumb(tmp_path):
     assert abs(results["meta"].duration - 1.0) < 0.1
     assert results["thumb"] is not None and results["thumb"].exists()
 
+
+def test_convert_svg_to_video(tmp_path):
+    svg_content = """<svg xmlns="http://www.w3.org/2000/svg" width="400" height="300" viewBox="0 0 400 300">
+  <rect width="100%" height="100%" fill="orange"/>
+  <circle cx="200" cy="150" r="80" fill="purple"/>
+</svg>"""
+    svg_path = tmp_path / "graphic.svg"
+    svg_path.write_text(svg_content, encoding="utf-8")
+
+    assert ImageService.is_image(svg_path) is True
+
+    cache_dir = tmp_path / "cache"
+    video_path = ImageService.convert_image_to_video(svg_path, cache_dir=cache_dir, duration=1.5)
+    assert video_path.exists()
+    assert video_path.suffix == ".mp4"
+
+    meta = ProbeService.probe(video_path)
+    assert meta is not None
+    assert abs(meta.duration - 1.5) < 0.2
+    assert meta.width % 2 == 0
+    assert meta.height % 2 == 0
+
+    thumb_path = tmp_path / "svg_thumb.jpg"
+    res = ImageService.create_thumbnail(svg_path, thumb_path, max_size=(200, 150))
+    assert res == thumb_path
+    assert thumb_path.exists()
+    assert thumb_path.stat().st_size > 0
+

@@ -38,6 +38,7 @@ SUPPORTED_IMAGE_EXTENSIONS: set[str] = {
     ".bmp",
     ".tiff",
     ".gif",
+    ".svg",
 }
 
 

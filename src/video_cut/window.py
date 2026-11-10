@@ -556,7 +556,11 @@ class MainWindow(Adw.ApplicationWindow):
         filter_all.set_name(_("All Supported Media (Videos & Images)"))
         filter_all.add_mime_type("video/*")
         filter_all.add_mime_type("image/*")
-        for ext in ("*.mp4", "*.mkv", "*.mov", "*.webm", "*.avi", "*.png", "*.jpg", "*.jpeg", "*.webp", "*.bmp", "*.tiff", "*.gif"):
+        filter_all.add_mime_type("image/svg+xml")
+        for ext in (
+            "*.mp4", "*.mkv", "*.mov", "*.webm", "*.avi",
+            "*.png", "*.jpg", "*.jpeg", "*.webp", "*.bmp", "*.tiff", "*.gif", "*.svg",
+        ):
             filter_all.add_pattern(ext)
         filters.append(filter_all)
 
@@ -572,7 +576,8 @@ class MainWindow(Adw.ApplicationWindow):
         filter_image = Gtk.FileFilter.new()
         filter_image.set_name(_("Image Files"))
         filter_image.add_mime_type("image/*")
-        for ext in ("*.png", "*.jpg", "*.jpeg", "*.webp", "*.bmp", "*.tiff", "*.gif"):
+        filter_image.add_mime_type("image/svg+xml")
+        for ext in ("*.png", "*.jpg", "*.jpeg", "*.webp", "*.bmp", "*.tiff", "*.gif", "*.svg"):
             filter_image.add_pattern(ext)
         filters.append(filter_image)
 
