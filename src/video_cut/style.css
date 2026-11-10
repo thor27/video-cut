@@ -79,6 +79,12 @@ entry.time-badge,
 }
 
 
+.marquee-box {
+    background-color: alpha(@accent_color, 0.2);
+    border: 1px solid @accent_color;
+    border-radius: 4px;
+}
+
 .segment-header {
     padding: 2px 4px 4px 4px;
     min-height: 34px;

@@ -89,7 +89,13 @@ class SegmentCard(Gtk.Box):
         card_click = Gtk.GestureClick.new()
         card_click.set_propagation_phase(Gtk.PropagationPhase.CAPTURE)
         def _on_card_pressed(_g, n_press: int, _x: float, _y: float) -> None:
-            self.on_select(self.segment.id)
+            state = card_click.get_current_event_state()
+            ctrl = bool(state & Gdk.ModifierType.CONTROL_MASK)
+            shift = bool(state & Gdk.ModifierType.SHIFT_MASK)
+            try:
+                self.on_select(self.segment.id, ctrl=ctrl, shift=shift)
+            except TypeError:
+                self.on_select(self.segment.id)
             if n_press == 2 and self.on_overlay:
                 self.on_overlay(self.segment.id)
 

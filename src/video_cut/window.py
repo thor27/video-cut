@@ -355,6 +355,11 @@ class MainWindow(Adw.ApplicationWindow):
             self.paste_segment()
             return True
 
+        # Select All: Ctrl+A
+        if ctrl and not shift and not alt and keyval in (Gdk.KEY_a, Gdk.KEY_A):
+            self.timeline_widget.select_all()
+            return True
+
         # Left Arrow: Step back 1s, or Alt+Left: Move clip left
         if keyval == Gdk.KEY_Left:
             if alt and self.timeline.selected_segment_id:
@@ -499,10 +504,8 @@ class MainWindow(Adw.ApplicationWindow):
 
     def _update_ui_state(self) -> None:
         has_video = not self.timeline.is_empty
-        has_selection = bool(
-            self.timeline.selected_segment_id
-            and self.timeline.get_segment(self.timeline.selected_segment_id)
-        )
+        selected_ids = self.timeline.selected_segment_ids
+        has_selection = bool(selected_ids and any(self.timeline.get_segment(sid) for sid in selected_ids))
         can_cut = has_selection
         can_copy = has_selection
         can_paste = self._has_pasteable_content()
@@ -1008,8 +1011,24 @@ class MainWindow(Adw.ApplicationWindow):
         self._update_ui_state()
 
     def delete_selected_segment(self) -> None:
-        if self.timeline.selected_segment_id:
-            self.delete_segment(self.timeline.selected_segment_id)
+        selected_ids = set(self.timeline.selected_segment_ids)
+        if not selected_ids:
+            if self.timeline.selected_segment_id:
+                selected_ids = {self.timeline.selected_segment_id}
+            else:
+                return
+
+        if len(selected_ids) == 1:
+            self.delete_segment(next(iter(selected_ids)))
+        else:
+            self.timeline.save_state(self.current_global_time)
+            count = self.timeline.delete_segments(selected_ids)
+            if count > 0:
+                self.current_global_time = clamp(self.current_global_time, 0.0, self.timeline.total_duration)
+                self.player.sync_timeline_change(self.current_global_time)
+                self.timeline_widget.rebuild_filmstrip()
+                self._update_ui_state()
+                self._show_toast(_("Deleted {count} clips").format(count=count))
 
     def delete_segment(self, segment_id: str) -> None:
         self.timeline.save_state(self.current_global_time)
@@ -1024,11 +1043,11 @@ class MainWindow(Adw.ApplicationWindow):
         self.clipboard_controller.copy_to_system_clipboard(source_path)
 
     def copy_selected_segment(self) -> None:
-        """Copy currently selected segment to internal clipboard and system clipboard."""
+        """Copy currently selected segment(s) to internal clipboard and system clipboard."""
         self.clipboard_controller.copy_selected()
 
     def cut_selected_segment(self) -> None:
-        """Cut currently selected segment to internal clipboard and system clipboard."""
+        """Cut currently selected segment(s) to internal clipboard and system clipboard."""
         self.clipboard_controller.cut_selected()
 
     def paste_segment(self) -> None:
@@ -1036,18 +1055,29 @@ class MainWindow(Adw.ApplicationWindow):
         self.clipboard_controller.paste()
 
     def open_crop_rotate_selected_segment(self) -> None:
-        """Open Crop & Rotate modal dialog for the selected segment."""
-        if not self.timeline.selected_segment_id:
-            return
-        self.open_crop_rotate_dialog(self.timeline.selected_segment_id)
-
-    def open_crop_rotate_dialog(self, segment_id: str | None = None) -> None:
-        """Open Crop & Rotate modal dialog for the given segment ID or selected segment."""
-        target_id = segment_id or self.timeline.selected_segment_id
+        """Open Crop & Rotate modal dialog for the selected segment(s)."""
+        target_id = self.timeline.selected_segment_id
+        if not target_id and self.timeline.selected_segment_ids:
+            target_id = next(iter(self.timeline.selected_segment_ids))
         if not target_id:
             return
+        self.open_crop_rotate_dialog(target_id)
 
-        seg = self.timeline.get_segment(target_id)
+    def open_crop_rotate_dialog(self, segment_id: str | None = None) -> None:
+        """Open Crop & Rotate modal dialog for the given segment ID or selected segment(s)."""
+        target_ids = list(self.timeline.selected_segment_ids)
+        if segment_id and segment_id not in target_ids:
+            target_ids = [segment_id]
+        if not target_ids:
+            if segment_id:
+                target_ids = [segment_id]
+            elif self.timeline.selected_segment_id:
+                target_ids = [self.timeline.selected_segment_id]
+            else:
+                return
+
+        preview_id = segment_id if (segment_id and segment_id in target_ids) else target_ids[0]
+        seg = self.timeline.get_segment(preview_id)
         if not seg:
             return
 
@@ -1064,14 +1094,20 @@ class MainWindow(Adw.ApplicationWindow):
 
         def on_apply(crop, rotation, hflip, vflip) -> None:
             self.timeline.save_state(self.current_global_time)
-            seg.crop = crop
-            seg.rotation = rotation
-            seg.hflip = hflip
-            seg.vflip = vflip
+            for sid in target_ids:
+                s = self.timeline.get_segment(sid)
+                if s:
+                    s.crop = crop
+                    s.rotation = rotation
+                    s.hflip = hflip
+                    s.vflip = vflip
             self.player.refresh_current_transform()
             self.timeline_widget.rebuild_filmstrip()
             self._update_ui_state()
-            self._show_toast(_("Crop & Rotate applied to {name}").format(name=seg.source_name))
+            if len(target_ids) > 1:
+                self._show_toast(_("Crop & Rotate applied to {count} clips").format(count=len(target_ids)))
+            else:
+                self._show_toast(_("Crop & Rotate applied to {name}").format(name=seg.source_name))
 
         dialog = CropRotateDialog(
             parent=self,
@@ -1084,18 +1120,29 @@ class MainWindow(Adw.ApplicationWindow):
         dialog.present()
 
     def open_overlay_selected_segment(self) -> None:
-        """Open Overlays & Drawings modal dialog for the selected segment."""
-        if not self.timeline.selected_segment_id:
-            return
-        self.open_overlay_dialog(self.timeline.selected_segment_id)
-
-    def open_overlay_dialog(self, segment_id: str | None = None) -> None:
-        """Open Overlays & Drawings modal dialog for the given segment ID or selected segment."""
-        target_id = segment_id or self.timeline.selected_segment_id
+        """Open Overlays & Drawings modal dialog for the selected segment(s)."""
+        target_id = self.timeline.selected_segment_id
+        if not target_id and self.timeline.selected_segment_ids:
+            target_id = next(iter(self.timeline.selected_segment_ids))
         if not target_id:
             return
+        self.open_overlay_dialog(target_id)
 
-        seg = self.timeline.get_segment(target_id)
+    def open_overlay_dialog(self, segment_id: str | None = None) -> None:
+        """Open Overlays & Drawings modal dialog for the given segment ID or selected segment(s)."""
+        target_ids = list(self.timeline.selected_segment_ids)
+        if segment_id and segment_id not in target_ids:
+            target_ids = [segment_id]
+        if not target_ids:
+            if segment_id:
+                target_ids = [segment_id]
+            elif self.timeline.selected_segment_id:
+                target_ids = [self.timeline.selected_segment_id]
+            else:
+                return
+
+        preview_id = segment_id if (segment_id and segment_id in target_ids) else target_ids[0]
+        seg = self.timeline.get_segment(preview_id)
         if not seg:
             return
 
@@ -1104,11 +1151,17 @@ class MainWindow(Adw.ApplicationWindow):
 
         def on_apply(items) -> None:
             self.timeline.save_state(self.current_global_time)
-            seg.overlays = items
+            for sid in target_ids:
+                s = self.timeline.get_segment(sid)
+                if s:
+                    s.overlays = [item.clone() for item in items]
             self.player.refresh_current_transform()
             self.timeline_widget.rebuild_filmstrip()
             self._update_ui_state()
-            self._show_toast(_("Overlays applied to {name}").format(name=seg.source_name))
+            if len(target_ids) > 1:
+                self._show_toast(_("Overlays applied to {count} clips").format(count=len(target_ids)))
+            else:
+                self._show_toast(_("Overlays applied to {name}").format(name=seg.source_name))
 
         dialog = OverlayDialog(
             parent=self,
