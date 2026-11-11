@@ -291,14 +291,25 @@ def test_prompt_unsaved_changes_messages(tmp_path: Path):
 
             Adw.AlertDialog.choose = mock_choose
 
-            # Case 1: Never saved project (current_project_path is None)
+            # Case 1: Never saved project when closing (current_project_path is None, is_closing=True)
             win.current_project_path = None
             win._prompt_unsaved_changes(on_proceed=lambda: None)
             assert len(captured) == 1
             dlg1 = captured[0]
             assert "future" in dlg1.get_heading().lower()
             assert "resume" in dlg1.get_body().lower()
-            assert dlg1.get_response_label("save") == "Save Project"
+            assert dlg1.get_response_label("save") == "Create project and close"
+            assert dlg1.get_response_label("discard") == "Close without creating a project"
+            assert dlg1.get_response_label("cancel") == "Cancel and return to app"
+
+            # Case 1b: Never saved project when not closing (is_closing=False)
+            captured.clear()
+            win._prompt_unsaved_changes(on_proceed=lambda: None, is_closing=False)
+            assert len(captured) == 1
+            dlg1b = captured[0]
+            assert dlg1b.get_response_label("save") == "Save Project"
+            assert dlg1b.get_response_label("discard") == "Discard"
+            assert dlg1b.get_response_label("cancel") == "Cancel"
 
             # Case 2: Existing saved project (current_project_path is set)
             captured.clear()
@@ -308,6 +319,8 @@ def test_prompt_unsaved_changes_messages(tmp_path: Path):
             dlg2 = captured[0]
             assert dlg2.get_heading() == "Save Changes?"
             assert dlg2.get_response_label("save") == "Save"
+            assert dlg2.get_response_label("discard") == "Discard"
+            assert dlg2.get_response_label("cancel") == "Cancel"
         except Exception as e:
             err.append(e)
         finally:
