@@ -752,26 +752,39 @@ class MainWindow(Adw.ApplicationWindow):
             def proceed_close():
                 self.is_dirty = False
                 self.close()
-            self._prompt_unsaved_changes(on_proceed=proceed_close)
+            self._prompt_unsaved_changes(on_proceed=proceed_close, is_closing=True)
             return True
         return False
 
-    def _prompt_unsaved_changes(self, on_proceed: Callable[[], None]) -> None:
+    def _prompt_unsaved_changes(
+        self,
+        on_proceed: Callable[[], None],
+        is_closing: bool = True,
+    ) -> None:
         if self.current_project_path:
             heading = _("Save Changes?")
             body = _("Do you want to save changes to the current project before proceeding?")
             save_label = _("Save")
+            discard_label = _("Discard")
+            cancel_label = _("Cancel")
         else:
             heading = _("Work on this video again in the future?")
             body = _(
                 "Saving a project allows you to return to Video Cut anytime and resume "
                 "with all your segments, cuts, rotations, and overlays."
             )
-            save_label = _("Save Project")
+            if is_closing:
+                save_label = _("Create project and close")
+                discard_label = _("Close without creating a project")
+                cancel_label = _("Cancel and return to app")
+            else:
+                save_label = _("Save Project")
+                discard_label = _("Discard")
+                cancel_label = _("Cancel")
 
         dialog = Adw.AlertDialog.new(heading, body)
-        dialog.add_response("cancel", _("Cancel"))
-        dialog.add_response("discard", _("Discard"))
+        dialog.add_response("cancel", cancel_label)
+        dialog.add_response("discard", discard_label)
         dialog.add_response("save", save_label)
         dialog.set_response_appearance("save", Adw.ResponseAppearance.SUGGESTED)
         dialog.set_response_appearance("discard", Adw.ResponseAppearance.DESTRUCTIVE)
@@ -873,7 +886,7 @@ class MainWindow(Adw.ApplicationWindow):
     def open_project_dialog(self) -> None:
         """Prompt to open a .vcut project file, checking for unsaved changes first."""
         if self.is_dirty and not self.timeline.is_empty:
-            self._prompt_unsaved_changes(on_proceed=self._do_open_project_dialog)
+            self._prompt_unsaved_changes(on_proceed=self._do_open_project_dialog, is_closing=False)
         else:
             self._do_open_project_dialog()
 
@@ -896,7 +909,10 @@ class MainWindow(Adw.ApplicationWindow):
     def open_project_file(self, project_path: Path) -> None:
         """Open and load a .vcut project file into the editor."""
         if self.is_dirty and not self.timeline.is_empty:
-            self._prompt_unsaved_changes(on_proceed=lambda: self._do_load_project(project_path))
+            self._prompt_unsaved_changes(
+                on_proceed=lambda: self._do_load_project(project_path),
+                is_closing=False,
+            )
         else:
             self._do_load_project(project_path)
 
@@ -1104,7 +1120,7 @@ class MainWindow(Adw.ApplicationWindow):
                 self.is_dirty = False
                 self.import_media_files(valid_paths, replace=True)
 
-            self._prompt_unsaved_changes(on_proceed=do_replace)
+            self._prompt_unsaved_changes(on_proceed=do_replace, is_closing=False)
             return
 
         if replace:
