@@ -263,3 +263,60 @@ def test_empty_state_recent_projects_ui(tmp_path: Path):
     app.run(["test"])
     if err:
         raise err[0]
+
+
+def test_prompt_unsaved_changes_messages(tmp_path: Path):
+    import gi
+
+    gi.require_version("Gtk", "4.0")
+    gi.require_version("Adw", "1")
+    from gi.repository import Adw
+
+    from video_cut.i18n import set_language
+    from video_cut.window import MainWindow
+
+    set_language("en_US")
+    app = Adw.Application(application_id="io.github.thor27.video-cut.test.unsavedprompt")
+    err = []
+
+    def run_test(app):
+        win = None
+        orig_choose = Adw.AlertDialog.choose
+        try:
+            win = MainWindow(application=app)
+            captured = []
+
+            def mock_choose(self, parent, cancellable, callback):
+                captured.append(self)
+
+            Adw.AlertDialog.choose = mock_choose
+
+            # Case 1: Never saved project (current_project_path is None)
+            win.current_project_path = None
+            win._prompt_unsaved_changes(on_proceed=lambda: None)
+            assert len(captured) == 1
+            dlg1 = captured[0]
+            assert "future" in dlg1.get_heading().lower()
+            assert "resume" in dlg1.get_body().lower()
+            assert dlg1.get_response_label("save") == "Save Project"
+
+            # Case 2: Existing saved project (current_project_path is set)
+            captured.clear()
+            win.current_project_path = tmp_path / "existing.vcut"
+            win._prompt_unsaved_changes(on_proceed=lambda: None)
+            assert len(captured) == 1
+            dlg2 = captured[0]
+            assert dlg2.get_heading() == "Save Changes?"
+            assert dlg2.get_response_label("save") == "Save"
+        except Exception as e:
+            err.append(e)
+        finally:
+            Adw.AlertDialog.choose = orig_choose
+            if win:
+                win.close()
+            app.quit()
+
+    app.connect("activate", run_test)
+    app.run(["test"])
+    if err:
+        raise err[0]

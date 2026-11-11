@@ -757,15 +757,26 @@ class MainWindow(Adw.ApplicationWindow):
         return False
 
     def _prompt_unsaved_changes(self, on_proceed: Callable[[], None]) -> None:
-        dialog = Adw.AlertDialog.new(
-            _("Unsaved Changes"),
-            _("Do you want to save changes to the current project before proceeding?"),
-        )
+        if self.current_project_path:
+            heading = _("Save Changes?")
+            body = _("Do you want to save changes to the current project before proceeding?")
+            save_label = _("Save")
+        else:
+            heading = _("Work on this video again in the future?")
+            body = _(
+                "Saving a project allows you to return to Video Cut anytime and resume "
+                "with all your segments, cuts, rotations, and overlays."
+            )
+            save_label = _("Save Project")
+
+        dialog = Adw.AlertDialog.new(heading, body)
         dialog.add_response("cancel", _("Cancel"))
         dialog.add_response("discard", _("Discard"))
-        dialog.add_response("save", _("Save"))
+        dialog.add_response("save", save_label)
         dialog.set_response_appearance("save", Adw.ResponseAppearance.SUGGESTED)
         dialog.set_response_appearance("discard", Adw.ResponseAppearance.DESTRUCTIVE)
+        dialog.set_default_response("save")
+        dialog.set_close_response("cancel")
 
         def on_response(source: Any, result: Any) -> None:
             if isinstance(result, str):

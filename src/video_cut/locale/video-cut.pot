@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-11-10 17:01-0500\n"
+"POT-Creation-Date: 2026-11-11 10:25-0500\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -25,8 +25,8 @@ msgstr ""
 #: src/video_cut/crop_rotate_dialog.py:423
 #: src/video_cut/image_import_dialog.py:190 src/video_cut/overlay_dialog.py:295
 #: src/video_cut/overlay_dialog.py:4022 src/video_cut/overlay_dialog.py:4047
-#: src/video_cut/progress_modal.py:78 src/video_cut/window.py:709
-#: src/video_cut/window.py:868
+#: src/video_cut/progress_modal.py:78 src/video_cut/window.py:773
+#: src/video_cut/window.py:934
 msgid "Cancel"
 msgstr ""
 
@@ -342,8 +342,8 @@ msgstr ""
 msgid "Audio Files (*.mp3, *.wav, *.aac, *.m4a, *.ogg, *.flac, *.opus)"
 msgstr ""
 
-#: src/video_cut/image_import_dialog.py:448 src/video_cut/window.py:602
-#: src/video_cut/window.py:1652
+#: src/video_cut/image_import_dialog.py:448 src/video_cut/window.py:620
+#: src/video_cut/window.py:1718
 msgid "All Files"
 msgstr ""
 
@@ -877,11 +877,11 @@ msgstr ""
 msgid "Next segment (End)"
 msgstr ""
 
-#: src/video_cut/timeline_widget.py:341 src/video_cut/window.py:1807
+#: src/video_cut/timeline_widget.py:341 src/video_cut/window.py:1873
 msgid "Generating thumbnails..."
 msgstr ""
 
-#: src/video_cut/timeline_widget.py:552 src/video_cut/window.py:997
+#: src/video_cut/timeline_widget.py:552 src/video_cut/window.py:1063
 msgid "Add Video or Image as Segment"
 msgstr ""
 
@@ -891,17 +891,17 @@ msgid ""
 "or Image"
 msgstr ""
 
-#: src/video_cut/window.py:84 src/video_cut/window.py:590
-#: src/video_cut/window.py:666 src/video_cut/window.py:1765
+#: src/video_cut/window.py:84 src/video_cut/window.py:607
+#: src/video_cut/window.py:684 src/video_cut/window.py:1831
 msgid "Video Cut"
 msgstr ""
 
-#: src/video_cut/window.py:84 src/video_cut/window.py:591
-#: src/video_cut/window.py:667
+#: src/video_cut/window.py:84 src/video_cut/window.py:608
+#: src/video_cut/window.py:685
 msgid "Video Editor"
 msgstr ""
 
-#: src/video_cut/window.py:90 src/video_cut/window.py:1759
+#: src/video_cut/window.py:90 src/video_cut/window.py:1825
 msgid "Toggle Fullscreen (F11)"
 msgstr ""
 
@@ -913,7 +913,7 @@ msgstr ""
 msgid "Open..."
 msgstr ""
 
-#: src/video_cut/window.py:167
+#: src/video_cut/window.py:167 src/video_cut/window.py:770
 msgid "Save Project"
 msgstr ""
 
@@ -921,7 +921,7 @@ msgstr ""
 msgid "Save Project As..."
 msgstr ""
 
-#: src/video_cut/window.py:170
+#: src/video_cut/window.py:170 src/video_cut/window.py:243
 msgid "Recent Projects"
 msgstr ""
 
@@ -955,87 +955,97 @@ msgid ""
 "to open"
 msgstr ""
 
-#: src/video_cut/window.py:226 src/video_cut/window.py:977
+#: src/video_cut/window.py:226 src/video_cut/window.py:1043
 msgid "Open Video or Image"
 msgstr ""
 
-#: src/video_cut/window.py:597 src/video_cut/window.py:643
+#: src/video_cut/window.py:615 src/video_cut/window.py:661
 msgid "Video Cut Projects (*.vcut)"
 msgstr ""
 
-#: src/video_cut/window.py:612
+#: src/video_cut/window.py:630
 msgid "All Supported Media (Videos, Images & Projects)"
 msgstr ""
 
-#: src/video_cut/window.py:626
+#: src/video_cut/window.py:644
 msgid "Video Files"
 msgstr ""
 
-#: src/video_cut/window.py:634
+#: src/video_cut/window.py:652
 msgid "Image Files"
 msgstr ""
 
-#: src/video_cut/window.py:654
+#: src/video_cut/window.py:672
 msgid "Untitled Project"
 msgstr ""
 
-#: src/video_cut/window.py:679
+#: src/video_cut/window.py:699
 msgid "(No Recent Projects)"
 msgstr ""
 
-#: src/video_cut/window.py:706
-msgid "Unsaved Changes"
+#: src/video_cut/window.py:761
+msgid "Save Changes?"
 msgstr ""
 
-#: src/video_cut/window.py:707
+#: src/video_cut/window.py:762
 msgid "Do you want to save changes to the current project before proceeding?"
 msgstr ""
 
-#: src/video_cut/window.py:710
-msgid "Discard"
-msgstr ""
-
-#: src/video_cut/window.py:711
+#: src/video_cut/window.py:763
 msgid "Save"
 msgstr ""
 
-#: src/video_cut/window.py:734 src/video_cut/window.py:767
+#: src/video_cut/window.py:765
+msgid "Work on this video again in the future?"
+msgstr ""
+
+#: src/video_cut/window.py:767
+msgid ""
+"Saving a project allows you to return to Video Cut anytime and resume with "
+"all your segments, cuts, rotations, and overlays."
+msgstr ""
+
+#: src/video_cut/window.py:774
+msgid "Discard"
+msgstr ""
+
+#: src/video_cut/window.py:800 src/video_cut/window.py:833
 msgid "Save Project As"
 msgstr ""
 
-#: src/video_cut/window.py:787
+#: src/video_cut/window.py:853
 #, python-brace-format
 msgid "Failed to save project: {error}"
 msgstr ""
 
-#: src/video_cut/window.py:803
+#: src/video_cut/window.py:869
 msgid "Project saved successfully"
 msgstr ""
 
-#: src/video_cut/window.py:805
+#: src/video_cut/window.py:871
 #, python-brace-format
 msgid "Error saving project: {error}"
 msgstr ""
 
-#: src/video_cut/window.py:816
+#: src/video_cut/window.py:882
 msgid "Open Project"
 msgstr ""
 
-#: src/video_cut/window.py:826
+#: src/video_cut/window.py:892
 #, python-brace-format
 msgid "Error opening project: {error}"
 msgstr ""
 
-#: src/video_cut/window.py:850
+#: src/video_cut/window.py:916
 #, python-brace-format
 msgid "Failed to load project: {error}"
 msgstr ""
 
-#: src/video_cut/window.py:861
+#: src/video_cut/window.py:927
 msgid "Missing Media Files"
 msgstr ""
 
-#: src/video_cut/window.py:862
+#: src/video_cut/window.py:928
 #, python-brace-format
 msgid ""
 "The following referenced files could not be found:\n"
@@ -1045,179 +1055,179 @@ msgid ""
 "Would you like to locate the missing files or load the project anyway?"
 msgstr ""
 
-#: src/video_cut/window.py:866
+#: src/video_cut/window.py:932
 msgid "Load Anyway"
 msgstr ""
 
-#: src/video_cut/window.py:867
+#: src/video_cut/window.py:933
 msgid "Locate Missing File..."
 msgstr ""
 
-#: src/video_cut/window.py:887
+#: src/video_cut/window.py:953
 #, python-brace-format
 msgid "Locate '{filename}'"
 msgstr ""
 
-#: src/video_cut/window.py:939
+#: src/video_cut/window.py:1005
 #, python-brace-format
 msgid "Loaded project '{name}'"
 msgstr ""
 
-#: src/video_cut/window.py:1026
+#: src/video_cut/window.py:1092
 msgid "No valid media files found"
 msgstr ""
 
-#: src/video_cut/window.py:1056
+#: src/video_cut/window.py:1122
 #, python-brace-format
 msgid "Added '{name}' to timeline"
 msgstr ""
 
-#: src/video_cut/window.py:1058
+#: src/video_cut/window.py:1124
 #, python-brace-format
 msgid "Added {count} media clips to timeline"
 msgstr ""
 
-#: src/video_cut/window.py:1226 src/video_cut/window.py:1269
+#: src/video_cut/window.py:1292 src/video_cut/window.py:1335
 #, python-brace-format
 msgid "Failed to convert image: {error}"
 msgstr ""
 
-#: src/video_cut/window.py:1235
+#: src/video_cut/window.py:1301
 msgid "Importing Image"
 msgstr ""
 
-#: src/video_cut/window.py:1236
+#: src/video_cut/window.py:1302
 msgid "Importing image..."
 msgstr ""
 
-#: src/video_cut/window.py:1237
+#: src/video_cut/window.py:1303
 #, python-brace-format
 msgid "Converting '{name}' into video segment..."
 msgstr ""
 
-#: src/video_cut/window.py:1247 src/video_cut/window.py:1276
+#: src/video_cut/window.py:1313 src/video_cut/window.py:1342
 msgid "Finalizing clip..."
 msgstr ""
 
-#: src/video_cut/window.py:1248 src/video_cut/window.py:1277
+#: src/video_cut/window.py:1314 src/video_cut/window.py:1343
 msgid "Preparing timeline and media player..."
 msgstr ""
 
-#: src/video_cut/window.py:1253
+#: src/video_cut/window.py:1319
 #, python-brace-format
 msgid "Importing image ({percent}%)..."
 msgstr ""
 
-#: src/video_cut/window.py:1254
+#: src/video_cut/window.py:1320
 #, python-brace-format
 msgid "Converting frame: {processed} / {total}"
 msgstr ""
 
-#: src/video_cut/window.py:1269 src/video_cut/window.py:1700
+#: src/video_cut/window.py:1335 src/video_cut/window.py:1766
 msgid "Unknown error"
 msgstr ""
 
-#: src/video_cut/window.py:1320
+#: src/video_cut/window.py:1386
 msgid "Failed to load media: invalid or unsupported file"
 msgstr ""
 
-#: src/video_cut/window.py:1393
+#: src/video_cut/window.py:1459
 msgid "Cannot split too close to clip boundary"
 msgstr ""
 
-#: src/video_cut/window.py:1434
+#: src/video_cut/window.py:1500
 #, python-brace-format
 msgid "Deleted {count} clips"
 msgstr ""
 
-#: src/video_cut/window.py:1513
+#: src/video_cut/window.py:1579
 #, python-brace-format
 msgid "Crop & Rotate applied to {count} clips"
 msgstr ""
 
-#: src/video_cut/window.py:1515
+#: src/video_cut/window.py:1581
 #, python-brace-format
 msgid "Crop & Rotate applied to {name}"
 msgstr ""
 
-#: src/video_cut/window.py:1568
+#: src/video_cut/window.py:1634
 #, python-brace-format
 msgid "Overlays applied to {count} clips"
 msgstr ""
 
-#: src/video_cut/window.py:1570
+#: src/video_cut/window.py:1636
 #, python-brace-format
 msgid "Overlays applied to {name}"
 msgstr ""
 
-#: src/video_cut/window.py:1617
+#: src/video_cut/window.py:1683
 msgid "Export Video"
 msgstr ""
 
-#: src/video_cut/window.py:1619
+#: src/video_cut/window.py:1685
 msgid "Export with Default Options"
 msgstr ""
 
-#: src/video_cut/window.py:1635
+#: src/video_cut/window.py:1701
 msgid "MP4 Video (*.mp4)"
 msgstr ""
 
-#: src/video_cut/window.py:1638
+#: src/video_cut/window.py:1704
 msgid "Matroska Video (*.mkv)"
 msgstr ""
 
-#: src/video_cut/window.py:1641
+#: src/video_cut/window.py:1707
 msgid "WebM Video (*.webm)"
 msgstr ""
 
-#: src/video_cut/window.py:1644
+#: src/video_cut/window.py:1710
 msgid "QuickTime Video (*.mov)"
 msgstr ""
 
-#: src/video_cut/window.py:1676
+#: src/video_cut/window.py:1742
 msgid "Exporting Video"
 msgstr ""
 
-#: src/video_cut/window.py:1677
+#: src/video_cut/window.py:1743
 msgid "Rendering video..."
 msgstr ""
 
-#: src/video_cut/window.py:1678
+#: src/video_cut/window.py:1744
 #, python-brace-format
 msgid "Exporting to {name}..."
 msgstr ""
 
-#: src/video_cut/window.py:1687
+#: src/video_cut/window.py:1753
 #, python-brace-format
 msgid "Rendering video ({percent}%)..."
 msgstr ""
 
-#: src/video_cut/window.py:1688
+#: src/video_cut/window.py:1754
 #, python-brace-format
 msgid "Processed: {processed} / {total}"
 msgstr ""
 
-#: src/video_cut/window.py:1697
+#: src/video_cut/window.py:1763
 #, python-brace-format
 msgid "Export complete: {name}"
 msgstr ""
 
-#: src/video_cut/window.py:1700
+#: src/video_cut/window.py:1766
 #, python-brace-format
 msgid "Export failed: {error}"
 msgstr ""
 
-#: src/video_cut/window.py:1756
+#: src/video_cut/window.py:1822
 msgid "Exit Fullscreen (F11 or Esc)"
 msgstr ""
 
-#: src/video_cut/window.py:1770
+#: src/video_cut/window.py:1836
 msgid ""
 "An easy-to-use video editor to cut and merge videos, add images, crop, and "
 "rotate"
 msgstr ""
 
-#: src/video_cut/window.py:1805
+#: src/video_cut/window.py:1871
 #, python-brace-format
 msgid "Generating thumbnails ({completed}/{total})..."
 msgstr ""
