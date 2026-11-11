@@ -17,9 +17,17 @@ fi
 mkdir -p "${DIST_DIR}"
 
 VALIDATE_ONLY=0
-if [ "${1:-}" = "--validate-only" ]; then
-    VALIDATE_ONLY=1
-fi
+CLEAN=0
+for arg in "${@:-}"; do
+    case "$arg" in
+        --validate-only)
+            VALIDATE_ONLY=1
+            ;;
+        --clean)
+            CLEAN=1
+            ;;
+    esac
+done
 
 echo "==> Validating Snapcraft configuration for Video Cut v${VERSION}..."
 
@@ -64,8 +72,18 @@ if ! command -v snapcraft >/dev/null 2>&1; then
     exit 0
 fi
 
-echo "==> Building Snap package with snapcraft..."
 cd "${REPO_ROOT}"
+
+if [ "$CLEAN" -eq 1 ]; then
+    echo "==> Cleaning previous Snapcraft build environment..."
+    if [ "${DESTRUCTIVE_MODE:-0}" -eq 1 ]; then
+        snapcraft clean --destructive-mode
+    else
+        snapcraft clean
+    fi
+fi
+
+echo "==> Building Snap package with snapcraft..."
 
 # Run snapcraft (uses LXD / Multipass container or host if destructive mode configured)
 if [ "${DESTRUCTIVE_MODE:-0}" -eq 1 ]; then
