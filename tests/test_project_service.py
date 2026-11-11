@@ -297,6 +297,7 @@ def test_prompt_unsaved_changes_messages(tmp_path: Path):
             assert len(captured) == 1
             dlg1 = captured[0]
             assert "future" in dlg1.get_heading().lower()
+            assert "creating a project" in dlg1.get_body().lower()
             assert "resume" in dlg1.get_body().lower()
             assert dlg1.get_response_label("save") == "Create project and close"
             assert dlg1.get_response_label("discard") == "Close without creating a project"

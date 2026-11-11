@@ -2,7 +2,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: video-cut 0.1.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-11-11 11:13-0500\n"
+"POT-Creation-Date: 2026-11-11 11:16-0500\n"
 "Language: en_US\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
@@ -766,10 +766,10 @@ msgstr "Work on this video again in the future?"
 
 #: src/video_cut/window.py:773
 msgid ""
-"Saving a project allows you to return to Video Cut anytime and resume with "
+"Creating a project allows you to return to Video Cut anytime and resume with "
 "all your segments, cuts, rotations, and overlays."
 msgstr ""
-"Saving a project allows you to return to Video Cut anytime and resume with "
+"Creating a project allows you to return to Video Cut anytime and resume with "
 "all your segments, cuts, rotations, and overlays."
 
 #: src/video_cut/window.py:777

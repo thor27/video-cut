@@ -770,7 +770,7 @@ class MainWindow(Adw.ApplicationWindow):
         else:
             heading = _("Work on this video again in the future?")
             body = _(
-                "Saving a project allows you to return to Video Cut anytime and resume "
+                "Creating a project allows you to return to Video Cut anytime and resume "
                 "with all your segments, cuts, rotations, and overlays."
             )
             if is_closing:
