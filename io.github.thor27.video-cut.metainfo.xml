@@ -53,6 +53,22 @@
   </screenshots>
 
   <releases>
+    <release version="0.5.0" date="2026-11-13">
+      <url type="details">https://github.com/thor27/video-cut/releases/tag/v0.5.0</url>
+      <description>
+        <p>Highlights of version 0.5.0:</p>
+        <ul>
+          <li>Project Save &amp; Load (.vcut): full project persistence and restoring with cuts, rotations, and overlays</li>
+          <li>Missing Media Detection: interactive relinking dialog when source files are moved or renamed</li>
+          <li>Recent Projects: quick access to recent projects from the header bar menu and the start screen</li>
+          <li>Multi-Segment Support: Ctrl+Click, Shift+Click, and Ctrl+A / Select All for timeline clips</li>
+          <li>Bulk Operations: batch Crop &amp; Rotate, bulk overlay assignment, multi-copy, multi-cut, and multi-delete</li>
+          <li>SVG Image Import: import scalable vector graphics (SVG) as video segments with audio soundtracks</li>
+          <li>Enhanced Safety &amp; Dialogs: customizable prompt before closing unsaved work or switching projects</li>
+          <li>Upgraded packaging and runtime support across Debian, AppImage, Snap, and Flatpak (GNOME 51)</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.4.0" date="2026-11-07">
       <url type="details">https://github.com/thor27/video-cut/releases/tag/v0.4.0</url>
       <description>
