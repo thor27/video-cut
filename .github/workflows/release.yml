@@ -21,7 +21,18 @@ jobs:
       - name: Install System Dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y dpkg-dev zip zstd squashfs-tools
+          sudo apt-get install -y dpkg-dev zip zstd squashfs-tools flatpak flatpak-builder
+
+      - name: Cache Flatpak Runtimes
+        uses: actions/cache@d4323d4df104b026a6aa633fdb11d772146be0bf # v4.2.2
+        with:
+          path: ~/.local/share/flatpak
+          key: flatpak-gnome51
+
+      - name: Set up Flatpak Environment
+        run: |
+          flatpak remote-add --user --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
+          flatpak install --user -y flathub org.gnome.Platform//51 org.gnome.Sdk//51
 
       - name: Build All Distribution Packages & Source Archives
         run: |
@@ -48,7 +59,7 @@ jobs:
         with:
           name: "Video Cut ${{ github.ref_name }}"
           generate_release_notes: true
-          draft: false
+          draft: true
           prerelease: false
           files: |
             dist/*.deb
