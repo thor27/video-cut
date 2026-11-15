@@ -112,7 +112,7 @@ fi
 # 4. Check for builder tool: flatpak-builder or org.flatpak.Builder
 BUILDER_CMD=""
 if command -v flatpak-builder >/dev/null 2>&1; then
-    BUILDER_CMD="flatpak-builder"
+    BUILDER_CMD="flatpak-builder --disable-rofiles-fuse"
 elif flatpak info org.flatpak.Builder >/dev/null 2>&1; then
     BUILDER_CMD="flatpak run org.flatpak.Builder --disable-rofiles-fuse"
 fi

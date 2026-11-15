@@ -34,10 +34,11 @@ jobs:
       - name: Lint
         run: .venv/bin/ruff check .
 
-      - name: Validate Desktop Metadata
+      - name: Validate Desktop Metadata & Packaging Configs
         run: |
           desktop-file-validate src/video_cut/resources/io.github.thor27.video-cut.desktop
           appstreamcli validate --no-net io.github.thor27.video-cut.metainfo.xml
+          ./scripts/build_flatpak.sh --validate-only
 
       - name: Run Tests
         run: xvfb-run -a .venv/bin/python -m pytest -q
