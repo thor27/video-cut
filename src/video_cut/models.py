@@ -713,4 +713,5 @@ class ExportSettings:
     fps: float | None = None      # 24, 30, 60 or None for original
     audio_codec: str = "aac"         # aac, libopus, libmp3lame, flac
     audio_bitrate: str = "192k"      # 128k, 192k, 256k, 320k
+    lossless: bool = False           # If True, stream copy without re-encoding
 

@@ -1,5 +1,6 @@
 """Probe service to extract metadata from video files using ffprobe."""
 
+import bisect
 import json
 import subprocess
 import threading
@@ -166,3 +167,117 @@ class ProbeService:
         except Exception:
             return False
         return cls._store(key, has_stream)
+
+    @classmethod
+    def get_keyframe_timestamps(cls, file_path: Path | str) -> list[float]:
+        """Inspect media file and return sorted list of keyframe (I-frame) timestamps in seconds."""
+        path = Path(file_path)
+        key = cls._key("keyframes", path)
+        if key is None:
+            return [0.0]
+        hit, value = cls._lookup(key)
+        if hit:
+            return value
+
+        try:
+            data = cls._run_ffprobe(
+                [
+                    "-select_streams",
+                    "v:0",
+                    "-skip_frame",
+                    "nokey",
+                    "-show_entries",
+                    "frame=pts_time,pkt_pts_time",
+                    str(path),
+                ]
+            )
+            keyframes: list[float] = []
+            for frame in data.get("frames", []):
+                ts = frame.get("pts_time") if frame.get("pts_time") is not None else frame.get("pkt_pts_time")
+                if ts is not None:
+                    try:
+                        val = float(ts)
+                        if not keyframes or val > keyframes[-1] + 1e-4:
+                            keyframes.append(val)
+                    except (ValueError, TypeError):
+                        continue
+            if not keyframes:
+                keyframes = [0.0]
+            elif keyframes[0] > 0.05:
+                # Always ensure start of video is reachable
+                keyframes.insert(0, 0.0)
+        except Exception:
+            keyframes = [0.0]
+
+        return cls._store(key, keyframes)
+
+    @staticmethod
+    def find_nearest_keyframe(keyframes: list[float], target_time: float) -> float:
+        """Find the keyframe timestamp closest to target_time."""
+        if not keyframes:
+            return max(0.0, target_time)
+        idx = bisect.bisect_left(keyframes, target_time)
+        if idx == 0:
+            return keyframes[0]
+        if idx >= len(keyframes):
+            return keyframes[-1]
+        before = keyframes[idx - 1]
+        after = keyframes[idx]
+        return after if (after - target_time) < (target_time - before) else before
+
+    @staticmethod
+    def find_adjacent_keyframe(keyframes: list[float], current_time: float, direction: int) -> float | None:
+        """Find the next (direction > 0) or previous (direction < 0) keyframe from current_time."""
+        if not keyframes:
+            return None
+        epsilon = 0.02
+        if direction > 0:
+            for k in keyframes:
+                if k > current_time + epsilon:
+                    return k
+            return None
+        else:
+            for k in reversed(keyframes):
+                if k < current_time - epsilon:
+                    return k
+            return None
+
+    @classmethod
+    def get_video_codec_signature(cls, file_path: Path | str) -> dict[str, Any] | None:
+        """Inspect and return codec signature for verifying lossless stream-copy compatibility."""
+        path = Path(file_path)
+        key = cls._key("codec_signature", path)
+        if key is None:
+            return None
+        hit, value = cls._lookup(key)
+        if hit:
+            return value
+
+        try:
+            data = cls._run_ffprobe(
+                [
+                    "-show_entries",
+                    "stream=codec_type,codec_name,width,height,pix_fmt,r_frame_rate,sample_rate,channels",
+                    str(path),
+                ]
+            )
+            v_stream = next((s for s in data.get("streams", []) if s.get("codec_type") == "video"), None)
+            a_stream = next((s for s in data.get("streams", []) if s.get("codec_type") == "audio"), None)
+            if not v_stream:
+                return None
+
+            sig: dict[str, Any] = {
+                "video_codec": v_stream.get("codec_name"),
+                "width": v_stream.get("width"),
+                "height": v_stream.get("height"),
+                "pix_fmt": v_stream.get("pix_fmt"),
+                "fps": v_stream.get("r_frame_rate"),
+                "has_audio": a_stream is not None,
+                "audio_codec": a_stream.get("codec_name") if a_stream else None,
+                "sample_rate": a_stream.get("sample_rate") if a_stream else None,
+                "channels": a_stream.get("channels") if a_stream else None,
+            }
+        except Exception:
+            return None
+
+        return cls._store(key, sig)

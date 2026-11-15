@@ -126,10 +126,15 @@ class TimelineWidget(Gtk.Box):
         on_crop_rotate_selection_requested: Callable[[], None] | None = None,
         on_overlay_requested: Callable[[str], None] | None = None,
         on_overlay_selection_requested: Callable[[], None] | None = None,
+        on_toggle_keyframe_snap: Callable[[bool], None] | None = None,
+        on_keyframe_help: Callable[[], None] | None = None,
     ) -> None:
         super().__init__(orientation=Gtk.Orientation.VERTICAL, spacing=6)
         self.timeline = timeline
         self.on_seek = on_seek
+        self.on_toggle_keyframe_snap = on_toggle_keyframe_snap
+        self.on_keyframe_help = on_keyframe_help
+        self.snap_to_keyframe: bool = False
         self.on_split_requested = on_split_requested
         self.on_delete_requested = on_delete_requested
         self.on_copy_requested = on_copy_requested
@@ -285,13 +290,13 @@ class TimelineWidget(Gtk.Box):
         transport_box.append(btn_back_1s)
 
         # 3. Previous single frame (single arrow)
-        btn_prev_frame = Gtk.Button.new_from_icon_name("go-previous-symbolic")
-        btn_prev_frame.set_tooltip_text(_("Previous frame (,)"))
-        btn_prev_frame.set_focusable(False)
-        btn_prev_frame.add_css_class("flat")
-        btn_prev_frame.add_css_class("circular")
-        btn_prev_frame.connect("clicked", lambda _: self.on_step_frame(-1))
-        transport_box.append(btn_prev_frame)
+        self.btn_prev_frame = Gtk.Button.new_from_icon_name("go-previous-symbolic")
+        self.btn_prev_frame.set_tooltip_text(_("Previous frame (,)"))
+        self.btn_prev_frame.set_focusable(False)
+        self.btn_prev_frame.add_css_class("flat")
+        self.btn_prev_frame.add_css_class("circular")
+        self.btn_prev_frame.connect("clicked", lambda _: self.on_step_frame(-1))
+        transport_box.append(self.btn_prev_frame)
 
         # 4. Play / Pause
         self.btn_play_pause = Gtk.Button.new_from_icon_name("media-playback-start-symbolic")
@@ -303,13 +308,13 @@ class TimelineWidget(Gtk.Box):
         transport_box.append(self.btn_play_pause)
 
         # 5. Next single frame (single arrow)
-        btn_next_frame = Gtk.Button.new_from_icon_name("go-next-symbolic")
-        btn_next_frame.set_tooltip_text(_("Next frame (.)"))
-        btn_next_frame.set_focusable(False)
-        btn_next_frame.add_css_class("flat")
-        btn_next_frame.add_css_class("circular")
-        btn_next_frame.connect("clicked", lambda _: self.on_step_frame(1))
-        transport_box.append(btn_next_frame)
+        self.btn_next_frame = Gtk.Button.new_from_icon_name("go-next-symbolic")
+        self.btn_next_frame.set_tooltip_text(_("Next frame (.)"))
+        self.btn_next_frame.set_focusable(False)
+        self.btn_next_frame.add_css_class("flat")
+        self.btn_next_frame.add_css_class("circular")
+        self.btn_next_frame.connect("clicked", lambda _: self.on_step_frame(1))
+        transport_box.append(self.btn_next_frame)
 
         # 6. Step forward 1s (double arrow)
         btn_fwd_1s = Gtk.Button.new_from_icon_name("media-seek-forward-symbolic")
@@ -331,14 +336,32 @@ class TimelineWidget(Gtk.Box):
 
         time_bar.set_center_widget(transport_box)
 
-        # 3. Right (End): Current time / Total time badge
-        end_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+        # 3. Right (End): Current time / Total time badge + Keyframe snap & help
+        end_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
         end_box.set_halign(Gtk.Align.END)
         end_box.set_valign(Gtk.Align.CENTER)
 
         self.thumb_progress_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
         self.thumb_spinner = Gtk.Spinner()
         self.lbl_thumb_progress = Gtk.Label(label=_("Generating thumbnails..."))
+
+        self.btn_keyframe_snap = Gtk.ToggleButton()
+        self.btn_keyframe_snap.set_icon_name("keyframe-snap-symbolic")
+        self.btn_keyframe_snap.set_tooltip_text(_("Stick cuts & cursor to Keyframes (Lossless Mode)"))
+        self.btn_keyframe_snap.set_focusable(False)
+        self.btn_keyframe_snap.add_css_class("flat")
+        self.btn_keyframe_snap.add_css_class("circular")
+        self.btn_keyframe_snap.connect("toggled", self._on_keyframe_snap_toggled)
+        end_box.append(self.btn_keyframe_snap)
+
+        self.btn_keyframe_help = Gtk.Button.new_from_icon_name("help-about-symbolic")
+        self.btn_keyframe_help.set_tooltip_text(_("What are Keyframes? (Lossless Guide)"))
+        self.btn_keyframe_help.set_focusable(False)
+        self.btn_keyframe_help.add_css_class("flat")
+        self.btn_keyframe_help.add_css_class("circular")
+        if self.on_keyframe_help:
+            self.btn_keyframe_help.connect("clicked", lambda _: self.on_keyframe_help())
+        end_box.append(self.btn_keyframe_help)
 
         self.lbl_time_display = Gtk.Label(label="00:00.00 / 00:00.00")
         self.lbl_time_display.add_css_class("time-badge")
@@ -349,6 +372,26 @@ class TimelineWidget(Gtk.Box):
         time_bar.set_end_widget(end_box)
 
         self.append(time_bar)
+
+    def _on_keyframe_snap_toggled(self, btn: Gtk.ToggleButton) -> None:
+        self.snap_to_keyframe = btn.get_active()
+        if self.snap_to_keyframe:
+            btn.add_css_class("accent")
+            self.btn_prev_frame.set_tooltip_text(_("Previous keyframe (,)"))
+            self.btn_next_frame.set_tooltip_text(_("Next keyframe (.)"))
+        else:
+            btn.remove_css_class("accent")
+            self.btn_prev_frame.set_tooltip_text(_("Previous frame (,)"))
+            self.btn_next_frame.set_tooltip_text(_("Next frame (.)"))
+
+        if self.on_toggle_keyframe_snap:
+            self.on_toggle_keyframe_snap(self.snap_to_keyframe)
+
+    def set_keyframe_snap(self, active: bool) -> None:
+        """Programmatically update keyframe snap toggle state."""
+        self.snap_to_keyframe = active
+        if hasattr(self, "btn_keyframe_snap") and self.btn_keyframe_snap.get_active() != active:
+            self.btn_keyframe_snap.set_active(active)
 
     def show_thumbnail_progress(self, completed: int, total: int) -> None:
         """Deprecated: Progress is now shown via floating toast notification in MainWindow."""

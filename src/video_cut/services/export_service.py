@@ -138,6 +138,43 @@ class ExportService:
         self._cancelled = False
         self._thread: threading.Thread | None = None
 
+    @classmethod
+    def can_lossless_export(cls, segments: list[Segment]) -> tuple[bool, str]:
+        """Check whether segments can be exported losslessly via stream copying."""
+        if not segments:
+            return False, _("No segments to export")
+
+        for seg in segments:
+            if seg.rotation % 360 != 0 or seg.hflip or seg.vflip:
+                return False, _("Rotation and flip transformations require re-encoding")
+            if seg.crop is not None:
+                cx, cy, cw, ch = seg.crop
+                if not (abs(cx) < 1e-4 and abs(cy) < 1e-4 and abs(cw - 1.0) < 1e-4 and abs(ch - 1.0) < 1e-4):
+                    return False, _("Crop transformations require re-encoding")
+            if seg.overlays:
+                return False, _("Graphic and text overlays require re-encoding")
+
+        sig0 = ProbeService.get_video_codec_signature(segments[0].source_path)
+        if not sig0:
+            return False, _("Could not inspect source video codec")
+
+        for s in segments[1:]:
+            sig = ProbeService.get_video_codec_signature(s.source_path)
+            if not sig:
+                return False, _("Could not inspect source video codec")
+            if (
+                sig["video_codec"] != sig0["video_codec"]
+                or sig["width"] != sig0["width"]
+                or sig["height"] != sig0["height"]
+                or sig["pix_fmt"] != sig0["pix_fmt"]
+                or sig["has_audio"] != sig0["has_audio"]
+            ):
+                return False, _("Segments have different video codecs or dimensions")
+            if sig0["has_audio"] and sig.get("audio_codec") != sig0.get("audio_codec"):
+                return False, _("Segments have different audio codecs")
+
+        return True, ""
+
     def build_ffmpeg_command(
         self,
         segments: list[Segment],
@@ -571,6 +608,170 @@ class ExportService:
 
         out_path = Path(output_path)
         part_path = out_path.with_name(f".{out_path.stem}.{secrets.token_hex(4)}.part{out_path.suffix}")
+
+        if settings and settings.lossless:
+            def worker_lossless() -> None:
+                inputs = [seg.source_path for seg in segments]
+                if any(_is_same_file(out_path, p) for p in inputs):
+                    GLib.idle_add(on_done, False, "Destination is one of the source files")
+                    return
+
+                exported = False
+                time_pattern = re.compile(r"out_time_us=(\d+)")
+
+                try:
+                    if len(segments) == 1:
+                        seg = segments[0]
+                        cmd = [
+                            "ffmpeg", FLAG_OVERWRITE,
+                            "-ss", f"{seg.start_time:.3f}",
+                            "-to", f"{seg.end_time:.3f}",
+                            FLAG_INPUT, str(seg.source_path),
+                            "-c", "copy",
+                            "-avoid_negative_ts", "make_zero",
+                            FLAG_PROGRESS, "pipe:1",
+                            str(part_path),
+                        ]
+                        self._process = subprocess.Popen(
+                            cmd,
+                            stdout=subprocess.PIPE,
+                            stderr=subprocess.PIPE,
+                            text=True,
+                            bufsize=1,
+                        )
+                        stderr_lines: list[str] = []
+                        def drain_stderr():
+                            if self._process and self._process.stderr:
+                                try:
+                                    for line in self._process.stderr:
+                                        stderr_lines.append(line)
+                                        if len(stderr_lines) > 200:
+                                            stderr_lines.pop(0)
+                                except Exception:
+                                    pass
+                        stderr_thread = threading.Thread(target=drain_stderr, daemon=True)
+                        stderr_thread.start()
+
+                        while True:
+                            if self._cancelled:
+                                if self._process:
+                                    self._process.terminate()
+                                GLib.idle_add(on_done, False, "Export cancelled by user")
+                                return
+                            line = self._process.stdout.readline() if self._process.stdout else ""
+                            if not line and self._process.poll() is not None:
+                                break
+                            m = time_pattern.search(line)
+                            if m:
+                                cur_us = int(m.group(1))
+                                cur_s = cur_us / 1_000_000.0
+                                fraction = min(1.0, max(0.0, cur_s / total_duration))
+                                GLib.idle_add(on_progress, fraction, cur_s)
+
+                        rc = self._process.wait()
+                        stderr_thread.join(timeout=1.0)
+                        if rc == 0 and not self._cancelled:
+                            os.replace(part_path, out_path)
+                            exported = True
+                            GLib.idle_add(on_progress, 1.0, total_duration)
+                            GLib.idle_add(on_done, True, None)
+                        else:
+                            stderr_msg = "".join(stderr_lines)[-500:]
+                            GLib.idle_add(on_done, False, f"FFmpeg failed (code {rc}): {stderr_msg}")
+                    else:
+                        with tempfile.TemporaryDirectory(prefix="video_cut_lossless_") as tmp_dir_str:
+                            tmp_dir = Path(tmp_dir_str)
+                            concat_manifest = tmp_dir / "concat_list.txt"
+                            manifest_lines: list[str] = []
+
+                            for idx, seg in enumerate(segments):
+                                if self._cancelled:
+                                    GLib.idle_add(on_done, False, "Export cancelled by user")
+                                    return
+                                part_seg = tmp_dir / f"seg_{idx:04d}{out_path.suffix}"
+                                cmd_cut = [
+                                    "ffmpeg", FLAG_OVERWRITE,
+                                    "-ss", f"{seg.start_time:.3f}",
+                                    "-to", f"{seg.end_time:.3f}",
+                                    FLAG_INPUT, str(seg.source_path),
+                                    "-c", "copy",
+                                    "-avoid_negative_ts", "make_zero",
+                                    str(part_seg),
+                                ]
+                                res = subprocess.run(cmd_cut, capture_output=True, text=True)
+                                if res.returncode != 0:
+                                    GLib.idle_add(on_done, False, f"FFmpeg cut failed on segment {idx + 1}: {res.stderr[-300:]}")
+                                    return
+                                manifest_lines.append(f"file '{part_seg.resolve()}'")
+
+                            concat_manifest.write_text("\n".join(manifest_lines) + "\n", encoding="utf-8")
+
+                            cmd_concat = [
+                                "ffmpeg", FLAG_OVERWRITE,
+                                "-f", "concat",
+                                "-safe", "0",
+                                FLAG_INPUT, str(concat_manifest),
+                                "-c", "copy",
+                                FLAG_PROGRESS, "pipe:1",
+                                str(part_path),
+                            ]
+                            self._process = subprocess.Popen(
+                                cmd_concat,
+                                stdout=subprocess.PIPE,
+                                stderr=subprocess.PIPE,
+                                text=True,
+                                bufsize=1,
+                            )
+                            stderr_lines = []
+                            def drain_stderr():
+                                if self._process and self._process.stderr:
+                                    try:
+                                        for line in self._process.stderr:
+                                            stderr_lines.append(line)
+                                            if len(stderr_lines) > 200:
+                                                stderr_lines.pop(0)
+                                    except Exception:
+                                        pass
+                            stderr_thread = threading.Thread(target=drain_stderr, daemon=True)
+                            stderr_thread.start()
+
+                            while True:
+                                if self._cancelled:
+                                    if self._process:
+                                        self._process.terminate()
+                                    GLib.idle_add(on_done, False, "Export cancelled by user")
+                                    return
+                                line = self._process.stdout.readline() if self._process.stdout else ""
+                                if not line and self._process.poll() is not None:
+                                    break
+                                m = time_pattern.search(line)
+                                if m:
+                                    cur_us = int(m.group(1))
+                                    cur_s = cur_us / 1_000_000.0
+                                    fraction = min(1.0, max(0.0, cur_s / total_duration))
+                                    GLib.idle_add(on_progress, fraction, cur_s)
+
+                            rc = self._process.wait()
+                            stderr_thread.join(timeout=1.0)
+                            if rc == 0 and not self._cancelled:
+                                os.replace(part_path, out_path)
+                                exported = True
+                                GLib.idle_add(on_progress, 1.0, total_duration)
+                                GLib.idle_add(on_done, True, None)
+                            else:
+                                stderr_msg = "".join(stderr_lines)[-500:]
+                                GLib.idle_add(on_done, False, f"FFmpeg concat failed (code {rc}): {stderr_msg}")
+                except Exception as e:
+                    GLib.idle_add(on_done, False, str(e))
+                finally:
+                    self._process = None
+                    if not exported:
+                        with contextlib.suppress(OSError):
+                            part_path.unlink(missing_ok=True)
+
+            self._thread = threading.Thread(target=worker_lossless, daemon=True)
+            self._thread.start()
+            return
 
         def worker() -> None:
             with tempfile.TemporaryDirectory(prefix="video_cut_overlays_") as tmp_dir:

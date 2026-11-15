@@ -25,6 +25,7 @@ class AdvancedExportDialog(Adw.Window):
         source_width: int | None = None,
         source_height: int | None = None,
         source_fps: float | None = None,
+        initial_lossless: bool = False,
     ) -> None:
         super().__init__(transient_for=parent, modal=True)
         self.set_title(_("Export Options"))
@@ -44,6 +45,8 @@ class AdvancedExportDialog(Adw.Window):
         self._updating_codecs = False
 
         self._build_ui()
+        if initial_lossless:
+            self.row_lossless.set_active(True)
         self._update_codecs_for_container()
 
     def _build_ui(self) -> None:
@@ -69,8 +72,44 @@ class AdvancedExportDialog(Adw.Window):
         box.set_margin_bottom(12)
         clamp.set_child(box)
 
-        box.append(self._create_video_group())
-        box.append(self._create_audio_group())
+        box.append(self._create_lossless_group())
+        box.append(self.card_lossless_info)
+        self.grp_video = self._create_video_group()
+        box.append(self.grp_video)
+        self.grp_audio = self._create_audio_group()
+        box.append(self.grp_audio)
+
+    def _create_lossless_group(self) -> Adw.PreferencesGroup:
+        """Build the Lossless stream-copy preference group and info card."""
+        grp = Adw.PreferencesGroup(title=_("Export Mode"))
+        self.row_lossless = Adw.SwitchRow(title=_("Lossless (Stream Copy)"))
+        self.row_lossless.set_subtitle(_("Direct stream copying without re-encoding (instant export)"))
+        self.row_lossless.set_active(False)
+        self.row_lossless.connect("notify::active", self._on_lossless_toggled)
+        grp.add(self.row_lossless)
+
+        self.card_lossless_info = Adw.PreferencesGroup()
+        self.card_lossless_info.set_visible(False)
+
+        row_pros = Adw.ActionRow()
+        row_pros.set_title(_("Pros: Instant & Zero Loss"))
+        row_pros.set_subtitle(_("Exports take seconds with 100% original quality preserved and minimal resource usage."))
+        row_pros.add_prefix(Gtk.Image.new_from_icon_name("media-flash-symbolic"))
+        self.card_lossless_info.add(row_pros)
+
+        row_cons = Adw.ActionRow()
+        row_cons.set_title(_("Cons: Keyframe Alignment & Ignored Filters"))
+        row_cons.set_subtitle(_("Cuts will be moved to the nearest keyframe. Any overlay, crop & rotate changes will be ignored."))
+        row_cons.add_prefix(Gtk.Image.new_from_icon_name("dialog-warning-symbolic"))
+        self.card_lossless_info.add(row_cons)
+
+        return grp
+
+    def _on_lossless_toggled(self, row: Adw.SwitchRow, _param) -> None:
+        is_lossless = row.get_active()
+        self.card_lossless_info.set_visible(is_lossless)
+        self.grp_video.set_sensitive(not is_lossless)
+        self.grp_audio.set_sensitive(not is_lossless)
 
     def _create_header_bar(self) -> Adw.HeaderBar:
         """Build the top header bar with Cancel and Export action buttons."""
@@ -92,7 +131,7 @@ class AdvancedExportDialog(Adw.Window):
 
     def _create_video_group(self) -> Adw.PreferencesGroup:
         """Build the Video preference group with container, resolution, fps, codec, quality, and preset."""
-        grp_video = Adw.PreferencesGroup(title=_("Video"))
+        grp_video = Adw.PreferencesGroup(title=_("Video Re-encoding Options"))
         grp_video.add(self._create_container_row())
         grp_video.add(self._create_resolution_row())
         grp_video.add(self._create_fps_row())
@@ -302,6 +341,15 @@ class AdvancedExportDialog(Adw.Window):
         b_idx = self.row_audio_bitrate.get_selected()
         bitrate_val = self.bitrate_options[b_idx][0] if 0 <= b_idx < len(self.bitrate_options) else "192k"
 
+        if self.row_lossless.get_active():
+            settings = ExportSettings(
+                container=container,
+                lossless=True,
+            )
+            self.close()
+            self.on_export(settings)
+            return
+
         settings = ExportSettings(
             container=container,
             video_codec=v_codec,
@@ -312,6 +360,7 @@ class AdvancedExportDialog(Adw.Window):
             fps=fps_val,
             audio_codec=a_codec,
             audio_bitrate=bitrate_val,
+            lossless=False,
         )
 
         self.close()
