@@ -53,6 +53,12 @@
   </screenshots>
 
   <releases>
+    <release version="0.5.1" date="2026-11-15">
+      <url type="details">https://github.com/thor27/video-cut/releases/tag/v0.5.1</url>
+      <description>
+        <p>Release v0.5.1: automated Flatpak bundle creation in CI, release workflows, and packaging improvements.</p>
+      </description>
+    </release>
     <release version="0.5.0" date="2026-11-13">
       <url type="details">https://github.com/thor27/video-cut/releases/tag/v0.5.0</url>
       <description>
