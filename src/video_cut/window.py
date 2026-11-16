@@ -519,25 +519,9 @@ class MainWindow(Adw.ApplicationWindow):
 
     def _get_timeline_keyframe_points(self) -> list[float]:
         """Compute sorted global timeline timestamps for all keyframes across segments."""
-        points: list[float] = [0.0]
-        if self.timeline.is_empty:
-            return points
-
-        accum = 0.0
-        for seg in self.timeline.segments:
-            kfs = ProbeService.get_keyframe_timestamps(seg.source_path)
-            for k in kfs:
-                if seg.start_time - 1e-4 <= k <= seg.end_time + 1e-4:
-                    gt = accum + (k - seg.start_time)
-                    if not points or gt > points[-1] + 1e-3:
-                        points.append(gt)
-            accum += seg.duration
-
-        total = self.timeline.total_duration
-        if not points or total > points[-1] + 1e-3:
-            points.append(total)
-
-        return sorted(points)
+        if hasattr(self, "timeline_widget"):
+            return self.timeline_widget.get_timeline_keyframe_points()
+        return [0.0]
 
     def _on_timeline_seek(self, global_time: float) -> None:
         if self.player.is_playing:
@@ -545,17 +529,7 @@ class MainWindow(Adw.ApplicationWindow):
 
         if self.snap_to_keyframe and not self.timeline.is_empty:
             try:
-                pts = self._get_timeline_keyframe_points()
-                if len(pts) > 1:
-                    idx = bisect.bisect_left(pts, global_time)
-                    if idx == 0:
-                        global_time = pts[0]
-                    elif idx >= len(pts):
-                        global_time = pts[-1]
-                    else:
-                        before = pts[idx - 1]
-                        after = pts[idx]
-                        global_time = after if (after - global_time) < (global_time - before) else before
+                global_time = self.timeline_widget.snap_time_to_keyframe(global_time)
             except Exception:
                 pass
 
@@ -599,6 +573,8 @@ class MainWindow(Adw.ApplicationWindow):
 
     def _on_toggle_keyframe_snap(self, enabled: bool) -> None:
         self.snap_to_keyframe = enabled
+        if hasattr(self, "timeline_widget") and self.timeline_widget.snap_to_keyframe != enabled:
+            self.timeline_widget.set_keyframe_snap(enabled)
         if not enabled or self.timeline.is_empty:
             return
 
@@ -1593,7 +1569,13 @@ class MainWindow(Adw.ApplicationWindow):
                 on_progress=on_thumb_progress,
             )
             # Prefetch keyframe timestamps in background to ensure instant zero-freeze snapping
-            ProbeService.prefetch_keyframes_async(video_path)
+            def on_prefetch_kfs_done(_kfs):
+                if hasattr(self, "timeline_widget"):
+                    self.timeline_widget.invalidate_keyframe_points_cache()
+                if self.snap_to_keyframe:
+                    self._on_timeline_seek(self.current_global_time)
+
+            ProbeService.prefetch_keyframes_async(video_path, on_done=on_prefetch_kfs_done)
 
         self.timeline_widget.rebuild_filmstrip()
         self._mark_dirty()

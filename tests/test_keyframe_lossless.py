@@ -422,3 +422,97 @@ def test_keyframe_snap_split_and_stepping_full(sample_keyframe_video):
     if test_error:
         raise test_error
 
+
+def test_timeline_scrub_snaps_and_stays_on_keyframe(sample_keyframe_video):
+    app = Adw.Application(application_id="io.github.thor27.video-cut.test.keyframe_scrub_snap")
+    test_error = None
+
+    def run_test(app):
+        nonlocal test_error
+        win = None
+        try:
+            win = MainWindow(application=app)
+            win.load_video(sample_keyframe_video, replace=True)
+
+            def wait_for(condition_fn, timeout=10.0):
+                ctx = GLib.MainContext.default()
+                t_end = time.time() + timeout
+                while not condition_fn() and time.time() < t_end:
+                    while ctx.pending():
+                        ctx.iteration(False)
+                    time.sleep(0.02)
+                assert condition_fn()
+
+            wait_for(lambda: len(win.timeline.segments) == 1)
+
+            # Enable keyframe snap
+            win._on_toggle_keyframe_snap(True)
+            assert win.snap_to_keyframe is True
+            wait_for(lambda: ProbeService.is_keyframes_cached(sample_keyframe_video))
+
+            tl = win.timeline_widget
+            pts = tl.get_timeline_keyframe_points()
+            assert len(pts) >= 5
+
+            # 1. Test snap_time_to_keyframe direct mapping
+            assert abs(tl.snap_time_to_keyframe(0.2) - 0.0) < 1e-3
+            assert abs(tl.snap_time_to_keyframe(0.4) - 0.0) < 1e-3
+            assert abs(tl.snap_time_to_keyframe(0.6) - 1.0) < 1e-3
+            assert abs(tl.snap_time_to_keyframe(1.2) - 1.0) < 1e-3
+            assert abs(tl.snap_time_to_keyframe(1.4) - 1.0) < 1e-3
+            assert abs(tl.snap_time_to_keyframe(1.6) - 2.0) < 1e-3
+            assert abs(tl.snap_time_to_keyframe(2.3) - 2.0) < 1e-3
+            assert abs(tl.snap_time_to_keyframe(2.7) - 3.0) < 1e-3
+
+            # 2. Test timeline needle movement during scrubbing
+            seg = win.timeline.segments[0]
+            card = tl._cards[seg.id]
+            w = float(card.filmstrip_box.get_width() if card.filmstrip_box.get_width() > 0 else 100)
+
+            # Start scrub at 0.2s (ratio = 0.2 / 5.0)
+            x_0_2 = (0.2 / seg.duration) * w
+            tl._on_scrub_start(card, x_0_2, 10.0)
+            assert abs(tl._current_time - 0.0) < 1e-3
+
+            # Move scrub to 0.4s: vertical bar MUST stay at 0.0s!
+            x_0_4 = (0.4 / seg.duration) * w
+            tl._on_scrub_update(card, x_0_4, 10.0)
+            assert abs(tl._current_time - 0.0) < 1e-3
+
+            # Move scrub past halfway to 0.6s: vertical bar MUST snap to 1.0s!
+            x_0_6 = (0.6 / seg.duration) * w
+            tl._on_scrub_update(card, x_0_6, 10.0)
+            assert abs(tl._current_time - 1.0) < 1e-3
+
+            # Move scrub to 1.2s: vertical bar MUST stay at 1.0s!
+            x_1_2 = (1.2 / seg.duration) * w
+            tl._on_scrub_update(card, x_1_2, 10.0)
+            assert abs(tl._current_time - 1.0) < 1e-3
+
+            # Move scrub past halfway to 1.6s: vertical bar MUST snap to 2.0s!
+            x_1_6 = (1.6 / seg.duration) * w
+            tl._on_scrub_update(card, x_1_6, 10.0)
+            assert abs(tl._current_time - 2.0) < 1e-3
+
+            # Move scrub to 2.3s: vertical bar MUST stay at 2.0s!
+            x_2_3 = (2.3 / seg.duration) * w
+            tl._on_scrub_update(card, x_2_3, 10.0)
+            assert abs(tl._current_time - 2.0) < 1e-3
+
+            # End scrub: needle stays at 2.0s
+            tl._on_scrub_end()
+            assert abs(tl._current_time - 2.0) < 1e-3
+
+        except Exception as exc:
+            test_error = exc
+        finally:
+            if win:
+                win.close()
+            app.quit()
+
+    app.connect("activate", run_test)
+    app.run(["test"])
+    if test_error:
+        raise test_error
+
+
