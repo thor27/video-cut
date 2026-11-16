@@ -150,6 +150,7 @@ class ProbeService:
         except Exception:
             return None
         return cls._store(key, duration)
+    get_duration = probe_duration
 
     @classmethod
     def has_audio(cls, file_path: Path | str) -> bool:
@@ -209,7 +210,7 @@ class ProbeService:
             cls._in_flight_kfs[real] = [on_done] if on_done else []
 
         def worker():
-            kfs = cls.get_keyframe_timestamps(path)
+            kfs = cls.probe_keyframes_streaming(path) or [0.0]
             with cls._lock:
                 callbacks = cls._in_flight_kfs.pop(real, [])
             if callbacks:
@@ -219,6 +220,101 @@ class ProbeService:
 
         thread = threading.Thread(target=worker, daemon=True)
         thread.start()
+
+    @classmethod
+    def probe_keyframes_streaming(
+        cls,
+        file_path: Path | str,
+        duration: float | None = None,
+        on_progress: Callable[[float, float], None] | None = None,
+        is_cancelled: Callable[[], bool] | None = None,
+    ) -> list[float] | None:
+        """Stream keyframe timestamps using ffprobe -skip_frame nokey with progress reporting."""
+        path = Path(file_path)
+        key = cls._key("keyframes", path)
+        if key is None:
+            return None
+
+        hit, value = cls._lookup(key)
+        if hit:
+            if on_progress and duration and duration > 0:
+                on_progress(1.0, duration)
+            return value
+
+        if duration is None or duration <= 0:
+            duration = cls.probe_duration(path) or 0.0
+
+        cmd = [
+            "ffprobe",
+            "-v", "error",
+            "-select_streams", "v:0",
+            "-skip_frame", "nokey",
+            "-show_entries", "frame=pts_time",
+            "-of", "csv=p=0",
+            str(path),
+        ]
+
+        try:
+            proc = subprocess.Popen(
+                cmd,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+                bufsize=1,
+            )
+        except Exception:
+            return None
+
+        keyframes: list[float] = []
+        last_reported_pts = -1.0
+
+        try:
+            assert proc.stdout is not None
+            for line in proc.stdout:
+                if is_cancelled and is_cancelled():
+                    proc.terminate()
+                    try:
+                        proc.wait(timeout=1.0)
+                    except subprocess.TimeoutExpired:
+                        proc.kill()
+                    return None
+
+                line = line.strip().rstrip(",")
+                if not line:
+                    continue
+                try:
+                    val = float(line)
+                    if not keyframes or val > keyframes[-1] + 1e-4:
+                        keyframes.append(val)
+                    if on_progress and duration > 0:
+                        if val - last_reported_pts >= 0.2 or val >= duration - 0.1:
+                            last_reported_pts = val
+                            frac = min(0.99, max(0.0, val / duration))
+                            on_progress(frac, val)
+                except ValueError:
+                    continue
+
+            proc.wait()
+        except Exception:
+            if proc.poll() is None:
+                proc.kill()
+            return None
+
+        if is_cancelled and is_cancelled():
+            return None
+
+        if proc.returncode != 0 and not keyframes:
+            return None
+
+        if not keyframes:
+            keyframes = [0.0]
+        elif keyframes[0] > 0.05:
+            keyframes.insert(0, 0.0)
+
+        if on_progress and duration > 0:
+            on_progress(1.0, duration)
+
+        return cls._store(key, keyframes)
 
     @classmethod
     def get_keyframe_timestamps(cls, file_path: Path | str) -> list[float]:
@@ -231,89 +327,10 @@ class ProbeService:
         if hit:
             return value
 
-        keyframes: list[float] = []
-
-        # 1. Ultra-fast packet probing (parses container index without decoding video)
-        try:
-            cmd_pkt = [
-                "ffprobe",
-                "-v", "error",
-                "-select_streams", "v:0",
-                "-show_entries", "packet=pts_time,dts_time,flags",
-                "-of", "csv=p=0",
-                str(path),
-            ]
-            res_pkt = subprocess.run(
-                cmd_pkt,
-                capture_output=True,
-                text=True,
-                check=False,
-                timeout=PROBE_TIMEOUT,
-            )
-            for line in res_pkt.stdout.splitlines():
-                line = line.strip()
-                if not line:
-                    continue
-                parts = line.split(",")
-                if len(parts) >= 2 and any("K" in p for p in parts[1:]):
-                    for p in parts[:2]:
-                        p = p.strip()
-                        if p and p != "N/A" and "K" not in p:
-                            try:
-                                val = float(p)
-                                if not keyframes or val > keyframes[-1] + 1e-4:
-                                    keyframes.append(val)
-                                break
-                            except (ValueError, TypeError):
-                                continue
-        except Exception:
-            pass
-
-        # 2. Frame-level probing if packet probing returned <= 1 keyframe (fallback)
-        if len(keyframes) <= 1:
-            try:
-                cmd_frm = [
-                    "ffprobe",
-                    "-v", "error",
-                    "-select_streams", "v:0",
-                    "-skip_frame", "nokey",
-                    "-show_entries", "frame=pts_time,best_effort_timestamp_time,pkt_pts_time",
-                    "-of", "csv=p=0",
-                    str(path),
-                ]
-                res_frm = subprocess.run(
-                    cmd_frm,
-                    capture_output=True,
-                    text=True,
-                    check=False,
-                    timeout=PROBE_TIMEOUT,
-                )
-                frm_kfs: list[float] = []
-                for line in res_frm.stdout.splitlines():
-                    line = line.strip()
-                    if not line:
-                        continue
-                    for part in line.split(","):
-                        part = part.strip()
-                        if part and part != "N/A":
-                            try:
-                                val = float(part)
-                                if not frm_kfs or val > frm_kfs[-1] + 1e-4:
-                                    frm_kfs.append(val)
-                                break
-                            except (ValueError, TypeError):
-                                continue
-                if len(frm_kfs) > len(keyframes):
-                    keyframes = frm_kfs
-            except Exception:
-                pass
-
-        if not keyframes:
-            keyframes = [0.0]
-        elif keyframes[0] > 0.05:
-            keyframes.insert(0, 0.0)
-
-        return cls._store(key, keyframes)
+        kfs = cls.probe_keyframes_streaming(path)
+        if kfs:
+            return kfs
+        return [0.0]
 
     @staticmethod
     def find_nearest_keyframe(keyframes: list[float], target_time: float) -> float:

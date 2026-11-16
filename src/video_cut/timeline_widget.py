@@ -806,10 +806,6 @@ class TimelineWidget(Gtk.Box):
         for seg in self.timeline.segments:
             if not ProbeService.is_keyframes_cached(seg.source_path):
                 all_cached = False
-                ProbeService.prefetch_keyframes_async(
-                    seg.source_path,
-                    on_done=lambda _kfs: self._on_keyframes_indexed(),
-                )
                 accum += seg.duration
                 continue
 

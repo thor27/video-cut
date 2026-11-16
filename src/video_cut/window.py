@@ -1,5 +1,6 @@
 import bisect
 import subprocess
+import threading
 from collections.abc import Callable
 from dataclasses import replace
 from pathlib import Path
@@ -571,6 +572,94 @@ class MainWindow(Adw.ApplicationWindow):
 
         self._on_timeline_seek(target)
 
+    def _ensure_keyframes_indexed(
+        self,
+        on_ready: Callable[[], None],
+        on_cancel: Callable[[], None] | None = None,
+    ) -> None:
+        """Ensure all timeline segments have their keyframes indexed, showing ProgressModal if needed."""
+        if self.timeline.is_empty:
+            on_ready()
+            return
+
+        uncached_paths: list[Path] = []
+        seen: set[str] = set()
+        for seg in self.timeline.segments:
+            try:
+                p_str = str(seg.source_path.resolve())
+            except OSError:
+                p_str = str(seg.source_path)
+            if p_str not in seen and not ProbeService.is_keyframes_cached(seg.source_path):
+                seen.add(p_str)
+                uncached_paths.append(seg.source_path)
+
+        if not uncached_paths:
+            on_ready()
+            return
+
+        cancelled = False
+
+        def do_cancel():
+            nonlocal cancelled
+            cancelled = True
+
+        modal = ProgressModal(
+            parent=self,
+            title=_("Indexing Keyframes"),
+            initial_status=_("Indexing keyframes..."),
+            initial_details=_("Scanning media for keyframes..."),
+            on_cancel=do_cancel,
+        )
+        modal.present()
+
+        def worker():
+            total_files = len(uncached_paths)
+            for idx, file_path in enumerate(uncached_paths):
+                if cancelled:
+                    break
+                dur = ProbeService.get_duration(file_path) or 1.0
+                fname = file_path.name
+
+                def on_progress(frac: float, cur_s: float):
+                    if cancelled:
+                        return
+                    overall_frac = (idx + frac) / total_files
+                    percent = int(overall_frac * 100)
+                    GLib.idle_add(
+                        modal.update_progress,
+                        overall_frac,
+                        _("Indexing keyframes ({percent}%)...").format(percent=percent),
+                        _("{name} ({cur} / {total})").format(
+                            name=fname,
+                            cur=format_time(cur_s),
+                            total=format_time(dur),
+                        ),
+                    )
+
+                res = ProbeService.probe_keyframes_streaming(
+                    file_path=file_path,
+                    duration=dur,
+                    on_progress=on_progress,
+                    is_cancelled=lambda: cancelled,
+                )
+                if res is None or cancelled:
+                    break
+
+            def on_finish_modal():
+                modal.finish()
+                if cancelled:
+                    if on_cancel:
+                        on_cancel()
+                else:
+                    if hasattr(self, "timeline_widget"):
+                        self.timeline_widget.invalidate_keyframe_points_cache()
+                    on_ready()
+                return False
+
+            GLib.idle_add(on_finish_modal)
+
+        threading.Thread(target=worker, daemon=True).start()
+
     def _on_toggle_keyframe_snap(self, enabled: bool) -> None:
         self.snap_to_keyframe = enabled
         if hasattr(self, "timeline_widget") and self.timeline_widget.snap_to_keyframe != enabled:
@@ -578,28 +667,16 @@ class MainWindow(Adw.ApplicationWindow):
         if not enabled or self.timeline.is_empty:
             return
 
-        # Check if any segment's keyframes need background indexing
-        uncached = [
-            seg.source_path
-            for seg in self.timeline.segments
-            if not ProbeService.is_keyframes_cached(seg.source_path)
-        ]
-        if uncached:
-            self._show_toast(_("Indexing keyframes in background..."))
+        def on_ready():
+            self._apply_keyframe_snap_on_timeline()
 
-            def on_bg_done(_kfs=None):
-                if all(ProbeService.is_keyframes_cached(p) for p in uncached):
-                    if hasattr(self, "timeline_widget"):
-                        self.timeline_widget.invalidate_keyframe_points_cache()
-                    self._apply_keyframe_snap_on_timeline()
+        def on_cancel():
+            self.snap_to_keyframe = False
+            if hasattr(self, "timeline_widget"):
+                self.timeline_widget.set_keyframe_snap(False)
+            self._show_toast(_("Keyframe indexing cancelled"))
 
-            for p in uncached:
-                ProbeService.prefetch_keyframes_async(p, on_done=on_bg_done)
-            return
-
-        if hasattr(self, "timeline_widget"):
-            self.timeline_widget.invalidate_keyframe_points_cache()
-        self._apply_keyframe_snap_on_timeline()
+        self._ensure_keyframes_indexed(on_ready=on_ready, on_cancel=on_cancel)
 
     def _apply_keyframe_snap_on_timeline(self) -> None:
         if self.timeline.is_empty:
@@ -1571,14 +1648,8 @@ class MainWindow(Adw.ApplicationWindow):
                 on_first_thumb=on_first_thumb,
                 on_progress=on_thumb_progress,
             )
-            # Prefetch keyframe timestamps in background to ensure instant zero-freeze snapping
-            def on_prefetch_kfs_done(_kfs):
-                if hasattr(self, "timeline_widget"):
-                    self.timeline_widget.invalidate_keyframe_points_cache()
-                if self.snap_to_keyframe:
-                    self._on_timeline_seek(self.current_global_time)
-
-            ProbeService.prefetch_keyframes_async(video_path, on_done=on_prefetch_kfs_done)
+            if self.snap_to_keyframe:
+                self._on_toggle_keyframe_snap(True)
 
         self.timeline_widget.rebuild_filmstrip()
         self._mark_dirty()
@@ -1914,6 +1985,21 @@ class MainWindow(Adw.ApplicationWindow):
         self.player.pause()
 
         is_lossless = bool(settings and settings.lossless)
+        if is_lossless:
+            def on_kfs_ready():
+                self._run_export_task(destination, settings, is_lossless=True)
+
+            self._ensure_keyframes_indexed(on_ready=on_kfs_ready)
+            return
+
+        self._run_export_task(destination, settings, is_lossless=False)
+
+    def _run_export_task(
+        self,
+        destination: Path,
+        settings: ExportSettings | None,
+        is_lossless: bool,
+    ) -> None:
         title = _("Exporting Video (Lossless)") if is_lossless else _("Exporting Video")
         initial_status = _("Stream copying video (lossless)...") if is_lossless else _("Rendering video...")
 

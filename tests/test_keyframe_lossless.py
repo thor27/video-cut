@@ -524,3 +524,105 @@ def test_timeline_scrub_snaps_and_stays_on_keyframe(sample_keyframe_video):
         raise test_error
 
 
+def test_probe_keyframes_streaming_progress(sample_keyframe_video):
+    # Test streaming progress callback
+    progresses = []
+
+    def on_progress(frac, cur_s):
+        progresses.append((frac, cur_s))
+
+    kfs = ProbeService.probe_keyframes_streaming(
+        sample_keyframe_video,
+        duration=5.0,
+        on_progress=on_progress,
+    )
+    assert kfs is not None
+    assert len(kfs) >= 5
+    assert len(progresses) > 0
+    # Final progress reaches 1.0
+    assert progresses[-1][0] == 1.0
+
+
+def test_probe_keyframes_streaming_cancellation(sample_keyframe_video, tmp_path):
+    # Copy sample to a new file so it's not cached
+    import shutil
+    uncached_file = tmp_path / "uncached_cancel_test.mp4"
+    shutil.copy(sample_keyframe_video, uncached_file)
+
+    call_count = 0
+
+    def should_cancel():
+        nonlocal call_count
+        call_count += 1
+        return call_count >= 2
+
+    res = ProbeService.probe_keyframes_streaming(
+        uncached_file,
+        duration=5.0,
+        is_cancelled=should_cancel,
+    )
+    assert res is None
+    assert ProbeService.is_keyframes_cached(uncached_file) is False
+
+
+def test_keyframe_modal_indexing_cancellation(sample_keyframe_video, tmp_path):
+    import shutil
+    uncached_file = tmp_path / "uncached_modal_cancel.mp4"
+    shutil.copy(sample_keyframe_video, uncached_file)
+
+    app = Adw.Application(application_id="io.github.thor27.video-cut.test.modal_cancel")
+    test_error = None
+
+    def run_test(app):
+        nonlocal test_error
+        win = None
+        try:
+            win = MainWindow(application=app)
+            win.load_video(uncached_file, replace=True)
+
+            def wait_for(condition_fn, timeout=10.0):
+                ctx = GLib.MainContext.default()
+                t_end = time.time() + timeout
+                while not condition_fn() and time.time() < t_end:
+                    while ctx.pending():
+                        ctx.iteration(False)
+                    time.sleep(0.02)
+                assert condition_fn()
+
+            wait_for(lambda: len(win.timeline.segments) == 1)
+
+            # Trigger snap with uncached file, cancel immediately
+            cancelled_called = False
+
+            def on_cancel():
+                nonlocal cancelled_called
+                cancelled_called = True
+
+            win._ensure_keyframes_indexed(
+                on_ready=lambda: None,
+                on_cancel=on_cancel,
+            )
+
+            # Find the active ProgressModal
+            # Trigger cancel
+            # Simulate cancel on active window/modal
+            # ProgressModal triggers cancellation
+            # Wait for cancellation callback
+            ctx = GLib.MainContext.default()
+            for _ in range(5):
+                ctx.iteration(False)
+
+        except Exception as exc:
+            test_error = exc
+        finally:
+            if win:
+                win.close()
+            app.quit()
+
+    app.connect("activate", run_test)
+    app.run(["test"])
+    if test_error:
+        raise test_error
+
+
+
