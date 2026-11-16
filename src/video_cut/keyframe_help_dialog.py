@@ -17,7 +17,7 @@ class KeyframeHelpDialog(Adw.Window):
     def __init__(self, parent: Gtk.Window) -> None:
         super().__init__(transient_for=parent, modal=True)
         self.set_title(_("Keyframes & Lossless Cutting"))
-        self.set_default_size(860, 640)
+        self.set_default_size(860, 740)
         self._build_ui()
 
     def _build_ui(self) -> None:
