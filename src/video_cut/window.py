@@ -620,19 +620,25 @@ class MainWindow(Adw.ApplicationWindow):
                 dur = ProbeService.get_duration(file_path) or 1.0
                 fname = file_path.name
 
-                def on_progress(frac: float, cur_s: float):
+                def on_progress(
+                    frac: float,
+                    cur_s: float,
+                    file_idx: int = idx,
+                    file_name: str = fname,
+                    file_dur: float = dur,
+                ):
                     if cancelled:
                         return
-                    overall_frac = (idx + frac) / total_files
+                    overall_frac = (file_idx + frac) / total_files
                     percent = int(overall_frac * 100)
                     GLib.idle_add(
                         modal.update_progress,
                         overall_frac,
                         _("Indexing keyframes ({percent}%)...").format(percent=percent),
                         _("{name} ({cur} / {total})").format(
-                            name=fname,
+                            name=file_name,
                             cur=format_time(cur_s),
-                            total=format_time(dur),
+                            total=format_time(file_dur),
                         ),
                     )
 
@@ -706,7 +712,7 @@ class MainWindow(Adw.ApplicationWindow):
 
         if needs_snapping:
             self.timeline.save_state(self.current_global_time)
-            for seg, (ns, ne) in zip(self.timeline.segments, new_ranges):
+            for seg, (ns, ne) in zip(self.timeline.segments, new_ranges, strict=True):
                 seg.start_time = ns
                 seg.end_time = ne
             self._mark_dirty()

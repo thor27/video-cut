@@ -1,17 +1,17 @@
 """Comprehensive tests for lossless export, keyframe probing, snapping, and help dialog."""
 
+import time
 from dataclasses import replace
 from pathlib import Path
-import time
 
 import gi
 import pytest
 
 gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
-from gi.repository import Adw, GLib, Gtk
-
 import subprocess
+
+from gi.repository import Adw, GLib, Gtk
 
 from video_cut.advanced_export_dialog import AdvancedExportDialog
 from video_cut.keyframe_help_dialog import KeyframeHelpDialog
