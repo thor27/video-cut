@@ -29,7 +29,7 @@ class AdvancedExportDialog(Adw.Window):
     ) -> None:
         super().__init__(transient_for=parent, modal=True)
         self.set_title(_("Export Options"))
-        self.set_default_size(480, 600)
+        self.set_default_size(540, 700)
         self.on_export = on_export
 
         self.source_width = source_width
@@ -62,7 +62,7 @@ class AdvancedExportDialog(Adw.Window):
         scrolled.set_propagate_natural_width(True)
         toolbar_view.set_content(scrolled)
 
-        clamp = Adw.Clamp(maximum_size=460)
+        clamp = Adw.Clamp(maximum_size=520)
         scrolled.set_child(clamp)
 
         box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10)
@@ -73,41 +73,38 @@ class AdvancedExportDialog(Adw.Window):
         clamp.set_child(box)
 
         box.append(self._create_lossless_group())
-        box.append(self.card_lossless_info)
         self.grp_video = self._create_video_group()
         box.append(self.grp_video)
         self.grp_audio = self._create_audio_group()
         box.append(self.grp_audio)
 
     def _create_lossless_group(self) -> Adw.PreferencesGroup:
-        """Build the Lossless stream-copy preference group and info card."""
+        """Build the Lossless stream-copy preference group with question mark help button."""
         grp = Adw.PreferencesGroup(title=_("Export Mode"))
         self.row_lossless = Adw.SwitchRow(title=_("Lossless (Stream Copy)"))
         self.row_lossless.set_subtitle(_("Direct stream copying without re-encoding (instant export)"))
         self.row_lossless.set_active(False)
         self.row_lossless.connect("notify::active", self._on_lossless_toggled)
+
+        self.btn_lossless_help = Gtk.Button.new_from_icon_name("dialog-question-symbolic")
+        self.btn_lossless_help.add_css_class("flat")
+        self.btn_lossless_help.add_css_class("circular")
+        self.btn_lossless_help.set_valign(Gtk.Align.CENTER)
+        self.btn_lossless_help.set_tooltip_text(_("Lossless cutting & keyframe explanation"))
+        self.btn_lossless_help.connect("clicked", lambda _: self._show_lossless_help())
+        self.row_lossless.add_suffix(self.btn_lossless_help)
+
         grp.add(self.row_lossless)
-
-        self.card_lossless_info = Adw.PreferencesGroup()
-        self.card_lossless_info.set_visible(False)
-
-        row_pros = Adw.ActionRow()
-        row_pros.set_title(_("Pros: Instant & Zero Loss"))
-        row_pros.set_subtitle(_("Exports take seconds with 100% original quality preserved and minimal resource usage."))
-        row_pros.add_prefix(Gtk.Image.new_from_icon_name("media-flash-symbolic"))
-        self.card_lossless_info.add(row_pros)
-
-        row_cons = Adw.ActionRow()
-        row_cons.set_title(_("Cons: Keyframe Alignment & Ignored Filters"))
-        row_cons.set_subtitle(_("Cuts will be moved to the nearest keyframe. Any overlay, crop & rotate changes will be ignored."))
-        row_cons.add_prefix(Gtk.Image.new_from_icon_name("dialog-warning-symbolic"))
-        self.card_lossless_info.add(row_cons)
-
         return grp
+
+    def _show_lossless_help(self) -> None:
+        from .keyframe_help_dialog import KeyframeHelpDialog
+
+        dialog = KeyframeHelpDialog(parent=self)
+        dialog.present()
 
     def _on_lossless_toggled(self, row: Adw.SwitchRow, _param) -> None:
         is_lossless = row.get_active()
-        self.card_lossless_info.set_visible(is_lossless)
         self.grp_video.set_sensitive(not is_lossless)
         self.grp_audio.set_sensitive(not is_lossless)
 

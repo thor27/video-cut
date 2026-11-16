@@ -227,13 +227,13 @@ def test_advanced_export_dialog_lossless_toggle():
 
     # Initial state: lossless is off
     assert dialog.row_lossless.get_active() is False
-    assert dialog.card_lossless_info.get_visible() is False
+    assert hasattr(dialog, "btn_lossless_help")
+    assert dialog.btn_lossless_help.get_icon_name() == "dialog-question-symbolic"
     assert dialog.grp_video.get_sensitive() is True
     assert dialog.grp_audio.get_sensitive() is True
 
     # Toggle lossless on
     dialog.row_lossless.set_active(True)
-    assert dialog.card_lossless_info.get_visible() is True
     assert dialog.grp_video.get_sensitive() is False
     assert dialog.grp_audio.get_sensitive() is False
 
@@ -249,7 +249,7 @@ def test_advanced_export_dialog_lossless_toggle():
         initial_lossless=True,
     )
     assert dialog2.row_lossless.get_active() is True
-    assert dialog2.card_lossless_info.get_visible() is True
+    assert dialog2.grp_video.get_sensitive() is False
 
 
 def test_keyframe_help_dialog():
@@ -280,6 +280,14 @@ def test_main_window_keyframe_snap_and_undo(sample_keyframe_video):
                 assert condition_fn()
 
             wait_for(lambda: len(win.timeline.segments) == 1)
+
+            # Verify keyframe snap and help button are in a linked group with question mark icon
+            tl = win.timeline_widget
+            assert tl.btn_keyframe_help.get_icon_name() == "dialog-question-symbolic"
+            parent_box = tl.btn_keyframe_snap.get_parent()
+            assert parent_box is not None
+            assert parent_box is tl.btn_keyframe_help.get_parent()
+            assert parent_box.has_css_class("linked")
 
             # Move cursor to 1.1s (between keyframes) and split
             win.current_global_time = 1.1

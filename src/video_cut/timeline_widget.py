@@ -349,23 +349,25 @@ class TimelineWidget(Gtk.Box):
         self.thumb_spinner = Gtk.Spinner()
         self.lbl_thumb_progress = Gtk.Label(label=_("Generating thumbnails..."))
 
+        # Keyframe stick toggle & help group (linked buttons like clipboard/undo groups)
+        keyframe_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
+        keyframe_box.add_css_class("linked")
+
         self.btn_keyframe_snap = Gtk.ToggleButton()
         self.btn_keyframe_snap.set_icon_name("keyframe-snap-symbolic")
         self.btn_keyframe_snap.set_tooltip_text(_("Stick cuts & cursor to Keyframes (Lossless Mode)"))
         self.btn_keyframe_snap.set_focusable(False)
-        self.btn_keyframe_snap.add_css_class("flat")
-        self.btn_keyframe_snap.add_css_class("circular")
         self.btn_keyframe_snap.connect("toggled", self._on_keyframe_snap_toggled)
-        end_box.append(self.btn_keyframe_snap)
+        keyframe_box.append(self.btn_keyframe_snap)
 
-        self.btn_keyframe_help = Gtk.Button.new_from_icon_name("help-about-symbolic")
+        self.btn_keyframe_help = Gtk.Button.new_from_icon_name("dialog-question-symbolic")
         self.btn_keyframe_help.set_tooltip_text(_("What are Keyframes? (Lossless Guide)"))
         self.btn_keyframe_help.set_focusable(False)
-        self.btn_keyframe_help.add_css_class("flat")
-        self.btn_keyframe_help.add_css_class("circular")
         if self.on_keyframe_help:
             self.btn_keyframe_help.connect("clicked", lambda _: self.on_keyframe_help())
-        end_box.append(self.btn_keyframe_help)
+        keyframe_box.append(self.btn_keyframe_help)
+
+        end_box.append(keyframe_box)
 
         self.lbl_time_display = Gtk.Label(label="00:00.00 / 00:00.00")
         self.lbl_time_display.add_css_class("time-badge")
@@ -800,7 +802,17 @@ class TimelineWidget(Gtk.Box):
             return points
 
         accum = 0.0
+        all_cached = True
         for seg in self.timeline.segments:
+            if not ProbeService.is_keyframes_cached(seg.source_path):
+                all_cached = False
+                ProbeService.prefetch_keyframes_async(
+                    seg.source_path,
+                    on_done=lambda _kfs: self._on_keyframes_indexed(),
+                )
+                accum += seg.duration
+                continue
+
             kfs = ProbeService.get_keyframe_timestamps(seg.source_path)
             for k in kfs:
                 if seg.start_time - 1e-4 <= k <= seg.end_time + 1e-4:
@@ -813,8 +825,15 @@ class TimelineWidget(Gtk.Box):
         if not points or total > points[-1] + 1e-3:
             points.append(total)
 
-        self._cached_keyframe_points = sorted(points)
-        return self._cached_keyframe_points
+        res = sorted(points)
+        if all_cached:
+            self._cached_keyframe_points = res
+        return res
+
+    def _on_keyframes_indexed(self) -> None:
+        self.invalidate_keyframe_points_cache()
+        if self.snap_to_keyframe and not self.timeline.is_empty:
+            self.update_playhead(self._current_time)
 
     def snap_time_to_keyframe(self, global_time: float) -> float:
         """Find the keyframe timestamp on the global timeline closest to global_time."""

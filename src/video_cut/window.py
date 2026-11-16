@@ -587,15 +587,18 @@ class MainWindow(Adw.ApplicationWindow):
         if uncached:
             self._show_toast(_("Indexing keyframes in background..."))
 
-            def bg_indexer():
-                for p in uncached:
-                    ProbeService.get_keyframe_timestamps(p)
-                GLib.idle_add(self._apply_keyframe_snap_on_timeline)
+            def on_bg_done(_kfs=None):
+                if all(ProbeService.is_keyframes_cached(p) for p in uncached):
+                    if hasattr(self, "timeline_widget"):
+                        self.timeline_widget.invalidate_keyframe_points_cache()
+                    self._apply_keyframe_snap_on_timeline()
 
-            import threading
-            threading.Thread(target=bg_indexer, daemon=True).start()
+            for p in uncached:
+                ProbeService.prefetch_keyframes_async(p, on_done=on_bg_done)
             return
 
+        if hasattr(self, "timeline_widget"):
+            self.timeline_widget.invalidate_keyframe_points_cache()
         self._apply_keyframe_snap_on_timeline()
 
     def _apply_keyframe_snap_on_timeline(self) -> None:

@@ -65,12 +65,14 @@ class ProbeService:
     """
 
     _cache: dict[_CacheKey, Any] = {}
+    _in_flight_kfs: dict[str, list[Callable[[list[float]], None]]] = {}
     _lock = threading.Lock()
 
     @classmethod
     def clear_cache(cls) -> None:
         with cls._lock:
             cls._cache.clear()
+            cls._in_flight_kfs.clear()
 
     @staticmethod
     def _key(kind: str, path: Path) -> _CacheKey | None:
@@ -185,12 +187,35 @@ class ProbeService:
         file_path: Path | str,
         on_done: Callable[[list[float]], None] | None = None,
     ) -> None:
-        """Prefetch and cache keyframe timestamps in a background thread."""
-        def worker():
-            kfs = cls.get_keyframe_timestamps(file_path)
+        """Prefetch and cache keyframe timestamps in a background thread with deduplication."""
+        path = Path(file_path)
+        try:
+            real = str(path.resolve())
+        except OSError:
+            real = str(path)
+
+        if cls.is_keyframes_cached(path):
             if on_done:
                 from gi.repository import GLib
+                kfs = cls.get_keyframe_timestamps(path)
                 GLib.idle_add(on_done, kfs)
+            return
+
+        with cls._lock:
+            if real in cls._in_flight_kfs:
+                if on_done:
+                    cls._in_flight_kfs[real].append(on_done)
+                return
+            cls._in_flight_kfs[real] = [on_done] if on_done else []
+
+        def worker():
+            kfs = cls.get_keyframe_timestamps(path)
+            with cls._lock:
+                callbacks = cls._in_flight_kfs.pop(real, [])
+            if callbacks:
+                from gi.repository import GLib
+                for cb in callbacks:
+                    GLib.idle_add(cb, kfs)
 
         thread = threading.Thread(target=worker, daemon=True)
         thread.start()
@@ -208,78 +233,78 @@ class ProbeService:
 
         keyframes: list[float] = []
 
-        # 1. Fast frame-level probing using CSV format (no giant JSON overhead)
+        # 1. Ultra-fast packet probing (parses container index without decoding video)
         try:
-            cmd = [
+            cmd_pkt = [
                 "ffprobe",
                 "-v", "error",
                 "-select_streams", "v:0",
-                "-skip_frame", "nokey",
-                "-show_entries", "frame=pts_time,best_effort_timestamp_time,pkt_pts_time",
+                "-show_entries", "packet=pts_time,dts_time,flags",
                 "-of", "csv=p=0",
                 str(path),
             ]
-            res = subprocess.run(
-                cmd,
+            res_pkt = subprocess.run(
+                cmd_pkt,
                 capture_output=True,
                 text=True,
                 check=False,
                 timeout=PROBE_TIMEOUT,
             )
-            for line in res.stdout.splitlines():
+            for line in res_pkt.stdout.splitlines():
                 line = line.strip()
                 if not line:
                     continue
-                for part in line.split(","):
-                    part = part.strip()
-                    if part and part != "N/A":
-                        try:
-                            val = float(part)
-                            if not keyframes or val > keyframes[-1] + 1e-4:
-                                keyframes.append(val)
-                            break
-                        except (ValueError, TypeError):
-                            continue
+                parts = line.split(",")
+                if len(parts) >= 2 and any("K" in p for p in parts[1:]):
+                    for p in parts[:2]:
+                        p = p.strip()
+                        if p and p != "N/A" and "K" not in p:
+                            try:
+                                val = float(p)
+                                if not keyframes or val > keyframes[-1] + 1e-4:
+                                    keyframes.append(val)
+                                break
+                            except (ValueError, TypeError):
+                                continue
         except Exception:
             pass
 
-        # 2. Fallback: If frame probing returned 1 or fewer keyframes, probe packets (stss/index in MP4/MKV)
+        # 2. Frame-level probing if packet probing returned <= 1 keyframe (fallback)
         if len(keyframes) <= 1:
             try:
-                cmd_pkt = [
+                cmd_frm = [
                     "ffprobe",
                     "-v", "error",
                     "-select_streams", "v:0",
-                    "-show_entries", "packet=pts_time,dts_time,flags",
+                    "-skip_frame", "nokey",
+                    "-show_entries", "frame=pts_time,best_effort_timestamp_time,pkt_pts_time",
                     "-of", "csv=p=0",
                     str(path),
                 ]
-                res_pkt = subprocess.run(
-                    cmd_pkt,
+                res_frm = subprocess.run(
+                    cmd_frm,
                     capture_output=True,
                     text=True,
                     check=False,
                     timeout=PROBE_TIMEOUT,
                 )
-                pkt_kfs: list[float] = []
-                for line in res_pkt.stdout.splitlines():
+                frm_kfs: list[float] = []
+                for line in res_frm.stdout.splitlines():
                     line = line.strip()
                     if not line:
                         continue
-                    parts = line.split(",")
-                    if len(parts) >= 2 and any("K" in p for p in parts[1:]):
-                        for p in parts[:2]:
-                            p = p.strip()
-                            if p and p != "N/A" and "K" not in p:
-                                try:
-                                    val = float(p)
-                                    if not pkt_kfs or val > pkt_kfs[-1] + 1e-4:
-                                        pkt_kfs.append(val)
-                                    break
-                                except (ValueError, TypeError):
-                                    continue
-                if len(pkt_kfs) > len(keyframes):
-                    keyframes = pkt_kfs
+                    for part in line.split(","):
+                        part = part.strip()
+                        if part and part != "N/A":
+                            try:
+                                val = float(part)
+                                if not frm_kfs or val > frm_kfs[-1] + 1e-4:
+                                    frm_kfs.append(val)
+                                break
+                            except (ValueError, TypeError):
+                                continue
+                if len(frm_kfs) > len(keyframes):
+                    keyframes = frm_kfs
             except Exception:
                 pass
 
