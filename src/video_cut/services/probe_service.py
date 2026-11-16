@@ -4,6 +4,7 @@ import bisect
 import json
 import subprocess
 import threading
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -169,6 +170,32 @@ class ProbeService:
         return cls._store(key, has_stream)
 
     @classmethod
+    def is_keyframes_cached(cls, file_path: Path | str) -> bool:
+        """Check if keyframe timestamps for file_path are already probed and cached."""
+        path = Path(file_path)
+        key = cls._key("keyframes", path)
+        if key is None:
+            return False
+        hit, _ = cls._lookup(key)
+        return hit
+
+    @classmethod
+    def prefetch_keyframes_async(
+        cls,
+        file_path: Path | str,
+        on_done: Callable[[list[float]], None] | None = None,
+    ) -> None:
+        """Prefetch and cache keyframe timestamps in a background thread."""
+        def worker():
+            kfs = cls.get_keyframe_timestamps(file_path)
+            if on_done:
+                from gi.repository import GLib
+                GLib.idle_add(on_done, kfs)
+
+        thread = threading.Thread(target=worker, daemon=True)
+        thread.start()
+
+    @classmethod
     def get_keyframe_timestamps(cls, file_path: Path | str) -> list[float]:
         """Inspect media file and return sorted list of keyframe (I-frame) timestamps in seconds."""
         path = Path(file_path)
@@ -179,35 +206,87 @@ class ProbeService:
         if hit:
             return value
 
+        keyframes: list[float] = []
+
+        # 1. Fast frame-level probing using CSV format (no giant JSON overhead)
         try:
-            data = cls._run_ffprobe(
-                [
-                    "-select_streams",
-                    "v:0",
-                    "-skip_frame",
-                    "nokey",
-                    "-show_entries",
-                    "frame=pts_time,pkt_pts_time",
+            cmd = [
+                "ffprobe",
+                "-v", "error",
+                "-select_streams", "v:0",
+                "-skip_frame", "nokey",
+                "-show_entries", "frame=pts_time,best_effort_timestamp_time,pkt_pts_time",
+                "-of", "csv=p=0",
+                str(path),
+            ]
+            res = subprocess.run(
+                cmd,
+                capture_output=True,
+                text=True,
+                check=False,
+                timeout=PROBE_TIMEOUT,
+            )
+            for line in res.stdout.splitlines():
+                line = line.strip()
+                if not line:
+                    continue
+                for part in line.split(","):
+                    part = part.strip()
+                    if part and part != "N/A":
+                        try:
+                            val = float(part)
+                            if not keyframes or val > keyframes[-1] + 1e-4:
+                                keyframes.append(val)
+                            break
+                        except (ValueError, TypeError):
+                            continue
+        except Exception:
+            pass
+
+        # 2. Fallback: If frame probing returned 1 or fewer keyframes, probe packets (stss/index in MP4/MKV)
+        if len(keyframes) <= 1:
+            try:
+                cmd_pkt = [
+                    "ffprobe",
+                    "-v", "error",
+                    "-select_streams", "v:0",
+                    "-show_entries", "packet=pts_time,dts_time,flags",
+                    "-of", "csv=p=0",
                     str(path),
                 ]
-            )
-            keyframes: list[float] = []
-            for frame in data.get("frames", []):
-                ts = frame.get("pts_time") if frame.get("pts_time") is not None else frame.get("pkt_pts_time")
-                if ts is not None:
-                    try:
-                        val = float(ts)
-                        if not keyframes or val > keyframes[-1] + 1e-4:
-                            keyframes.append(val)
-                    except (ValueError, TypeError):
+                res_pkt = subprocess.run(
+                    cmd_pkt,
+                    capture_output=True,
+                    text=True,
+                    check=False,
+                    timeout=PROBE_TIMEOUT,
+                )
+                pkt_kfs: list[float] = []
+                for line in res_pkt.stdout.splitlines():
+                    line = line.strip()
+                    if not line:
                         continue
-            if not keyframes:
-                keyframes = [0.0]
-            elif keyframes[0] > 0.05:
-                # Always ensure start of video is reachable
-                keyframes.insert(0, 0.0)
-        except Exception:
+                    parts = line.split(",")
+                    if len(parts) >= 2 and any("K" in p for p in parts[1:]):
+                        for p in parts[:2]:
+                            p = p.strip()
+                            if p and p != "N/A" and "K" not in p:
+                                try:
+                                    val = float(p)
+                                    if not pkt_kfs or val > pkt_kfs[-1] + 1e-4:
+                                        pkt_kfs.append(val)
+                                    break
+                                except (ValueError, TypeError):
+                                    continue
+                if len(pkt_kfs) > len(keyframes):
+                    keyframes = pkt_kfs
+            except Exception:
+                pass
+
+        if not keyframes:
             keyframes = [0.0]
+        elif keyframes[0] > 0.05:
+            keyframes.insert(0, 0.0)
 
         return cls._store(key, keyframes)
 

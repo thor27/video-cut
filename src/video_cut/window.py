@@ -1,3 +1,4 @@
+import bisect
 import subprocess
 from collections.abc import Callable
 from dataclasses import replace
@@ -516,18 +517,45 @@ class MainWindow(Adw.ApplicationWindow):
         self.current_global_time = global_time
         self.timeline_widget.update_playhead(global_time)
 
+    def _get_timeline_keyframe_points(self) -> list[float]:
+        """Compute sorted global timeline timestamps for all keyframes across segments."""
+        points: list[float] = [0.0]
+        if self.timeline.is_empty:
+            return points
+
+        accum = 0.0
+        for seg in self.timeline.segments:
+            kfs = ProbeService.get_keyframe_timestamps(seg.source_path)
+            for k in kfs:
+                if seg.start_time - 1e-4 <= k <= seg.end_time + 1e-4:
+                    gt = accum + (k - seg.start_time)
+                    if not points or gt > points[-1] + 1e-3:
+                        points.append(gt)
+            accum += seg.duration
+
+        total = self.timeline.total_duration
+        if not points or total > points[-1] + 1e-3:
+            points.append(total)
+
+        return sorted(points)
+
     def _on_timeline_seek(self, global_time: float) -> None:
         if self.player.is_playing:
             self.player.pause()
 
         if self.snap_to_keyframe and not self.timeline.is_empty:
             try:
-                seg_idx, seg, source_ts = self.timeline.map_global_time(global_time)
-                keyframes = ProbeService.get_keyframe_timestamps(seg.source_path)
-                seg_kfs = [kf for kf in keyframes if seg.start_time - 1e-4 <= kf <= seg.end_time + 1e-4]
-                if seg_kfs:
-                    snapped_source = ProbeService.find_nearest_keyframe(seg_kfs, source_ts)
-                    global_time = self.timeline.get_segment_global_start(seg_idx) + (snapped_source - seg.start_time)
+                pts = self._get_timeline_keyframe_points()
+                if len(pts) > 1:
+                    idx = bisect.bisect_left(pts, global_time)
+                    if idx == 0:
+                        global_time = pts[0]
+                    elif idx >= len(pts):
+                        global_time = pts[-1]
+                    else:
+                        before = pts[idx - 1]
+                        after = pts[idx]
+                        global_time = after if (after - global_time) < (global_time - before) else before
             except Exception:
                 pass
 
@@ -547,63 +575,72 @@ class MainWindow(Adw.ApplicationWindow):
         if self.player.is_playing:
             self.player.pause()
 
-        try:
-            seg_idx, seg, source_ts = self.timeline.map_global_time(self.current_global_time)
-        except Exception:
+        pts = self._get_timeline_keyframe_points()
+        if len(pts) <= 1:
+            self.player.step_frame(direction)
             return
 
-        keyframes = ProbeService.get_keyframe_timestamps(seg.source_path)
-        seg_kfs = [kf for kf in keyframes if seg.start_time - 1e-4 <= kf <= seg.end_time + 1e-4]
-
-        # 1. Try to find adjacent keyframe within current segment
-        target_kf = ProbeService.find_adjacent_keyframe(seg_kfs, source_ts, direction)
-        if target_kf is not None:
-            new_global = self.timeline.get_segment_global_start(seg_idx) + (target_kf - seg.start_time)
-            self._on_timeline_seek(new_global)
-            return
-
-        # 2. Boundary transition to adjacent segments
+        cur = self.current_global_time
+        eps = 0.02
         if direction > 0:
-            next_idx = seg_idx + 1
-            while next_idx < len(self.timeline.segments):
-                next_seg = self.timeline.segments[next_idx]
-                next_kfs = ProbeService.get_keyframe_timestamps(next_seg.source_path)
-                valid_kfs = [kf for kf in next_kfs if next_seg.start_time - 1e-4 <= kf <= next_seg.end_time + 1e-4]
-                if valid_kfs:
-                    first_kf = valid_kfs[0]
-                    new_global = self.timeline.get_segment_global_start(next_idx) + (first_kf - next_seg.start_time)
-                    self._on_timeline_seek(new_global)
-                    return
-                next_idx += 1
-            self._on_timeline_seek(self.timeline.total_duration)
+            idx = bisect.bisect_right(pts, cur + eps)
+            if idx < len(pts):
+                target = pts[idx]
+            else:
+                target = pts[-1]
         else:
-            prev_idx = seg_idx - 1
-            while prev_idx >= 0:
-                prev_seg = self.timeline.segments[prev_idx]
-                prev_kfs = ProbeService.get_keyframe_timestamps(prev_seg.source_path)
-                valid_kfs = [kf for kf in prev_kfs if prev_seg.start_time - 1e-4 <= kf <= prev_seg.end_time + 1e-4]
-                if valid_kfs:
-                    last_kf = valid_kfs[-1]
-                    new_global = self.timeline.get_segment_global_start(prev_idx) + (last_kf - prev_seg.start_time)
-                    self._on_timeline_seek(new_global)
-                    return
-                prev_idx -= 1
-            self._on_timeline_seek(0.0)
+            idx = bisect.bisect_left(pts, cur - eps)
+            if idx > 0:
+                target = pts[idx - 1]
+            else:
+                target = pts[0]
+
+        self._on_timeline_seek(target)
 
     def _on_toggle_keyframe_snap(self, enabled: bool) -> None:
         self.snap_to_keyframe = enabled
         if not enabled or self.timeline.is_empty:
             return
 
+        # Check if any segment's keyframes need background indexing
+        uncached = [
+            seg.source_path
+            for seg in self.timeline.segments
+            if not ProbeService.is_keyframes_cached(seg.source_path)
+        ]
+        if uncached:
+            self._show_toast(_("Indexing keyframes in background..."))
+
+            def bg_indexer():
+                for p in uncached:
+                    ProbeService.get_keyframe_timestamps(p)
+                GLib.idle_add(self._apply_keyframe_snap_on_timeline)
+
+            import threading
+            threading.Thread(target=bg_indexer, daemon=True).start()
+            return
+
+        self._apply_keyframe_snap_on_timeline()
+
+    def _apply_keyframe_snap_on_timeline(self) -> None:
+        if self.timeline.is_empty:
+            return
+
         needs_snapping = False
         new_ranges: list[tuple[float, float]] = []
+
+        # Snap cuts to nearest keyframe
         for seg in self.timeline.segments:
             kfs = ProbeService.get_keyframe_timestamps(seg.source_path)
             if not kfs:
                 new_ranges.append((seg.start_time, seg.end_time))
                 continue
-            ns = ProbeService.find_nearest_keyframe(kfs, seg.start_time)
-            ne = ProbeService.find_nearest_keyframe(kfs, seg.end_time)
+            ns = 0.0 if seg.start_time < 0.05 else ProbeService.find_nearest_keyframe(kfs, seg.start_time)
+            ne = (
+                seg.source_duration
+                if (seg.source_duration - seg.end_time < 0.05)
+                else ProbeService.find_nearest_keyframe(kfs, seg.end_time)
+            )
             if ne <= ns:
                 candidates = [k for k in kfs if k > ns]
                 ne = candidates[0] if candidates else max(ns + 0.1, seg.end_time)
@@ -1555,6 +1592,8 @@ class MainWindow(Adw.ApplicationWindow):
                 on_first_thumb=on_first_thumb,
                 on_progress=on_thumb_progress,
             )
+            # Prefetch keyframe timestamps in background to ensure instant zero-freeze snapping
+            ProbeService.prefetch_keyframes_async(video_path)
 
         self.timeline_widget.rebuild_filmstrip()
         self._mark_dirty()
@@ -1579,9 +1618,10 @@ class MainWindow(Adw.ApplicationWindow):
             try:
                 idx, seg, source_ts = self.timeline.map_global_time(split_time)
                 kfs = ProbeService.get_keyframe_timestamps(seg.source_path)
-                seg_kfs = [k for k in kfs if seg.start_time - 1e-4 <= k <= seg.end_time + 1e-4]
-                if seg_kfs:
-                    nearest = ProbeService.find_nearest_keyframe(seg_kfs, source_ts)
+                # Only consider internal keyframes strictly inside the segment
+                internal_kfs = [k for k in kfs if seg.start_time + 0.05 <= k <= seg.end_time - 0.05]
+                if internal_kfs:
+                    nearest = ProbeService.find_nearest_keyframe(internal_kfs, source_ts)
                     split_time = self.timeline.get_segment_global_start(idx) + (nearest - seg.start_time)
             except Exception:
                 pass

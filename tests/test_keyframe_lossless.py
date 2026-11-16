@@ -296,8 +296,8 @@ def test_main_window_keyframe_snap_and_undo(sample_keyframe_video):
             kfs = ProbeService.get_keyframe_timestamps(sample_keyframe_video)
             nearest_kf = ProbeService.find_nearest_keyframe(kfs, 1.1)
 
-            # Cut should now be snapped to nearest keyframe
-            assert abs(win.timeline.segments[0].end_time - nearest_kf) < 1e-3
+            # Cut should now be snapped to nearest keyframe (wait for async indexing if needed)
+            wait_for(lambda: abs(win.timeline.segments[0].end_time - nearest_kf) < 1e-3)
             assert abs(win.timeline.segments[1].start_time - nearest_kf) < 1e-3
 
             # Undo (Ctrl+Z) should revert cut back to orig
@@ -331,3 +331,94 @@ def test_main_window_keyframe_snap_and_undo(sample_keyframe_video):
     app.run(["test"])
     if test_error:
         raise test_error
+
+
+def test_prefetch_keyframes_async(sample_keyframe_video):
+    ProbeService.clear_cache()
+    assert ProbeService.is_keyframes_cached(sample_keyframe_video) is False
+
+    done_kfs: list[float] = []
+
+    def on_done(kfs: list[float]):
+        done_kfs.extend(kfs)
+
+    ProbeService.prefetch_keyframes_async(sample_keyframe_video, on_done=on_done)
+
+    ctx = GLib.MainContext.default()
+    t_end = time.time() + 5.0
+    while not done_kfs and time.time() < t_end:
+        while ctx.pending():
+            ctx.iteration(False)
+        time.sleep(0.02)
+
+    assert len(done_kfs) > 1
+    assert done_kfs[0] == 0.0
+    assert ProbeService.is_keyframes_cached(sample_keyframe_video) is True
+
+
+def test_keyframe_snap_split_and_stepping_full(sample_keyframe_video):
+    app = Adw.Application(application_id="io.github.thor27.video-cut.test.keyframe_split_step")
+    test_error = None
+
+    def run_test(app):
+        nonlocal test_error
+        win = None
+        try:
+            win = MainWindow(application=app)
+            win.load_video(sample_keyframe_video, replace=True)
+
+            def wait_for(condition_fn, timeout=10.0):
+                ctx = GLib.MainContext.default()
+                t_end = time.time() + timeout
+                while not condition_fn() and time.time() < t_end:
+                    while ctx.pending():
+                        ctx.iteration(False)
+                    time.sleep(0.02)
+                assert condition_fn()
+
+            wait_for(lambda: len(win.timeline.segments) == 1)
+
+            # Enable keyframe snap
+            win._on_toggle_keyframe_snap(True)
+            assert win.snap_to_keyframe is True
+            wait_for(lambda: ProbeService.is_keyframes_cached(sample_keyframe_video))
+
+            # Position playhead at 2.4s and split with keyframe snap active
+            win.current_global_time = 2.4
+            win.split_at_cursor()
+
+            # Split should succeed and snap to nearest internal keyframe (2.0s)
+            assert len(win.timeline.segments) == 2
+            assert abs(win.timeline.segments[0].end_time - 2.0) < 0.05
+            assert abs(win.timeline.segments[1].start_time - 2.0) < 0.05
+
+            # Step forward through keyframes across segments
+            win.current_global_time = 0.0
+            win._on_step_frame(1)
+            assert abs(win.current_global_time - 1.0) < 0.05
+
+            win._on_step_frame(1)
+            assert abs(win.current_global_time - 2.0) < 0.05
+
+            win._on_step_frame(1)
+            assert abs(win.current_global_time - 3.0) < 0.05
+
+            # Step backward through keyframes
+            win._on_step_frame(-1)
+            assert abs(win.current_global_time - 2.0) < 0.05
+
+            win._on_step_frame(-1)
+            assert abs(win.current_global_time - 1.0) < 0.05
+
+        except Exception as exc:
+            test_error = exc
+        finally:
+            if win:
+                win.close()
+            app.quit()
+
+    app.connect("activate", run_test)
+    app.run(["test"])
+    if test_error:
+        raise test_error
+
