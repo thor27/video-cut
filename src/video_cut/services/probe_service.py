@@ -265,7 +265,7 @@ class ProbeService:
                 text=True,
                 bufsize=65536,
             )
-            assert proc_pkt.stdout is not None
+            pkt_count = 0
             for line in proc_pkt.stdout:
                 if is_cancelled and is_cancelled():
                     proc_pkt.terminate()
@@ -275,28 +275,29 @@ class ProbeService:
                         proc_pkt.kill()
                     return None
 
-                line = line.strip()
-                if not line:
-                    continue
-                parts = line.split(",")
-                if len(parts) >= 2 and any("K" in p for p in parts[1:]):
-                    for p in parts[:2]:
-                        p = p.strip()
-                        if p and p != "N/A" and "K" not in p:
-                            try:
-                                val = float(p)
-                                if not keyframes or val > keyframes[-1] + 1e-4:
-                                    keyframes.append(val)
-                                break
-                            except (ValueError, TypeError):
-                                continue
+                pkt_count += 1
+                if "K" in line:
+                    line = line.strip()
+                    if line:
+                        parts = line.split(",")
+                        if len(parts) >= 2 and any("K" in p for p in parts[1:]):
+                            for p in parts[:2]:
+                                p = p.strip()
+                                if p and p != "N/A" and "K" not in p:
+                                    try:
+                                        val = float(p)
+                                        if not keyframes or val > keyframes[-1] + 1e-4:
+                                            keyframes.append(val)
+                                        break
+                                    except (ValueError, TypeError):
+                                        continue
 
-                if on_progress and duration > 0:
+                if on_progress and duration > 0 and (pkt_count & 255 == 0):
                     now = time.time()
                     if now - last_progress_time >= 0.08:
                         last_progress_time = now
                         try:
-                            pts = float(parts[0])
+                            pts = float(line.split(",", 1)[0].strip())
                             frac = min(0.99, max(0.0, pts / duration))
                             on_progress(frac, pts)
                         except (ValueError, IndexError):
