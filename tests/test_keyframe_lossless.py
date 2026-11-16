@@ -625,4 +625,51 @@ def test_keyframe_modal_indexing_cancellation(sample_keyframe_video, tmp_path):
         raise test_error
 
 
+def test_lossless_export_cut_does_not_include_previous_keyframe(tmp_path):
+    # Video with non-integer GOP (30fps, GOP=61 -> kfs at 0.0, 2.033333, 4.066667)
+    src = tmp_path / "src_gop61.mp4"
+    subprocess.run(
+        [
+            "ffmpeg", "-y", "-f", "lavfi", "-i", "testsrc=duration=6:size=320x240:rate=30",
+            "-g", "61", "-keyint_min", "61", "-sc_threshold", "0",
+            "-c:v", "libx264", "-preset", "ultrafast", str(src)
+        ],
+        check=True,
+        capture_output=True,
+    )
+    kfs = ProbeService.get_keyframe_timestamps(src)
+    assert len(kfs) == 3
+
+    # Segment from kfs[1] to end (cut made at kfs[1], content before deleted)
+    seg = Segment(source_path=src, source_duration=6.0, start_time=kfs[1], end_time=6.0)
+    dest = tmp_path / "cut_output.mp4"
+
+    service = ExportService()
+    done_result = {}
+
+    def on_done(success: bool, err: str | None):
+        done_result["success"] = success
+        done_result["error"] = err
+
+    service.export_async(
+        segments=[seg],
+        output_path=dest,
+        on_progress=lambda f, s: None,
+        on_done=on_done,
+        settings=ExportSettings(container="mp4", lossless=True),
+    )
+
+    ctx = GLib.MainContext.default()
+    t_end = time.time() + 10.0
+    while "success" not in done_result and time.time() < t_end:
+        while ctx.pending():
+            ctx.iteration(False)
+        time.sleep(0.02)
+
+    assert done_result.get("success") is True
+    # Exported video MUST contain exactly len(kfs) - 1 keyframes (it MUST NOT include kfs[0])
+    out_kfs = ProbeService.get_keyframe_timestamps(dest)
+    assert len(out_kfs) == len(kfs) - 1
+
+
 

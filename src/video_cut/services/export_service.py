@@ -622,16 +622,22 @@ class ExportService:
                 try:
                     if len(segments) == 1:
                         seg = segments[0]
-                        cmd = [
-                            "ffmpeg", FLAG_OVERWRITE,
-                            "-ss", f"{seg.start_time:.3f}",
-                            "-to", f"{seg.end_time:.3f}",
+                        cmd = ["ffmpeg", FLAG_OVERWRITE]
+                        if seg.start_time > 0.05:
+                            cmd.extend(["-ss", f"{seg.start_time + 0.005:.6f}"])
+                        else:
+                            cmd.extend(["-ss", "0.000000"])
+
+                        if seg.end_time < seg.source_duration - 0.05:
+                            cmd.extend(["-to", f"{max(seg.start_time + 0.01, seg.end_time - 0.01):.6f}"])
+
+                        cmd.extend([
                             FLAG_INPUT, str(seg.source_path),
                             "-c", "copy",
                             "-avoid_negative_ts", "make_zero",
                             FLAG_PROGRESS, "pipe:1",
                             str(part_path),
-                        ]
+                        ])
                         self._process = subprocess.Popen(
                             cmd,
                             stdout=subprocess.PIPE,
@@ -689,15 +695,21 @@ class ExportService:
                                     GLib.idle_add(on_done, False, "Export cancelled by user")
                                     return
                                 part_seg = tmp_dir / f"seg_{idx:04d}{out_path.suffix}"
-                                cmd_cut = [
-                                    "ffmpeg", FLAG_OVERWRITE,
-                                    "-ss", f"{seg.start_time:.3f}",
-                                    "-to", f"{seg.end_time:.3f}",
+                                cmd_cut = ["ffmpeg", FLAG_OVERWRITE]
+                                if seg.start_time > 0.05:
+                                    cmd_cut.extend(["-ss", f"{seg.start_time + 0.005:.6f}"])
+                                else:
+                                    cmd_cut.extend(["-ss", "0.000000"])
+
+                                if seg.end_time < seg.source_duration - 0.05:
+                                    cmd_cut.extend(["-to", f"{max(seg.start_time + 0.01, seg.end_time - 0.01):.6f}"])
+
+                                cmd_cut.extend([
                                     FLAG_INPUT, str(seg.source_path),
                                     "-c", "copy",
                                     "-avoid_negative_ts", "make_zero",
                                     str(part_seg),
-                                ]
+                                ])
                                 res = subprocess.run(cmd_cut, capture_output=True, text=True)
                                 if res.returncode != 0:
                                     GLib.idle_add(on_done, False, f"FFmpeg cut failed on segment {idx + 1}: {res.stderr[-300:]}")

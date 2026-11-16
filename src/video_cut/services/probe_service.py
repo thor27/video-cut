@@ -4,6 +4,7 @@ import bisect
 import json
 import subprocess
 import threading
+import time
 from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
@@ -229,7 +230,7 @@ class ProbeService:
         on_progress: Callable[[float, float], None] | None = None,
         is_cancelled: Callable[[], bool] | None = None,
     ) -> list[float] | None:
-        """Stream keyframe timestamps using ffprobe -skip_frame nokey with progress reporting."""
+        """Stream keyframe timestamps using fast packet probing first, falling back to frame probing."""
         path = Path(file_path)
         key = cls._key("keyframes", path)
         if key is None:
@@ -244,39 +245,107 @@ class ProbeService:
         if duration is None or duration <= 0:
             duration = cls.probe_duration(path) or 0.0
 
-        cmd = [
+        keyframes: list[float] = []
+        last_progress_time = 0.0
+
+        # Tier 1: Fast Packet Index Probing (reads container packet headers in <0.1s without decoding)
+        cmd_pkt = [
             "ffprobe",
             "-v", "error",
+            "-select_streams", "v:0",
+            "-show_entries", "packet=pts_time,flags",
+            "-of", "csv=p=0",
+            str(path),
+        ]
+        try:
+            proc_pkt = subprocess.Popen(
+                cmd_pkt,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+                bufsize=65536,
+            )
+            assert proc_pkt.stdout is not None
+            for line in proc_pkt.stdout:
+                if is_cancelled and is_cancelled():
+                    proc_pkt.terminate()
+                    try:
+                        proc_pkt.wait(timeout=1.0)
+                    except subprocess.TimeoutExpired:
+                        proc_pkt.kill()
+                    return None
+
+                line = line.strip()
+                if not line:
+                    continue
+                parts = line.split(",")
+                if len(parts) >= 2 and any("K" in p for p in parts[1:]):
+                    for p in parts[:2]:
+                        p = p.strip()
+                        if p and p != "N/A" and "K" not in p:
+                            try:
+                                val = float(p)
+                                if not keyframes or val > keyframes[-1] + 1e-4:
+                                    keyframes.append(val)
+                                break
+                            except (ValueError, TypeError):
+                                continue
+
+                if on_progress and duration > 0:
+                    now = time.time()
+                    if now - last_progress_time >= 0.08:
+                        last_progress_time = now
+                        try:
+                            pts = float(parts[0])
+                            frac = min(0.99, max(0.0, pts / duration))
+                            on_progress(frac, pts)
+                        except (ValueError, IndexError):
+                            pass
+
+            proc_pkt.wait()
+        except Exception:
+            if proc_pkt.poll() is None:
+                proc_pkt.kill()
+
+        if is_cancelled and is_cancelled():
+            return None
+
+        # Check if Tier 1 successfully found keyframes across the file
+        if len(keyframes) > 1 or (duration <= 2.0 and len(keyframes) >= 1):
+            if keyframes[0] > 0.05:
+                keyframes.insert(0, 0.0)
+            if on_progress and duration > 0:
+                on_progress(1.0, duration)
+            return cls._store(key, keyframes)
+
+        # Tier 2: Accurate Frame-Level Probing Fallback (if packet probe returned <= 1 keyframe)
+        keyframes.clear()
+        cmd_frm = [
+            "ffprobe",
+            "-v", "error",
+            "-threads", "0",
             "-select_streams", "v:0",
             "-skip_frame", "nokey",
             "-show_entries", "frame=pts_time",
             "-of", "csv=p=0",
             str(path),
         ]
-
         try:
-            proc = subprocess.Popen(
-                cmd,
+            proc_frm = subprocess.Popen(
+                cmd_frm,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
                 text=True,
-                bufsize=1,
+                bufsize=65536,
             )
-        except Exception:
-            return None
-
-        keyframes: list[float] = []
-        last_reported_pts = -1.0
-
-        try:
-            assert proc.stdout is not None
-            for line in proc.stdout:
+            assert proc_frm.stdout is not None
+            for line in proc_frm.stdout:
                 if is_cancelled and is_cancelled():
-                    proc.terminate()
+                    proc_frm.terminate()
                     try:
-                        proc.wait(timeout=1.0)
+                        proc_frm.wait(timeout=1.0)
                     except subprocess.TimeoutExpired:
-                        proc.kill()
+                        proc_frm.kill()
                     return None
 
                 line = line.strip().rstrip(",")
@@ -287,23 +356,24 @@ class ProbeService:
                     if not keyframes or val > keyframes[-1] + 1e-4:
                         keyframes.append(val)
                     if on_progress and duration > 0:
-                        if val - last_reported_pts >= 0.2 or val >= duration - 0.1:
-                            last_reported_pts = val
+                        now = time.time()
+                        if now - last_progress_time >= 0.08 or val >= duration - 0.1:
+                            last_progress_time = now
                             frac = min(0.99, max(0.0, val / duration))
                             on_progress(frac, val)
                 except ValueError:
                     continue
 
-            proc.wait()
+            proc_frm.wait()
         except Exception:
-            if proc.poll() is None:
-                proc.kill()
+            if proc_frm.poll() is None:
+                proc_frm.kill()
             return None
 
         if is_cancelled and is_cancelled():
             return None
 
-        if proc.returncode != 0 and not keyframes:
+        if proc_frm.returncode != 0 and not keyframes:
             return None
 
         if not keyframes:

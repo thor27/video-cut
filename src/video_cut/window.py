@@ -2048,8 +2048,12 @@ class MainWindow(Adw.ApplicationWindow):
             for seg in export_segments:
                 kfs = ProbeService.get_keyframe_timestamps(seg.source_path)
                 if kfs:
-                    ns = ProbeService.find_nearest_keyframe(kfs, seg.start_time)
-                    ne = ProbeService.find_nearest_keyframe(kfs, seg.end_time)
+                    ns = 0.0 if seg.start_time < 0.05 else ProbeService.find_nearest_keyframe(kfs, seg.start_time)
+                    ne = (
+                        seg.source_duration
+                        if (seg.source_duration - seg.end_time < 0.05)
+                        else ProbeService.find_nearest_keyframe(kfs, seg.end_time)
+                    )
                     if ne <= ns:
                         cands = [k for k in kfs if k > ns]
                         ne = cands[0] if cands else max(ns + 0.1, seg.end_time)
