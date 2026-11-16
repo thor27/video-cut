@@ -17,7 +17,7 @@ class KeyframeHelpDialog(Adw.Window):
     def __init__(self, parent: Gtk.Window) -> None:
         super().__init__(transient_for=parent, modal=True)
         self.set_title(_("Keyframes & Lossless Cutting"))
-        self.set_default_size(520, 560)
+        self.set_default_size(860, 640)
         self._build_ui()
 
     def _build_ui(self) -> None:
@@ -40,75 +40,116 @@ class KeyframeHelpDialog(Adw.Window):
         scrolled.set_propagate_natural_height(True)
         toolbar_view.set_content(scrolled)
 
-        clamp = Adw.Clamp(maximum_size=480)
-        clamp.set_margin_start(16)
-        clamp.set_margin_end(16)
-        clamp.set_margin_top(12)
-        clamp.set_margin_bottom(20)
+        clamp = Adw.Clamp(maximum_size=820)
+        clamp.set_margin_start(20)
+        clamp.set_margin_end(20)
+        clamp.set_margin_top(16)
+        clamp.set_margin_bottom(24)
         scrolled.set_child(clamp)
 
-        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=16)
+        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=20)
         clamp.set_child(box)
 
-        # 1. What are Keyframes?
-        grp_concept = Adw.PreferencesGroup()
-        grp_concept.set_title(_("What is a Keyframe?"))
-        grp_concept.set_description(
+        # 1. What is Lossless Cutting?
+        grp_lossless = Adw.PreferencesGroup()
+        grp_lossless.set_title(_("What is Lossless Cutting?"))
+        grp_lossless.set_description(
             _(
-                "Modern video formats (H.264, HEVC, VP9, AV1) compress video by storing only the "
-                "differences between frames. A Keyframe (or I-frame) is a complete, self-contained "
-                "image that does not depend on any other frames to decode."
+                "Lossless cutting (stream copying) trims and combines videos by copying the original "
+                "compressed data packets directly into the new file without decoding or re-encoding. "
+                "Because no re-compression takes place, exports are virtually instantaneous and preserve "
+                "100% of the original video and audio quality."
             )
         )
-        box.append(grp_concept)
+        box.append(grp_lossless)
 
-        # 2. Advantages of Lossless Cutting
+        # 2. What is a Keyframe?
+        grp_keyframe = Adw.PreferencesGroup()
+        grp_keyframe.set_title(_("What is a Keyframe?"))
+        grp_keyframe.set_description(
+            _(
+                "Modern video formats (such as H.264, HEVC, VP9, and AV1) compress video by storing full "
+                "images only occasionally (Keyframes or I-frames), while intermediate frames only record "
+                "differences between frames. A keyframe is a complete, standalone picture that can be decoded "
+                "independently."
+            )
+        )
+        box.append(grp_keyframe)
+
+        # 3. Advantages & Disadvantages Side by Side
+        columns_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=16)
+        columns_box.set_homogeneous(True)
+        box.append(columns_box)
+
+        # Left Column: Advantages of Lossless Cutting
         grp_pros = Adw.PreferencesGroup()
         grp_pros.set_title(_("Advantages of Lossless Cutting"))
-        box.append(grp_pros)
+        columns_box.append(grp_pros)
 
         row_speed = Adw.ActionRow()
         row_speed.set_title(_("Blazing Fast Speed"))
-        row_speed.set_subtitle(_("Exports take seconds because video and audio streams are copied directly without re-encoding."))
+        row_speed.set_subtitle(
+            _("Exports complete in seconds because video and audio packets are copied directly without re-encoding.")
+        )
+        row_speed.set_subtitle_lines(0)
         row_speed.add_prefix(Gtk.Image.new_from_icon_name("media-flash-symbolic"))
         grp_pros.add(row_speed)
 
         row_quality = Adw.ActionRow()
         row_quality.set_title(_("100% Quality Preserved"))
-        row_quality.set_subtitle(_("Zero compression artifacts or generation loss. Every pixel and audio sample remains identical."))
+        row_quality.set_subtitle(
+            _("Zero generation loss or compression artifacts. Every pixel and audio sample remains untouched.")
+        )
+        row_quality.set_subtitle_lines(0)
         row_quality.add_prefix(Gtk.Image.new_from_icon_name("starred-symbolic"))
         grp_pros.add(row_quality)
 
         row_battery = Adw.ActionRow()
         row_battery.set_title(_("Minimal CPU and Battery Usage"))
-        row_battery.set_subtitle(_("No heavy CPU or GPU rendering. Extremely battery-friendly for laptop editing."))
+        row_battery.set_subtitle(
+            _("Bypasses intensive CPU/GPU rendering, keeping your computer cool and preserving laptop battery.")
+        )
+        row_battery.set_subtitle_lines(0)
         row_battery.add_prefix(Gtk.Image.new_from_icon_name("battery-good-charging-symbolic"))
         grp_pros.add(row_battery)
 
-        # 3. Why cuts must align to keyframes
-        grp_restrictions = Adw.PreferencesGroup()
-        grp_restrictions.set_title(_("Why Cuts Must Align to Keyframes"))
-        box.append(grp_restrictions)
+        # Right Column: Disadvantages of Lossless Cutting
+        grp_cons = Adw.PreferencesGroup()
+        grp_cons.set_title(_("Disadvantages of Lossless Cutting"))
+        columns_box.append(grp_cons)
 
         row_boundary = Adw.ActionRow()
-        row_boundary.set_title(_("Keyframe Boundary Requirement"))
+        row_boundary.set_title(_("Cuts Must Align to Keyframes"))
         row_boundary.set_subtitle(
             _(
-                "Because intermediate frames depend on previous images, a cut cannot begin mid-group "
-                "without re-encoding. Snapping cuts to keyframes guarantees every clip starts cleanly "
-                "with no black frames or audio sync issues."
+                "Intermediate frames depend on surrounding images and cannot be split mid-stream "
+                "without re-encoding. All cuts snap to the nearest keyframe."
             )
         )
+        row_boundary.set_subtitle_lines(0)
         row_boundary.add_prefix(Gtk.Image.new_from_icon_name("edit-cut-symbolic"))
-        grp_restrictions.add(row_boundary)
+        grp_cons.add(row_boundary)
 
         row_filters = Adw.ActionRow()
         row_filters.set_title(_("No Re-encoding Filters"))
         row_filters.set_subtitle(
             _(
-                "Transformations like rotation, cropping, and graphic or text overlays require decoding "
-                "and re-encoding the video, and cannot be applied in stream-copy mode."
+                "Transformations that alter pixels—such as rotation, cropping, flipping, and text or "
+                "graphic overlays—require re-encoding and cannot be applied."
             )
         )
+        row_filters.set_subtitle_lines(0)
         row_filters.add_prefix(Gtk.Image.new_from_icon_name("dialog-warning-symbolic"))
-        grp_restrictions.add(row_filters)
+        grp_cons.add(row_filters)
+
+        row_codecs = Adw.ActionRow()
+        row_codecs.set_title(_("Matching Codecs Required"))
+        row_codecs.set_subtitle(
+            _(
+                "When combining multiple clips, all segments must share compatible video and audio "
+                "formats, codecs, and dimensions."
+            )
+        )
+        row_codecs.set_subtitle_lines(0)
+        row_codecs.add_prefix(Gtk.Image.new_from_icon_name("preferences-system-symbolic"))
+        grp_cons.add(row_codecs)

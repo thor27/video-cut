@@ -89,6 +89,10 @@ def test_translations_pt_br():
     assert _("Allow audio") == "Permitir áudio"
     assert _("Audio Track") == "Faixa de áudio"
     assert _("No elements") == "Nenhum elemento"
+    assert _("Lossless (Stream Copy)") == "Sem perdas (Cópia direta)"
+    assert _("What is Lossless Cutting?") == "O que é o Corte sem Perdas?"
+    assert _("Disadvantages of Lossless Cutting") == "Desvantagens do Corte sem Perdas"
+    assert _("Indexing Keyframes") == "Indexando quadros-chave"
 
 
 def test_translations_es():
@@ -124,6 +128,10 @@ def test_translations_es():
     assert _("Add Text") == "Añadir Texto"
     assert _("Add Rectangle") == "Añadir Rectángulo"
     assert _("Properties") == "Propiedades"
+    assert _("Lossless (Stream Copy)") == "Sin pérdidas (Copia directa)"
+    assert _("What is Lossless Cutting?") == "¿Qué es el Corte sin Pérdidas?"
+    assert _("Disadvantages of Lossless Cutting") == "Desventajas del Corte sin Pérdidas"
+    assert _("Indexing Keyframes") == "Indexando fotogramas clave"
 
 
 def test_translations_fr():
@@ -160,6 +168,10 @@ def test_translations_fr():
     assert _("Drag header to reorder clip") == "Glissez l'en-tête pour réorganiser le clip"
     assert _("3:4 Vertical Standard") == "3:4 Standard Vertical"
     assert _("9:21 Vertical Ultrawide") == "9:21 Ultra-large Vertical"
+    assert _("Lossless (Stream Copy)") == "Sans perte (Copie directe)"
+    assert _("What is Lossless Cutting?") == "Qu'est-ce que le Découpage sans Perte ?"
+    assert _("Disadvantages of Lossless Cutting") == "Inconvénients du Découpage sans Perte"
+    assert _("Indexing Keyframes") == "Indexation des images clés"
 
 
 def test_translations_en_us():
@@ -186,6 +198,10 @@ def test_translations_en_us():
     assert _("Drag header to reorder clip") == "Drag header to reorder clip"
     assert _("3:4 Vertical Standard") == "3:4 Vertical Standard"
     assert _("9:21 Vertical Ultrawide") == "9:21 Vertical Ultrawide"
+    assert _("Lossless (Stream Copy)") == "Lossless (Stream Copy)"
+    assert _("What is Lossless Cutting?") == "What is Lossless Cutting?"
+    assert _("Disadvantages of Lossless Cutting") == "Disadvantages of Lossless Cutting"
+    assert _("Indexing Keyframes") == "Indexing Keyframes"
 
 
 def test_fallback_unsupported_language():
