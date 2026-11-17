@@ -769,14 +769,24 @@ def test_overlay_element_selection_dropdown_and_scroll(tmp_path: Path):
 
     # Select first item from dropdown (index 1)
     dialog.element_dropdown.set_selected(1)
-    while GLib.MainContext.default().iteration(False):
-        pass
+    dialog._on_element_dropdown_selected(dialog.element_dropdown, None)
+    if hasattr(dialog, "_dropdown_idle_id") and dialog._dropdown_idle_id:
+        GLib.source_remove(dialog._dropdown_idle_id)
+        dialog._dropdown_idle_id = None
+        dialog._on_dropdown_selection_idle(dialog.items[0])
+    for _i in range(15):
+        GLib.MainContext.default().iteration(False)
     assert dialog.selected_item_id == dialog.items[0].id
 
     # Select index 0 (No selection) -> deselects
     dialog.element_dropdown.set_selected(0)
-    while GLib.MainContext.default().iteration(False):
-        pass
+    dialog._on_element_dropdown_selected(dialog.element_dropdown, None)
+    if hasattr(dialog, "_dropdown_idle_id") and dialog._dropdown_idle_id:
+        GLib.source_remove(dialog._dropdown_idle_id)
+        dialog._dropdown_idle_id = None
+        dialog._on_dropdown_selection_idle(None)
+    for _i in range(15):
+        GLib.MainContext.default().iteration(False)
     assert dialog.selected_item_id is None
     assert dialog.element_dropdown.get_selected() == 0
 

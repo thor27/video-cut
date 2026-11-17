@@ -170,8 +170,11 @@ class ExportService:
                 or sig["has_audio"] != sig0["has_audio"]
             ):
                 return False, _("Segments have different video codecs or dimensions")
-            if sig0["has_audio"] and sig.get("audio_codec") != sig0.get("audio_codec"):
-                return False, _("Segments have different audio codecs")
+            if sig0["has_audio"]:
+                if sig.get("audio_codec") != sig0.get("audio_codec"):
+                    return False, _("Segments have different audio codecs")
+                if sig.get("sample_rate") != sig0.get("sample_rate") or sig.get("channels") != sig0.get("channels"):
+                    return False, _("Segments have different audio channels or sample rates")
 
         return True, ""
 

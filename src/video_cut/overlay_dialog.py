@@ -6,6 +6,7 @@ import io
 import json
 import math
 import uuid
+import warnings
 from collections.abc import Callable
 from dataclasses import asdict
 from pathlib import Path
@@ -560,21 +561,26 @@ class OverlayDialog(Adw.Window):
     def _on_element_dropdown_selected(self, drop: Gtk.DropDown, _pspec) -> None:
         if self._updating_element_dropdown:
             return
+        if hasattr(self, "_dropdown_idle_id") and self._dropdown_idle_id:
+            GLib.source_remove(self._dropdown_idle_id)
+            self._dropdown_idle_id = None
+
         idx = drop.get_selected()
         if idx == 0:
-            GLib.idle_add(self._on_dropdown_selection_idle, None)
+            self._dropdown_idle_id = GLib.idle_add(self._on_dropdown_selection_idle, None)
         elif len(self.selected_items) > 1:
             if idx == 1:
                 return
             elif 2 <= idx <= len(self.items) + 1:
                 item = self.items[idx - 2]
-                GLib.idle_add(self._on_dropdown_selection_idle, item)
+                self._dropdown_idle_id = GLib.idle_add(self._on_dropdown_selection_idle, item)
         elif 1 <= idx <= len(self.items):
             item = self.items[idx - 1]
             if self.selected_item_id != item.id:
-                GLib.idle_add(self._on_dropdown_selection_idle, item)
+                self._dropdown_idle_id = GLib.idle_add(self._on_dropdown_selection_idle, item)
 
     def _on_dropdown_selection_idle(self, item: OverlayItem | None) -> bool:
+        self._dropdown_idle_id = None
         if item is None:
             if self.selected_item_ids:
                 self.selected_item_ids.clear()
@@ -2804,16 +2810,23 @@ class OverlayDialog(Adw.Window):
 
     def _get_system_accent_color(self) -> tuple[float, float, float]:
         """Retrieve system accent color (R, G, B in 0..1), matching system theme."""
-        try:
-            ctx = self.get_style_context()
-            if ctx:
-                for col_name in ("accent_color", "accent_bg_color"):
-                    success, col = ctx.lookup_color(col_name)
-                    if success and col:
-                        return (col.red, col.green, col.blue)
-        except Exception:
-            pass
-        return (0.2, 0.6, 1.0)
+        if hasattr(self, "_cached_accent_color") and self._cached_accent_color is not None:
+            return self._cached_accent_color
+
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", DeprecationWarning)
+            try:
+                ctx = self.get_style_context()
+                if ctx:
+                    for col_name in ("accent_color", "accent_bg_color"):
+                        success, col = ctx.lookup_color(col_name)
+                        if success and col:
+                            self._cached_accent_color = (col.red, col.green, col.blue)
+                            return self._cached_accent_color
+            except Exception:
+                pass
+        self._cached_accent_color = (0.2, 0.6, 1.0)
+        return self._cached_accent_color
 
     def _draw_selection_gizmo(
         self,

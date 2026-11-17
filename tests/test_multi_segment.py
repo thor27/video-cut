@@ -8,6 +8,7 @@ gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
 from gi.repository import Adw, Gdk
 
+from video_cut.i18n import _
 from video_cut.models import OverlayItem, ProjectTimeline
 from video_cut.window import MainWindow
 
@@ -93,8 +94,10 @@ def test_timeline_batch_paste_and_undo():
 
 def test_timeline_widget_ctrl_shift_and_select_all(sample_video):
     app = Adw.Application(application_id="io.github.thor27.video-cut.test.multiselect.widget")
+    test_error = None
 
     def run_test(app):
+        nonlocal test_error
         win = None
         try:
             win = MainWindow(application=app)
@@ -151,7 +154,7 @@ def test_timeline_widget_ctrl_shift_and_select_all(sample_video):
             card1._on_right_click(None, 1, 10, 10)
             # Verify right-clicking did NOT clear seg0
             assert win.timeline.selected_segment_ids == {seg0.id}
-            assert card1.menu_select._lbl.get_label() == "Select"
+            assert card1.menu_select._lbl.get_label() in ("Select", _("Select"))
             # Click Select on card 1
             card1._menu_action_toggle_select()
             assert win.timeline.selected_segment_ids == {seg0.id, seg1.id}
@@ -159,28 +162,30 @@ def test_timeline_widget_ctrl_shift_and_select_all(sample_video):
             # Right click and Select on card 2
             card2 = tw._cards[seg2.id]
             card2._on_right_click(None, 1, 10, 10)
-            assert card2.menu_select._lbl.get_label() == "Select"
+            assert card2.menu_select._lbl.get_label() in ("Select", _("Select"))
             card2._menu_action_toggle_select()
             assert win.timeline.selected_segment_ids == {seg0.id, seg1.id, seg2.id}
 
             # Card 1 now shows "Deselect"
             card1._on_right_click(None, 1, 10, 10)
-            assert card1.menu_select._lbl.get_label() == "Deselect"
+            assert card1.menu_select._lbl.get_label() in ("Deselect", _("Deselect"))
             card1._menu_action_toggle_select()
             assert win.timeline.selected_segment_ids == {seg0.id, seg2.id}
 
             # Context menu shows "Select All" when not all are selected
             card1._on_right_click(None, 1, 10, 10)
-            assert card1.menu_select_all._lbl.get_label() == "Select All"
+            assert card1.menu_select_all._lbl.get_label() in ("Select All", _("Select All"))
             card1._menu_action_select_all()
             assert win.timeline.selected_segment_ids == {seg0.id, seg1.id, seg2.id}
 
             # When all are selected, context menu shows "Deselect All"
             card1._on_right_click(None, 1, 10, 10)
-            assert card1.menu_select_all._lbl.get_label() == "Deselect All"
+            assert card1.menu_select_all._lbl.get_label() in ("Deselect All", _("Deselect All"))
             # Clicking Deselect All deselects all clips
             card1._menu_action_select_all()
             assert win.timeline.selected_segment_ids == set()
+        except BaseException as e:
+            test_error = e
         finally:
             if win:
                 win.close()
@@ -188,12 +193,16 @@ def test_timeline_widget_ctrl_shift_and_select_all(sample_video):
 
     app.connect("activate", run_test)
     app.run(["test"])
+    if test_error:
+        raise test_error
 
 
 def test_bulk_transform_and_overlays(sample_video):
     app = Adw.Application(application_id="io.github.thor27.video-cut.test.multiselect.bulk")
+    test_error = None
 
     def run_test(app):
+        nonlocal test_error
         win = None
         try:
             win = MainWindow(application=app)
@@ -240,7 +249,7 @@ def test_bulk_transform_and_overlays(sample_video):
                 y=0.5,
                 width=0.3,
                 height=0.1,
-                color="#ff0000",
+                font_color="#ff0000",
                 font_size=24,
             )
             for sid in win.timeline.selected_segment_ids:
@@ -254,6 +263,8 @@ def test_bulk_transform_and_overlays(sample_video):
             assert seg1.overlays[0].text == "Watermark"
             # Each overlay item has its own distinct ID
             assert seg0.overlays[0].id != seg1.overlays[0].id
+        except BaseException as e:
+            test_error = e
         finally:
             if win:
                 win.close()
@@ -261,12 +272,16 @@ def test_bulk_transform_and_overlays(sample_video):
 
     app.connect("activate", run_test)
     app.run(["test"])
+    if test_error:
+        raise test_error
 
 
 def test_batch_copy_paste_delete(sample_video):
     app = Adw.Application(application_id="io.github.thor27.video-cut.test.multiselect.clipboard")
+    test_error = None
 
     def run_test(app):
+        nonlocal test_error
         win = None
         try:
             win = MainWindow(application=app)
@@ -304,6 +319,8 @@ def test_batch_copy_paste_delete(sample_video):
             # Single Undo restores the deleted clips
             win.undo()
             assert len(win.timeline.segments) == 5
+        except BaseException as e:
+            test_error = e
         finally:
             if win:
                 win.close()
@@ -311,12 +328,16 @@ def test_batch_copy_paste_delete(sample_video):
 
     app.connect("activate", run_test)
     app.run(["test"])
+    if test_error:
+        raise test_error
 
 
 def test_ctrl_a_and_delete_shortcut(sample_video):
     app = Adw.Application(application_id="io.github.thor27.video-cut.test.multiselect.shortcuts")
+    test_error = None
 
     def run_test(app):
+        nonlocal test_error
         win = None
         try:
             win = MainWindow(application=app)
@@ -351,6 +372,8 @@ def test_ctrl_a_and_delete_shortcut(sample_video):
             # Ctrl+Z undo restores both segments
             win.undo()
             assert len(win.timeline.segments) == 2
+        except BaseException as e:
+            test_error = e
         finally:
             if win:
                 win.close()
@@ -358,3 +381,5 @@ def test_ctrl_a_and_delete_shortcut(sample_video):
 
     app.connect("activate", run_test)
     app.run(["test"])
+    if test_error:
+        raise test_error

@@ -1,5 +1,6 @@
 """Automated tests for Crop & Rotate feature."""
 
+import warnings
 from pathlib import Path
 from unittest.mock import MagicMock
 
@@ -272,7 +273,9 @@ def test_transformed_paintable_and_player_transform(tmp_path):
 
     # Test TransformedPaintable with a texture
     pixbuf = GdkPixbuf.Pixbuf.new(GdkPixbuf.Colorspace.RGB, False, 8, 160, 120)
-    texture = Gdk.Texture.new_for_pixbuf(pixbuf)
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", DeprecationWarning)
+        texture = Gdk.Texture.new_for_pixbuf(pixbuf)
     tp = TransformedPaintable(texture, rotation=90, hflip=True, vflip=False, crop=(0.1, 0.2, 0.6, 0.4))
     assert tp.rotation == 90
     assert tp.hflip is True
