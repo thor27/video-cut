@@ -364,10 +364,6 @@ class TimelineWidget(Gtk.Box):
         end_box.set_halign(Gtk.Align.END)
         end_box.set_valign(Gtk.Align.CENTER)
 
-        self.thumb_progress_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
-        self.thumb_spinner = Gtk.Spinner()
-        self.lbl_thumb_progress = Gtk.Label(label=_("Generating thumbnails..."))
-
         # Keyframe stick toggle & help group (linked buttons like clipboard/undo groups)
         keyframe_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
         keyframe_box.add_css_class("linked")

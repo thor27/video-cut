@@ -14,6 +14,16 @@ from video_cut.services.thumbnail_service import ThumbnailService
 from video_cut.window import MainWindow
 
 
+def _drain_glib_events(condition=None, max_iterations=200):
+    ctx = GLib.MainContext.default()
+    for _ in range(max_iterations):
+        had_events = ctx.iteration(False)
+        if condition and condition():
+            break
+        if not had_events and not condition:
+            break
+
+
 def test_thumbnail_refinement_triggers_when_thumbs_repeated(sample_video, tmp_path):
     """When a segment filmstrip contains repeated thumbnails, background refinement extracts unique frames."""
     ts = ThumbnailService(cache_dir=tmp_path)
@@ -41,8 +51,7 @@ def test_thumbnail_refinement_triggers_when_thumbs_repeated(sample_video, tmp_pa
 
     # Wait for background refinement to finish extracting the missing frames
     ts.wait_idle()
-    for _ in range(20):
-        GLib.MainContext.default().iteration(False)
+    _drain_glib_events(condition=lambda: len(listener_called) >= 1)
 
     # Cache should now contain the refined frames
     with ts._cache_lock:
@@ -163,8 +172,7 @@ def test_thumbnail_cache_updated_listeners(tmp_path):
     ts._notify_cache_updated(sample_p)
     ts._notify_cache_updated(sample_p)
 
-    for _ in range(10):
-        GLib.MainContext.default().iteration(False)
+    _drain_glib_events(condition=lambda: len(calls) == 1)
 
     # Debounced: single dispatch
     assert len(calls) == 1
@@ -173,8 +181,7 @@ def test_thumbnail_cache_updated_listeners(tmp_path):
     # Remove listener
     ts.remove_cache_updated_listener(listener)
     ts._notify_cache_updated(sample_p)
-    for _ in range(10):
-        GLib.MainContext.default().iteration(False)
+    _drain_glib_events()
 
     assert len(calls) == 1
 

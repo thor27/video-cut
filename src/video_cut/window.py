@@ -818,7 +818,6 @@ class MainWindow(Adw.ApplicationWindow):
             self.player.clear()
             self.window_title.set_title(_("Video Cut"))
             self.window_title.set_subtitle(_("Video Editor"))
-            self.hide_thumbnail_progress()
             self._update_empty_state_recent_projects()
 
     def _create_project_file_filters(self) -> Gio.ListStore:
@@ -1252,11 +1251,7 @@ class MainWindow(Adw.ApplicationWindow):
                     self.timeline_widget.recalculate_layout(force=True)
 
                 def on_thumb_progress(completed: int, total: int, thumb_p: Path):
-                    self.show_thumbnail_progress(completed, total)
                     self.timeline_widget.recalculate_layout(force=True)
-
-                if not self.thumbnail_service.is_cached(seg.source_path):
-                    self.show_thumbnail_progress(0, 0)
 
                 self.thumbnail_service.generate_thumbnails_async(
                     source_path=seg.source_path,
@@ -1642,12 +1637,7 @@ class MainWindow(Adw.ApplicationWindow):
                 self.timeline_widget.recalculate_layout(force=True)
 
             def on_thumb_progress(completed: int, total: int, thumb_p: Path):
-                self.show_thumbnail_progress(completed, total)
                 self.timeline_widget.recalculate_layout(force=True)
-
-            if not self.thumbnail_service.is_cached(video_path):
-                # Show initial progress immediately
-                self.show_thumbnail_progress(0, 0)
 
             # Trigger background thumbnail generation
             self.thumbnail_service.generate_thumbnails_async(
@@ -1669,8 +1659,6 @@ class MainWindow(Adw.ApplicationWindow):
 
     def _on_thumbnails_ready(self, path: Path, items: list) -> None:
         """Called when full thumbnails for a video are ready in cache."""
-        if not self.thumbnail_service.has_pending_jobs():
-            self.hide_thumbnail_progress()
         self.timeline_widget.recalculate_layout(force=True)
 
     def _on_thumbnail_cache_updated(self, source_path: Path) -> None:
@@ -2179,61 +2167,11 @@ class MainWindow(Adw.ApplicationWindow):
         toast.set_timeout(timeout)
         self.toast_overlay.add_toast(toast)
 
-    def _hide_toast_close_button(self) -> bool:
-        """Hide the circular close button specifically on the thumbnail progress toast."""
-        if not hasattr(self, "_thumb_toast") or self._thumb_toast is None:
-            return False
-        child = self.toast_overlay.get_first_child()
-        while child:
-            if child.get_css_name() == "toast" and getattr(child.props, "toast", None) == self._thumb_toast:
-                sub = child.get_first_child()
-                while sub:
-                    if isinstance(sub, Gtk.Button) and "circular" in sub.get_css_classes():
-                        sub.set_visible(False)
-                    sub = sub.get_next_sibling()
-            child = child.get_next_sibling()
-        return False
-
-    def show_thumbnail_progress(self, completed: int, total: int) -> None:
-        """Show and update floating progress toast for thumbnail generation without close button."""
-        if total > 0:
-            text = _("Generating thumbnails ({completed}/{total})...").format(completed=completed, total=total)
-        else:
-            text = _("Generating thumbnails...")
-
-        if not hasattr(self, "_thumb_toast") or self._thumb_toast is None:
-            toast = Adw.Toast.new("")
-            toast.set_timeout(0)  # Keep visible while generating
-
-            box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
-            spinner = Gtk.Spinner()
-            spinner.set_spinning(True)
-            box.append(spinner)
-
-            lbl = Gtk.Label(label=text)
-            box.append(lbl)
-            toast.set_custom_title(box)
-
-            def on_dismissed(*args):
-                self._thumb_toast = None
-                self._thumb_toast_label = None
-
-            toast.connect("dismissed", on_dismissed)
-            self._thumb_toast = toast
-            self._thumb_toast_label = lbl
-
-            self.toast_overlay.add_toast(toast)
-            self._hide_toast_close_button()
-            GLib.idle_add(self._hide_toast_close_button)
-        else:
-            if hasattr(self, "_thumb_toast_label") and self._thumb_toast_label is not None:
-                self._thumb_toast_label.set_text(text)
-            self._hide_toast_close_button()
+    def show_thumbnail_progress(self, completed: int = 0, total: int = 0) -> None:
+        """Deprecated: Thumbnails are generated silently in background without blocking toasts."""
+        pass
 
     def hide_thumbnail_progress(self) -> None:
-        """Dismiss floating thumbnail progress toast when generation completes."""
-        if hasattr(self, "_thumb_toast") and self._thumb_toast is not None:
-            self._thumb_toast.dismiss()
-            self._thumb_toast = None
-            self._thumb_toast_label = None
+        """Deprecated: Thumbnails are generated silently in background without blocking toasts."""
+        pass
 
