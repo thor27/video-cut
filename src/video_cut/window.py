@@ -1664,7 +1664,7 @@ class MainWindow(Adw.ApplicationWindow):
     def _on_thumbnail_cache_updated(self, source_path: Path) -> None:
         """Called when new thumbnails (e.g. refined frames) are added to cache."""
         if hasattr(self, "timeline_widget") and self.timeline_widget:
-            self.timeline_widget.recalculate_layout()
+            self.timeline_widget.recalculate_layout(force=True)
 
     def split_at_cursor(self) -> None:
         """Split the segment under the playhead cursor."""

@@ -217,3 +217,55 @@ def test_thumbnail_refinement_integration_no_toast(sample_video):
     app.run(["test"])
     if test_error:
         raise test_error
+
+
+def test_thumbnail_refinement_on_segment_deletion(sample_video):
+    """Verify deleting other segments enlarges a small segment and triggers refinement to replace repeated thumbs."""
+    app = Adw.Application(application_id="io.github.thor27.video-cut.test.refinement.delete")
+    test_error = None
+
+    def run_test(app):
+        nonlocal test_error
+        win = None
+        try:
+            win = MainWindow(application=app)
+            # Pre-generate initial thumbnails
+            win.thumbnail_service.generate_thumbnails_async(sample_video, 2.0, on_done=lambda p, r: None)
+            win.thumbnail_service.wait_idle()
+            _drain_glib_events()
+
+            # Segment 1 is small (0.0 to 0.4s), Segment 2 is larger (0.4 to 2.0s)
+            seg1 = Segment(id="seg1", source_path=sample_video, start_time=0.0, end_time=0.4, source_duration=2.0)
+            seg2 = Segment(id="seg2", source_path=sample_video, start_time=0.4, end_time=2.0, source_duration=2.0)
+            win.timeline.segments = [seg1, seg2]
+            win.timeline_widget.rebuild_filmstrip()
+
+            card1 = win.timeline_widget._cards.get("seg1")
+            initial_count = len(card1._current_thumb_list)
+
+            # Delete seg2 so seg1 expands proportionally to fill the timeline
+            win.delete_segment("seg2")
+
+            card1_enlarged = win.timeline_widget._cards.get("seg1")
+            enlarged_count = len(card1_enlarged._current_thumb_list)
+            assert enlarged_count > initial_count
+
+            # Wait for background refinement to extract new frames and update filmstrip
+            win.thumbnail_service.wait_idle()
+            _drain_glib_events()
+
+            # Filmstrip should now contain distinct thumbnails without window resize
+            refined_thumbs = card1_enlarged._current_thumb_list
+            assert len(refined_thumbs) == enlarged_count
+            assert len(set(refined_thumbs)) > 1
+        except BaseException as e:
+            test_error = e
+        finally:
+            if win:
+                win.close()
+            app.quit()
+
+    app.connect("activate", run_test)
+    app.run(["test"])
+    if test_error:
+        raise test_error

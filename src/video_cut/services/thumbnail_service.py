@@ -379,15 +379,15 @@ class ThumbnailService:
                 item_key = (key, ts_ms)
                 if item_key in self._in_flight_refinement_timestamps:
                     continue
-                # Also skip if an in-flight timestamp for this key is within 80ms
+                # Also skip if an in-flight timestamp for this key is within 15ms
                 if any(
-                    abs(inflight_ts - ts_ms) <= 80
+                    abs(inflight_ts - ts_ms) <= 15
                     for k, inflight_ts in self._in_flight_refinement_timestamps
                     if k == key
                 ):
                     continue
-                # Skip if cache already has a thumbnail very close to t (<= 0.05s)
-                if any(abs(c_ts - t) <= 0.05 for c_ts, _ in cached_items):
+                # Skip if cache already has a thumbnail very close to t (<= 0.015s)
+                if any(abs(c_ts - t) <= 0.015 for c_ts, _ in cached_items):
                     continue
                 self._in_flight_refinement_timestamps.add(item_key)
                 needed_times.append(t)
