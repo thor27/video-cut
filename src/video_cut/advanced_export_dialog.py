@@ -25,10 +25,11 @@ class AdvancedExportDialog(Adw.Window):
         source_width: int | None = None,
         source_height: int | None = None,
         source_fps: float | None = None,
+        initial_lossless: bool = False,
     ) -> None:
         super().__init__(transient_for=parent, modal=True)
         self.set_title(_("Export Options"))
-        self.set_default_size(480, 600)
+        self.set_default_size(540, 700)
         self.on_export = on_export
 
         self.source_width = source_width
@@ -44,6 +45,8 @@ class AdvancedExportDialog(Adw.Window):
         self._updating_codecs = False
 
         self._build_ui()
+        if initial_lossless:
+            self.row_lossless.set_active(True)
         self._update_codecs_for_container()
 
     def _build_ui(self) -> None:
@@ -59,7 +62,7 @@ class AdvancedExportDialog(Adw.Window):
         scrolled.set_propagate_natural_width(True)
         toolbar_view.set_content(scrolled)
 
-        clamp = Adw.Clamp(maximum_size=460)
+        clamp = Adw.Clamp(maximum_size=520)
         scrolled.set_child(clamp)
 
         box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10)
@@ -69,8 +72,41 @@ class AdvancedExportDialog(Adw.Window):
         box.set_margin_bottom(12)
         clamp.set_child(box)
 
-        box.append(self._create_video_group())
-        box.append(self._create_audio_group())
+        box.append(self._create_lossless_group())
+        self.grp_video = self._create_video_group()
+        box.append(self.grp_video)
+        self.grp_audio = self._create_audio_group()
+        box.append(self.grp_audio)
+
+    def _create_lossless_group(self) -> Adw.PreferencesGroup:
+        """Build the Lossless stream-copy preference group with question mark help button."""
+        grp = Adw.PreferencesGroup(title=_("Export Mode"))
+        self.row_lossless = Adw.SwitchRow(title=_("Lossless (Stream Copy)"))
+        self.row_lossless.set_subtitle(_("Direct stream copying without re-encoding (instant export)"))
+        self.row_lossless.set_active(False)
+        self.row_lossless.connect("notify::active", self._on_lossless_toggled)
+
+        self.btn_lossless_help = Gtk.Button.new_from_icon_name("dialog-question-symbolic")
+        self.btn_lossless_help.add_css_class("flat")
+        self.btn_lossless_help.add_css_class("circular")
+        self.btn_lossless_help.set_valign(Gtk.Align.CENTER)
+        self.btn_lossless_help.set_tooltip_text(_("Lossless cutting & keyframe explanation"))
+        self.btn_lossless_help.connect("clicked", lambda _: self._show_lossless_help())
+        self.row_lossless.add_suffix(self.btn_lossless_help)
+
+        grp.add(self.row_lossless)
+        return grp
+
+    def _show_lossless_help(self) -> None:
+        from .keyframe_help_dialog import KeyframeHelpDialog
+
+        dialog = KeyframeHelpDialog(parent=self)
+        dialog.present()
+
+    def _on_lossless_toggled(self, row: Adw.SwitchRow, _param) -> None:
+        is_lossless = row.get_active()
+        self.grp_video.set_sensitive(not is_lossless)
+        self.grp_audio.set_sensitive(not is_lossless)
 
     def _create_header_bar(self) -> Adw.HeaderBar:
         """Build the top header bar with Cancel and Export action buttons."""
@@ -92,7 +128,7 @@ class AdvancedExportDialog(Adw.Window):
 
     def _create_video_group(self) -> Adw.PreferencesGroup:
         """Build the Video preference group with container, resolution, fps, codec, quality, and preset."""
-        grp_video = Adw.PreferencesGroup(title=_("Video"))
+        grp_video = Adw.PreferencesGroup(title=_("Video Re-encoding Options"))
         grp_video.add(self._create_container_row())
         grp_video.add(self._create_resolution_row())
         grp_video.add(self._create_fps_row())
@@ -302,6 +338,15 @@ class AdvancedExportDialog(Adw.Window):
         b_idx = self.row_audio_bitrate.get_selected()
         bitrate_val = self.bitrate_options[b_idx][0] if 0 <= b_idx < len(self.bitrate_options) else "192k"
 
+        if self.row_lossless.get_active():
+            settings = ExportSettings(
+                container=container,
+                lossless=True,
+            )
+            self.close()
+            self.on_export(settings)
+            return
+
         settings = ExportSettings(
             container=container,
             video_codec=v_codec,
@@ -312,6 +357,7 @@ class AdvancedExportDialog(Adw.Window):
             fps=fps_val,
             audio_codec=a_codec,
             audio_bitrate=bitrate_val,
+            lossless=False,
         )
 
         self.close()

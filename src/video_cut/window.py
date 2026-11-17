@@ -1,5 +1,8 @@
+import bisect
 import subprocess
+import threading
 from collections.abc import Callable
+from dataclasses import replace
 from pathlib import Path
 from typing import Any
 
@@ -16,6 +19,7 @@ from .clipboard_controller import ClipboardController, parse_uri_list
 from .crop_rotate_dialog import CropRotateDialog
 from .i18n import _
 from .image_import_dialog import ImageImportDialog
+from .keyframe_help_dialog import KeyframeHelpDialog
 from .models import ExportSettings, ProjectTimeline, Segment
 from .overlay_dialog import OverlayDialog
 from .paths import APP_ID, load_application_css, register_resource_icons
@@ -52,6 +56,7 @@ class MainWindow(Adw.ApplicationWindow):
         # Project state
         self.current_project_path: Path | None = None
         self.is_dirty: bool = False
+        self.snap_to_keyframe: bool = False
         self.connect("close-request", self._on_close_request)
 
         # Build UI layout
@@ -272,7 +277,7 @@ class MainWindow(Adw.ApplicationWindow):
             on_selection_changed=self._on_segment_selection_changed,
             on_play_pause=self._on_toggle_play,
             on_step_1s=lambda d: self.player.step(d * 1.0, self.current_global_time),
-            on_step_frame=lambda d: self.player.step_frame(d),
+            on_step_frame=self._on_step_frame,
             on_jump_segment=self._on_jump_segment_requested,
             on_structure_changed=self._on_timeline_structure_changed,
             get_segment_thumbnails=self._get_segment_thumbnails,
@@ -286,6 +291,8 @@ class MainWindow(Adw.ApplicationWindow):
             on_crop_rotate_selection_requested=self.open_crop_rotate_selected_segment,
             on_overlay_requested=self.open_overlay_dialog,
             on_overlay_selection_requested=self.open_overlay_selected_segment,
+            on_toggle_keyframe_snap=self._on_toggle_keyframe_snap,
+            on_keyframe_help=self._show_keyframe_help,
         )
         self.btn_undo = self.timeline_widget.btn_undo
         self.btn_redo = self.timeline_widget.btn_redo
@@ -367,12 +374,12 @@ class MainWindow(Adw.ApplicationWindow):
 
         # Single frame back: Comma (,)
         if keyval in (Gdk.KEY_comma, Gdk.KEY_less):
-            self.player.step_frame(-1)
+            self._on_step_frame(-1)
             return True
 
         # Single frame forward: Period (.)
         if keyval in (Gdk.KEY_period, Gdk.KEY_greater):
-            self.player.step_frame(1)
+            self._on_step_frame(1)
             return True
 
         # Jump prev segment: Home or Page_Up
@@ -511,12 +518,214 @@ class MainWindow(Adw.ApplicationWindow):
         self.current_global_time = global_time
         self.timeline_widget.update_playhead(global_time)
 
+    def _get_timeline_keyframe_points(self) -> list[float]:
+        """Compute sorted global timeline timestamps for all keyframes across segments."""
+        if hasattr(self, "timeline_widget"):
+            return self.timeline_widget.get_timeline_keyframe_points()
+        return [0.0]
+
     def _on_timeline_seek(self, global_time: float) -> None:
         if self.player.is_playing:
             self.player.pause()
+
+        if self.snap_to_keyframe and not self.timeline.is_empty:
+            try:
+                global_time = self.timeline_widget.snap_time_to_keyframe(global_time)
+            except Exception:
+                pass
+
         self.current_global_time = global_time
         self.player.seek_to_global_time(global_time)
         self.timeline_widget.update_playhead(global_time)
+
+    def _on_step_frame(self, direction: int) -> None:
+        if self.snap_to_keyframe and not self.timeline.is_empty:
+            self._step_keyframe(direction)
+        else:
+            self.player.step_frame(direction)
+
+    def _step_keyframe(self, direction: int) -> None:
+        if self.timeline.is_empty:
+            return
+        if self.player.is_playing:
+            self.player.pause()
+
+        pts = self._get_timeline_keyframe_points()
+        if len(pts) <= 1:
+            self.player.step_frame(direction)
+            return
+
+        cur = self.current_global_time
+        eps = 0.02
+        if direction > 0:
+            idx = bisect.bisect_right(pts, cur + eps)
+            if idx < len(pts):
+                target = pts[idx]
+            else:
+                target = pts[-1]
+        else:
+            idx = bisect.bisect_left(pts, cur - eps)
+            if idx > 0:
+                target = pts[idx - 1]
+            else:
+                target = pts[0]
+
+        self._on_timeline_seek(target)
+
+    def _ensure_keyframes_indexed(
+        self,
+        on_ready: Callable[[], None],
+        on_cancel: Callable[[], None] | None = None,
+    ) -> None:
+        """Ensure all timeline segments have their keyframes indexed, showing ProgressModal if needed."""
+        if self.timeline.is_empty:
+            on_ready()
+            return
+
+        uncached_paths: list[Path] = []
+        seen: set[str] = set()
+        for seg in self.timeline.segments:
+            try:
+                p_str = str(seg.source_path.resolve())
+            except OSError:
+                p_str = str(seg.source_path)
+            if p_str not in seen and not ProbeService.is_keyframes_cached(seg.source_path):
+                seen.add(p_str)
+                uncached_paths.append(seg.source_path)
+
+        if not uncached_paths:
+            on_ready()
+            return
+
+        cancelled = False
+
+        def do_cancel():
+            nonlocal cancelled
+            cancelled = True
+
+        modal = ProgressModal(
+            parent=self,
+            title=_("Indexing Keyframes"),
+            initial_status=_("Indexing keyframes..."),
+            initial_details=_("Scanning media for keyframes..."),
+            on_cancel=do_cancel,
+        )
+        modal.present()
+
+        def worker():
+            total_files = len(uncached_paths)
+            for idx, file_path in enumerate(uncached_paths):
+                if cancelled:
+                    break
+                dur = ProbeService.get_duration(file_path) or 1.0
+                fname = file_path.name
+
+                def on_progress(
+                    frac: float,
+                    cur_s: float,
+                    file_idx: int = idx,
+                    file_name: str = fname,
+                    file_dur: float = dur,
+                ):
+                    if cancelled:
+                        return
+                    overall_frac = (file_idx + frac) / total_files
+                    percent = int(overall_frac * 100)
+                    GLib.idle_add(
+                        modal.update_progress,
+                        overall_frac,
+                        _("Indexing keyframes ({percent}%)...").format(percent=percent),
+                        _("{name} ({cur} / {total})").format(
+                            name=file_name,
+                            cur=format_time(cur_s),
+                            total=format_time(file_dur),
+                        ),
+                    )
+
+                res = ProbeService.probe_keyframes_streaming(
+                    file_path=file_path,
+                    duration=dur,
+                    on_progress=on_progress,
+                    is_cancelled=lambda: cancelled,
+                )
+                if res is None or cancelled:
+                    break
+
+            def on_finish_modal():
+                modal.finish()
+                if cancelled:
+                    if on_cancel:
+                        on_cancel()
+                else:
+                    if hasattr(self, "timeline_widget"):
+                        self.timeline_widget.invalidate_keyframe_points_cache()
+                    on_ready()
+                return False
+
+            GLib.idle_add(on_finish_modal)
+
+        threading.Thread(target=worker, daemon=True).start()
+
+    def _on_toggle_keyframe_snap(self, enabled: bool) -> None:
+        self.snap_to_keyframe = enabled
+        if hasattr(self, "timeline_widget") and self.timeline_widget.snap_to_keyframe != enabled:
+            self.timeline_widget.set_keyframe_snap(enabled)
+        if not enabled or self.timeline.is_empty:
+            return
+
+        def on_ready():
+            self._apply_keyframe_snap_on_timeline()
+
+        def on_cancel():
+            self.snap_to_keyframe = False
+            if hasattr(self, "timeline_widget"):
+                self.timeline_widget.set_keyframe_snap(False)
+            self._show_toast(_("Keyframe indexing cancelled"))
+
+        self._ensure_keyframes_indexed(on_ready=on_ready, on_cancel=on_cancel)
+
+    def _apply_keyframe_snap_on_timeline(self) -> None:
+        if self.timeline.is_empty:
+            return
+
+        needs_snapping = False
+        new_ranges: list[tuple[float, float]] = []
+
+        # Snap cuts to nearest keyframe
+        for seg in self.timeline.segments:
+            kfs = ProbeService.get_keyframe_timestamps(seg.source_path)
+            if not kfs:
+                new_ranges.append((seg.start_time, seg.end_time))
+                continue
+            ns = 0.0 if seg.start_time < 0.05 else ProbeService.find_nearest_keyframe(kfs, seg.start_time)
+            ne = (
+                seg.source_duration
+                if (seg.source_duration - seg.end_time < 0.05)
+                else ProbeService.find_nearest_keyframe(kfs, seg.end_time)
+            )
+            if ne <= ns:
+                candidates = [k for k in kfs if k > ns]
+                ne = candidates[0] if candidates else max(ns + 0.1, seg.end_time)
+            if abs(ns - seg.start_time) > 1e-3 or abs(ne - seg.end_time) > 1e-3:
+                needs_snapping = True
+            new_ranges.append((ns, ne))
+
+        if needs_snapping:
+            self.timeline.save_state(self.current_global_time)
+            for seg, (ns, ne) in zip(self.timeline.segments, new_ranges, strict=True):
+                seg.start_time = ns
+                seg.end_time = ne
+            self._mark_dirty()
+            self.timeline_widget.rebuild_filmstrip()
+            self._on_timeline_seek(self.current_global_time)
+            self._update_ui_state()
+            self._show_toast(_("Cuts moved to nearest keyframes (Undo with Ctrl+Z)"))
+        else:
+            self._on_timeline_seek(self.current_global_time)
+
+    def _show_keyframe_help(self) -> None:
+        dialog = KeyframeHelpDialog(parent=self)
+        dialog.present()
 
     def _on_jump_segment_requested(self, direction: int) -> None:
         self.timeline_widget._is_scrubbing = False
@@ -1445,6 +1654,8 @@ class MainWindow(Adw.ApplicationWindow):
                 on_first_thumb=on_first_thumb,
                 on_progress=on_thumb_progress,
             )
+            if self.snap_to_keyframe:
+                self._on_toggle_keyframe_snap(True)
 
         self.timeline_widget.rebuild_filmstrip()
         self._mark_dirty()
@@ -1464,10 +1675,23 @@ class MainWindow(Adw.ApplicationWindow):
         if self.timeline.is_empty:
             return
 
+        split_time = self.current_global_time
+        if self.snap_to_keyframe:
+            try:
+                idx, seg, source_ts = self.timeline.map_global_time(split_time)
+                kfs = ProbeService.get_keyframe_timestamps(seg.source_path)
+                # Only consider internal keyframes strictly inside the segment
+                internal_kfs = [k for k in kfs if seg.start_time + 0.05 <= k <= seg.end_time - 0.05]
+                if internal_kfs:
+                    nearest = ProbeService.find_nearest_keyframe(internal_kfs, source_ts)
+                    split_time = self.timeline.get_segment_global_start(idx) + (nearest - seg.start_time)
+            except Exception:
+                pass
+
         # Save state before splitting for Undo
         self.timeline.save_state(self.current_global_time)
 
-        result = self.timeline.split_at(self.current_global_time)
+        result = self.timeline.split_at(split_time)
         if result is None:
             # Revert the save if split was rejected
             if self.timeline.can_undo:
@@ -1489,6 +1713,7 @@ class MainWindow(Adw.ApplicationWindow):
             on_ready=on_split_thumb_ready,
         )
 
+        self.current_global_time = split_time
         self.player.sync_timeline_change(self.current_global_time)
         self.timeline_widget.hide_split_pill()
         self.timeline_widget.rebuild_filmstrip()
@@ -1687,6 +1912,7 @@ class MainWindow(Adw.ApplicationWindow):
             source_width=src_w,
             source_height=src_h,
             source_fps=src_fps,
+            initial_lossless=self.snap_to_keyframe,
         )
         dialog.present()
 
@@ -1694,8 +1920,19 @@ class MainWindow(Adw.ApplicationWindow):
         if self.timeline.is_empty:
             return
 
+        if settings is None and self.snap_to_keyframe:
+            can_lossless, _reason = self.export_service.can_lossless_export(self.timeline.segments)
+            if can_lossless:
+                src_ext = self.timeline.segments[0].source_path.suffix.lower().lstrip(".")
+                container = src_ext if src_ext in ("mp4", "mkv", "webm", "mov") else "mp4"
+                if container == "mkv":
+                    container = "matroska"
+                settings = ExportSettings(container=container, lossless=True)
+
         dialog = Gtk.FileDialog.new()
-        if settings:
+        if settings and settings.lossless:
+            dialog.set_title(_("Export Video (Lossless)"))
+        elif settings:
             dialog.set_title(_("Export Video"))
         else:
             dialog.set_title(_("Export with Default Options"))
@@ -1753,10 +1990,29 @@ class MainWindow(Adw.ApplicationWindow):
     def _start_export(self, destination: Path, settings: ExportSettings | None = None) -> None:
         self.player.pause()
 
+        is_lossless = bool(settings and settings.lossless)
+        if is_lossless:
+            def on_kfs_ready():
+                self._run_export_task(destination, settings, is_lossless=True)
+
+            self._ensure_keyframes_indexed(on_ready=on_kfs_ready)
+            return
+
+        self._run_export_task(destination, settings, is_lossless=False)
+
+    def _run_export_task(
+        self,
+        destination: Path,
+        settings: ExportSettings | None,
+        is_lossless: bool,
+    ) -> None:
+        title = _("Exporting Video (Lossless)") if is_lossless else _("Exporting Video")
+        initial_status = _("Stream copying video (lossless)...") if is_lossless else _("Rendering video...")
+
         modal = ProgressModal(
             parent=self,
-            title=_("Exporting Video"),
-            initial_status=_("Rendering video..."),
+            title=title,
+            initial_status=initial_status,
             initial_details=_("Exporting to {name}...").format(name=destination.name),
             on_cancel=lambda: self.export_service.cancel(),
         )
@@ -1764,9 +2020,14 @@ class MainWindow(Adw.ApplicationWindow):
 
         def on_progress(fraction: float, cur_s: float) -> None:
             percent = int(fraction * 100)
+            status_text = (
+                _("Stream copying ({percent}%)...").format(percent=percent)
+                if is_lossless
+                else _("Rendering video ({percent}%)...").format(percent=percent)
+            )
             modal.update_progress(
                 fraction,
-                status_text=_("Rendering video ({percent}%)...").format(percent=percent),
+                status_text=status_text,
                 details_text=_("Processed: {processed} / {total}").format(
                     processed=format_time(cur_s),
                     total=format_time(self.timeline.total_duration),
@@ -1776,13 +2037,39 @@ class MainWindow(Adw.ApplicationWindow):
         def on_done(success: bool, error: str | None) -> None:
             modal.finish()
             if success:
-                self._show_toast(_("Export complete: {name}").format(name=destination.name))
+                msg = (
+                    _("Lossless export complete: {name}").format(name=destination.name)
+                    if is_lossless
+                    else _("Export complete: {name}").format(name=destination.name)
+                )
+                self._show_toast(msg)
                 self._open_in_default_player(destination)
             else:
                 self._show_toast(_("Export failed: {error}").format(error=error or _("Unknown error")))
 
+        export_segments = list(self.timeline.segments)
+        if is_lossless:
+            # Guarantee keyframe-aligned segment bounds for lossless cutting
+            aligned: list[Segment] = []
+            for seg in export_segments:
+                kfs = ProbeService.get_keyframe_timestamps(seg.source_path)
+                if kfs:
+                    ns = 0.0 if seg.start_time < 0.05 else ProbeService.find_nearest_keyframe(kfs, seg.start_time)
+                    ne = (
+                        seg.source_duration
+                        if (seg.source_duration - seg.end_time < 0.05)
+                        else ProbeService.find_nearest_keyframe(kfs, seg.end_time)
+                    )
+                    if ne <= ns:
+                        cands = [k for k in kfs if k > ns]
+                        ne = cands[0] if cands else max(ns + 0.1, seg.end_time)
+                    aligned.append(replace(seg, start_time=ns, end_time=ne))
+                else:
+                    aligned.append(seg)
+            export_segments = aligned
+
         self.export_service.export_async(
-            segments=list(self.timeline.segments),
+            segments=export_segments,
             output_path=destination,
             on_progress=on_progress,
             on_done=on_done,

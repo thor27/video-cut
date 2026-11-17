@@ -1,5 +1,6 @@
 """Storyboard timeline widget managing the filmstrip and playhead needles."""
 
+import bisect
 from collections.abc import Callable
 from pathlib import Path
 
@@ -13,6 +14,7 @@ from gi.repository import Gdk, GLib, Gtk
 from .i18n import _
 from .models import ProjectTimeline, Segment
 from .segment_card import SegmentCard
+from .services.probe_service import ProbeService
 from .utils import clamp, format_time
 
 
@@ -126,10 +128,15 @@ class TimelineWidget(Gtk.Box):
         on_crop_rotate_selection_requested: Callable[[], None] | None = None,
         on_overlay_requested: Callable[[str], None] | None = None,
         on_overlay_selection_requested: Callable[[], None] | None = None,
+        on_toggle_keyframe_snap: Callable[[bool], None] | None = None,
+        on_keyframe_help: Callable[[], None] | None = None,
     ) -> None:
         super().__init__(orientation=Gtk.Orientation.VERTICAL, spacing=6)
         self.timeline = timeline
         self.on_seek = on_seek
+        self.on_toggle_keyframe_snap = on_toggle_keyframe_snap
+        self.on_keyframe_help = on_keyframe_help
+        self.snap_to_keyframe: bool = False
         self.on_split_requested = on_split_requested
         self.on_delete_requested = on_delete_requested
         self.on_copy_requested = on_copy_requested
@@ -163,6 +170,8 @@ class TimelineWidget(Gtk.Box):
         self._is_playing = False
         self._active_scrub_seg_id: str | None = None
         self._anchor_segment_id: str | None = None
+        self._cached_keyframe_points: list[float] | None = None
+        self._last_snapped_keyframe: float | None = None
 
         self.add_css_class("timeline-container")
 
@@ -285,13 +294,13 @@ class TimelineWidget(Gtk.Box):
         transport_box.append(btn_back_1s)
 
         # 3. Previous single frame (single arrow)
-        btn_prev_frame = Gtk.Button.new_from_icon_name("go-previous-symbolic")
-        btn_prev_frame.set_tooltip_text(_("Previous frame (,)"))
-        btn_prev_frame.set_focusable(False)
-        btn_prev_frame.add_css_class("flat")
-        btn_prev_frame.add_css_class("circular")
-        btn_prev_frame.connect("clicked", lambda _: self.on_step_frame(-1))
-        transport_box.append(btn_prev_frame)
+        self.btn_prev_frame = Gtk.Button.new_from_icon_name("go-previous-symbolic")
+        self.btn_prev_frame.set_tooltip_text(_("Previous frame (,)"))
+        self.btn_prev_frame.set_focusable(False)
+        self.btn_prev_frame.add_css_class("flat")
+        self.btn_prev_frame.add_css_class("circular")
+        self.btn_prev_frame.connect("clicked", lambda _: self.on_step_frame(-1))
+        transport_box.append(self.btn_prev_frame)
 
         # 4. Play / Pause
         self.btn_play_pause = Gtk.Button.new_from_icon_name("media-playback-start-symbolic")
@@ -303,13 +312,13 @@ class TimelineWidget(Gtk.Box):
         transport_box.append(self.btn_play_pause)
 
         # 5. Next single frame (single arrow)
-        btn_next_frame = Gtk.Button.new_from_icon_name("go-next-symbolic")
-        btn_next_frame.set_tooltip_text(_("Next frame (.)"))
-        btn_next_frame.set_focusable(False)
-        btn_next_frame.add_css_class("flat")
-        btn_next_frame.add_css_class("circular")
-        btn_next_frame.connect("clicked", lambda _: self.on_step_frame(1))
-        transport_box.append(btn_next_frame)
+        self.btn_next_frame = Gtk.Button.new_from_icon_name("go-next-symbolic")
+        self.btn_next_frame.set_tooltip_text(_("Next frame (.)"))
+        self.btn_next_frame.set_focusable(False)
+        self.btn_next_frame.add_css_class("flat")
+        self.btn_next_frame.add_css_class("circular")
+        self.btn_next_frame.connect("clicked", lambda _: self.on_step_frame(1))
+        transport_box.append(self.btn_next_frame)
 
         # 6. Step forward 1s (double arrow)
         btn_fwd_1s = Gtk.Button.new_from_icon_name("media-seek-forward-symbolic")
@@ -331,14 +340,34 @@ class TimelineWidget(Gtk.Box):
 
         time_bar.set_center_widget(transport_box)
 
-        # 3. Right (End): Current time / Total time badge
-        end_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+        # 3. Right (End): Current time / Total time badge + Keyframe snap & help
+        end_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
         end_box.set_halign(Gtk.Align.END)
         end_box.set_valign(Gtk.Align.CENTER)
 
         self.thumb_progress_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
         self.thumb_spinner = Gtk.Spinner()
         self.lbl_thumb_progress = Gtk.Label(label=_("Generating thumbnails..."))
+
+        # Keyframe stick toggle & help group (linked buttons like clipboard/undo groups)
+        keyframe_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
+        keyframe_box.add_css_class("linked")
+
+        self.btn_keyframe_snap = Gtk.ToggleButton()
+        self.btn_keyframe_snap.set_icon_name("keyframe-snap-symbolic")
+        self.btn_keyframe_snap.set_tooltip_text(_("Stick cuts & cursor to Keyframes (Lossless Mode)"))
+        self.btn_keyframe_snap.set_focusable(False)
+        self.btn_keyframe_snap.connect("toggled", self._on_keyframe_snap_toggled)
+        keyframe_box.append(self.btn_keyframe_snap)
+
+        self.btn_keyframe_help = Gtk.Button.new_from_icon_name("dialog-question-symbolic")
+        self.btn_keyframe_help.set_tooltip_text(_("What are Keyframes? (Lossless Guide)"))
+        self.btn_keyframe_help.set_focusable(False)
+        if self.on_keyframe_help:
+            self.btn_keyframe_help.connect("clicked", lambda _: self.on_keyframe_help())
+        keyframe_box.append(self.btn_keyframe_help)
+
+        end_box.append(keyframe_box)
 
         self.lbl_time_display = Gtk.Label(label="00:00.00 / 00:00.00")
         self.lbl_time_display.add_css_class("time-badge")
@@ -349,6 +378,28 @@ class TimelineWidget(Gtk.Box):
         time_bar.set_end_widget(end_box)
 
         self.append(time_bar)
+
+    def _on_keyframe_snap_toggled(self, btn: Gtk.ToggleButton) -> None:
+        self.snap_to_keyframe = btn.get_active()
+        self.invalidate_keyframe_points_cache()
+        if self.snap_to_keyframe:
+            btn.add_css_class("accent")
+            self.btn_prev_frame.set_tooltip_text(_("Previous keyframe (,)"))
+            self.btn_next_frame.set_tooltip_text(_("Next keyframe (.)"))
+        else:
+            btn.remove_css_class("accent")
+            self.btn_prev_frame.set_tooltip_text(_("Previous frame (,)"))
+            self.btn_next_frame.set_tooltip_text(_("Next frame (.)"))
+
+        if self.on_toggle_keyframe_snap:
+            self.on_toggle_keyframe_snap(self.snap_to_keyframe)
+
+    def set_keyframe_snap(self, active: bool) -> None:
+        """Programmatically update keyframe snap toggle state."""
+        self.snap_to_keyframe = active
+        self.invalidate_keyframe_points_cache()
+        if hasattr(self, "btn_keyframe_snap") and self.btn_keyframe_snap.get_active() != active:
+            self.btn_keyframe_snap.set_active(active)
 
     def show_thumbnail_progress(self, completed: int, total: int) -> None:
         """Deprecated: Progress is now shown via floating toast notification in MainWindow."""
@@ -499,6 +550,7 @@ class TimelineWidget(Gtk.Box):
 
     def rebuild_filmstrip(self) -> None:
         """Recreate segment cards to reflect timeline changes."""
+        self.invalidate_keyframe_points_cache()
         child = self.cards_box.get_first_child()
         while child:
             next_child = child.get_next_sibling()
@@ -736,8 +788,118 @@ class TimelineWidget(Gtk.Box):
                 card.set_cursor(None)
                 card.header.set_cursor_from_name("grab")
 
+    def invalidate_keyframe_points_cache(self) -> None:
+        self._cached_keyframe_points = None
+
+    def get_timeline_keyframe_points(self) -> list[float]:
+        """Compute sorted global timeline timestamps for all keyframes across segments with caching."""
+        if self._cached_keyframe_points is not None:
+            return self._cached_keyframe_points
+
+        points: list[float] = [0.0]
+        if self.timeline.is_empty:
+            self._cached_keyframe_points = points
+            return points
+
+        accum = 0.0
+        all_cached = True
+        for seg in self.timeline.segments:
+            if not ProbeService.is_keyframes_cached(seg.source_path):
+                all_cached = False
+                accum += seg.duration
+                continue
+
+            kfs = ProbeService.get_keyframe_timestamps(seg.source_path)
+            for k in kfs:
+                if seg.start_time - 1e-4 <= k <= seg.end_time + 1e-4:
+                    gt = accum + (k - seg.start_time)
+                    if not points or gt > points[-1] + 1e-3:
+                        points.append(gt)
+            accum += seg.duration
+
+        total = self.timeline.total_duration
+        if not points or total > points[-1] + 1e-3:
+            points.append(total)
+
+        res = sorted(points)
+        if all_cached:
+            self._cached_keyframe_points = res
+        return res
+
+    def _on_keyframes_indexed(self) -> None:
+        self.invalidate_keyframe_points_cache()
+        if self.snap_to_keyframe and not self.timeline.is_empty:
+            self.update_playhead(self._current_time)
+
+    def snap_time_to_keyframe(self, global_time: float) -> float:
+        """Find the keyframe timestamp on the global timeline closest to global_time."""
+        pts = self.get_timeline_keyframe_points()
+        if len(pts) <= 1:
+            return global_time
+        idx = bisect.bisect_left(pts, global_time)
+        if idx == 0:
+            return pts[0]
+        if idx >= len(pts):
+            return pts[-1]
+        before = pts[idx - 1]
+        after = pts[idx]
+        return after if (after - global_time) < (global_time - before) else before
+
+    def _seek_to_keyframe(
+        self, snapped_global: float, preferred_seg_id: str | None = None, force: bool = False
+    ) -> None:
+        snapped_global = clamp(snapped_global, 0.0, self.timeline.total_duration)
+        if (
+            not force
+            and getattr(self, "_last_snapped_keyframe", None) == snapped_global
+            and getattr(self, "_active_scrub_seg_id", None) == preferred_seg_id
+        ):
+            return
+
+        self._last_snapped_keyframe = snapped_global
+        try:
+            active_idx, active_seg, active_source_ts = self.timeline.map_global_time(snapped_global)
+        except ValueError:
+            return
+
+        chosen_seg_id = active_seg.id
+        chosen_ratio = (
+            clamp((active_source_ts - active_seg.start_time) / active_seg.duration, 0.0, 1.0)
+            if active_seg.duration > 0
+            else 0.0
+        )
+
+        if preferred_seg_id and preferred_seg_id != active_seg.id:
+            p_idx = self.timeline.get_segment_index(preferred_seg_id)
+            if p_idx != -1:
+                p_seg = self.timeline.segments[p_idx]
+                p_start = self.timeline.get_segment_global_start(p_idx)
+                p_end = p_start + p_seg.duration
+                if abs(snapped_global - p_end) < 1e-3:
+                    chosen_seg_id = preferred_seg_id
+                    chosen_ratio = 1.0
+                elif abs(snapped_global - p_start) < 1e-3:
+                    chosen_seg_id = preferred_seg_id
+                    chosen_ratio = 0.0
+
+        self._active_scrub_seg_id = chosen_seg_id
+        self._current_time = snapped_global
+        self._update_time_label()
+
+        for s_id, card in self._cards.items():
+            if s_id == chosen_seg_id:
+                card.set_needle_ratio(chosen_ratio)
+            else:
+                card.set_needle_ratio(None)
+
+        if hasattr(self, "split_pill") and self.split_pill.get_visible():
+            self._update_split_pill_position()
+
+        self.on_seek(snapped_global)
+
     def _on_scrub_start(self, source_card: SegmentCard, x: float, y: float) -> None:
         self._is_scrubbing = True
+        self._last_snapped_keyframe = None
         self._active_scrub_seg_id = source_card.segment.id
         self._set_scrubbing_cursor(True)
         self._handle_scrub(source_card, x, y)
@@ -745,6 +907,7 @@ class TimelineWidget(Gtk.Box):
     def _on_scrub_update(self, source_card: SegmentCard, cur_x: float, cur_y: float) -> None:
         if not self._is_scrubbing:
             self._is_scrubbing = True
+            self._last_snapped_keyframe = None
             self._set_scrubbing_cursor(True)
         else:
             root = self.get_root()
@@ -758,8 +921,11 @@ class TimelineWidget(Gtk.Box):
 
     def _on_scrub_end(self) -> None:
         self._is_scrubbing = False
+        self._last_snapped_keyframe = None
         self._active_scrub_seg_id = None
         self._set_scrubbing_cursor(False)
+        if self.snap_to_keyframe:
+            self.update_playhead(self._current_time)
 
     def _handle_scrub(self, source_card: SegmentCard, cur_x: float, cur_y: float) -> None:
         if self.timeline.is_empty:
@@ -771,37 +937,47 @@ class TimelineWidget(Gtk.Box):
         # 1. Check if the mouse is physically inside any segment card's filmstrip image
         for seg in self.timeline.segments:
             card = self._cards.get(seg.id)
-            if not card or not card.filmstrip_box.get_mapped():
+            if not card:
                 continue
 
             coords = source_card.overlay.translate_coordinates(card.filmstrip_box, cur_x, cur_y)
             if coords is not None:
                 fs_x = coords[0]
-                w = card.filmstrip_box.get_width()
-                if w <= 0:
-                    w = card.get_width() - 14
-                if w <= 0:
-                    w = 100
-                if 0.0 <= fs_x <= float(w):
-                    target_seg_id = seg.id
-                    target_ratio = clamp(fs_x / float(w), 0.0, 1.0)
-                    break
+            elif card.segment.id == source_card.segment.id:
+                fs_x = cur_x
+            else:
+                continue
+
+            w = card.filmstrip_box.get_width()
+            if w <= 0:
+                w = card.get_width() - 14
+            if w <= 0:
+                w = 100
+            if 0.0 <= fs_x <= float(w):
+                target_seg_id = seg.id
+                target_ratio = clamp(fs_x / float(w), 0.0, 1.0)
+                break
 
         if target_seg_id is not None:
-            # Mouse has reached a segment's image -> jump needle directly under mouse on that segment!
+            # Mouse has reached a segment's image
             self._active_scrub_seg_id = target_seg_id
             idx = self.timeline.get_segment_index(target_seg_id)
             seg = self.timeline.segments[idx]
             global_start = self.timeline.get_segment_global_start(idx)
-            global_time = global_start + target_ratio * seg.duration
-            self._seek_and_position_needle(global_time, target_seg_id, target_ratio)
+            raw_global = global_start + target_ratio * seg.duration
+
+            if self.snap_to_keyframe:
+                snapped_global = self.snap_time_to_keyframe(raw_global)
+                self._seek_to_keyframe(snapped_global, preferred_seg_id=target_seg_id)
+            else:
+                self._seek_and_position_needle(raw_global, target_seg_id, target_ratio)
             return
 
         # 2. Mouse is in the gap between cards or outside:
         # Keep the needle on the segment the user came from until the mouse physically enters another card
         active_id = self._active_scrub_seg_id or source_card.segment.id
         active_card = self._cards.get(active_id)
-        if active_card and active_card.filmstrip_box.get_mapped():
+        if active_card:
             idx = self.timeline.get_segment_index(active_id)
             if idx != -1:
                 seg = self.timeline.segments[idx]
@@ -815,19 +991,27 @@ class TimelineWidget(Gtk.Box):
                 coords = source_card.overlay.translate_coordinates(active_card.filmstrip_box, cur_x, cur_y)
                 if coords is not None:
                     fs_x = coords[0]
+                elif active_card.segment.id == source_card.segment.id:
+                    fs_x = cur_x
+                else:
+                    fs_x = None
+
+                if fs_x is not None:
                     if fs_x > w:
-                        # To the right of segment image (in gap) -> needle stays at end
                         ratio = 1.0
-                        global_time = global_start + seg.duration
+                        raw_global = global_start + seg.duration
                     else:
-                        # To the left of segment image (in gap) -> needle stays at start
                         ratio = 0.0
-                        global_time = global_start
+                        raw_global = global_start
                 else:
                     ratio = 0.0
-                    global_time = global_start
+                    raw_global = global_start
 
-                self._seek_and_position_needle(global_time, active_id, ratio)
+                if self.snap_to_keyframe:
+                    snapped_global = self.snap_time_to_keyframe(raw_global)
+                    self._seek_to_keyframe(snapped_global, preferred_seg_id=active_id)
+                else:
+                    self._seek_and_position_needle(raw_global, active_id, ratio)
 
     def _seek_and_position_needle(self, global_time: float, active_seg_id: str, ratio: float) -> None:
         self._current_time = clamp(global_time, 0.0, self.timeline.total_duration)
