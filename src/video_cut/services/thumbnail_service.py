@@ -6,7 +6,7 @@ import subprocess
 import threading
 from bisect import bisect_left
 from collections.abc import Callable
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import Future, ThreadPoolExecutor
 from pathlib import Path
 
 import gi
@@ -29,6 +29,7 @@ from .ffmpeg_service import (
     FLAG_SEEK,
     FLAG_SKIP_FRAME,
 )
+from .image_service import ImageService
 from .private_dir import private_dir
 
 
@@ -52,11 +53,50 @@ class ThumbnailService:
         self._in_progress_keys: set[str] = set()
         self._active_jobs: int = 0
         self._active_threads: list[threading.Thread] = []
+        self._active_futures: list[Future] = []
+        self._cache_updated_listeners: list[Callable[[Path], None]] = []
+        self._in_flight_refinement_timestamps: set[tuple[str, int]] = set()
+        self._cache_update_idle_id: int | None = None
+        self._pending_updated_paths: set[Path] = set()
 
     def has_pending_jobs(self) -> bool:
         """Check if any thumbnail generation tasks are currently active."""
         with self._cache_lock:
             return self._active_jobs > 0
+
+    def add_cache_updated_listener(self, callback: Callable[[Path], None]) -> None:
+        """Register a callback to be notified when new thumbnails are added to cache."""
+        with self._cache_lock:
+            if callback not in self._cache_updated_listeners:
+                self._cache_updated_listeners.append(callback)
+
+    def remove_cache_updated_listener(self, callback: Callable[[Path], None]) -> None:
+        """Unregister a previously added cache update listener."""
+        with self._cache_lock:
+            if callback in self._cache_updated_listeners:
+                self._cache_updated_listeners.remove(callback)
+
+    def _notify_cache_updated(self, source_path: Path) -> None:
+        """Schedule a debounced notification for cache update listeners on GLib idle."""
+        with self._cache_lock:
+            self._pending_updated_paths.add(Path(source_path))
+            if self._cache_update_idle_id is None:
+                self._cache_update_idle_id = GLib.idle_add(self._dispatch_cache_updated)
+
+    def _dispatch_cache_updated(self) -> bool:
+        with self._cache_lock:
+            self._cache_update_idle_id = None
+            paths = list(self._pending_updated_paths)
+            self._pending_updated_paths.clear()
+            listeners = list(self._cache_updated_listeners)
+
+        for p in paths:
+            for cb in listeners:
+                try:
+                    cb(p)
+                except Exception:
+                    pass
+        return False
 
     def _file_key(self, path: Path) -> str:
         try:
@@ -224,6 +264,7 @@ class ThumbnailService:
         start_time: float,
         end_time: float,
         max_thumbs: int = 8,
+        auto_refine: bool = True,
     ) -> list[Path | None]:
         """Return a list of thumbnail paths (or None for loading slots) of length max_thumbs.
 
@@ -293,7 +334,165 @@ class ThumbnailService:
                 else:
                     results.append(None)
 
+        if auto_refine and count > 1 and dur > 0.05:
+            with self._cache_lock:
+                is_img = key in self._image_keys
+                is_in_progress = key in self._in_progress_keys
+            if not is_img and not is_in_progress and not ImageService.is_image(source_path):
+                valid_results = [p for p in results if p is not None]
+                if len(valid_results) > 1 and len(set(valid_results)) < len(valid_results):
+                    step = dur / float(count - 1)
+                    tolerance = min(0.15, step * 0.4)
+                    missing_times: list[float] = []
+                    for t in target_times:
+                        if not items or not any(abs(c_ts - t) <= tolerance for c_ts, _ in items):
+                            missing_times.append(t)
+                    if missing_times:
+                        self.refine_segment_thumbnails_async(source_path, missing_times)
+
         return results
+
+    def refine_segment_thumbnails_async(
+        self,
+        source_path: Path,
+        target_times: list[float],
+        on_done: Callable[[], None] | None = None,
+    ) -> None:
+        """Extract missing thumbnails for specific target timestamps in the background."""
+        if getattr(self.executor, "_shutdown", False):
+            return
+
+        path = Path(source_path)
+        key = self._file_key(path)
+
+        with self._cache_lock:
+            if key in self._image_keys:
+                return
+        if ImageService.is_image(path):
+            return
+
+        needed_times: list[float] = []
+        with self._cache_lock:
+            cached_items = list(self._cache.get(key, []))
+            for t in target_times:
+                ts_ms = int(round(t * 1000))
+                item_key = (key, ts_ms)
+                if item_key in self._in_flight_refinement_timestamps:
+                    continue
+                # Also skip if an in-flight timestamp for this key is within 80ms
+                if any(
+                    abs(inflight_ts - ts_ms) <= 80
+                    for k, inflight_ts in self._in_flight_refinement_timestamps
+                    if k == key
+                ):
+                    continue
+                # Skip if cache already has a thumbnail very close to t (<= 0.05s)
+                if any(abs(c_ts - t) <= 0.05 for c_ts, _ in cached_items):
+                    continue
+                self._in_flight_refinement_timestamps.add(item_key)
+                needed_times.append(t)
+
+        if not needed_times:
+            if on_done:
+                GLib.idle_add(on_done)
+            return
+
+        def worker() -> None:
+            video_cache_dir = self.cache_dir / key
+            video_cache_dir.mkdir(parents=True, exist_ok=True)
+            vf = "scale='min(960,iw)':'min(540,ih)':force_original_aspect_ratio=decrease,scale=trunc(iw/2)*2:trunc(ih/2)*2"
+            ffmpeg_bin = get_ffmpeg_path()
+
+            batch_items: list[tuple[float, Path, int]] = []
+            for t in needed_times:
+                ts_ms = int(round(t * 1000))
+                out_p = video_cache_dir / f"thumb_refined_{ts_ms}.jpg"
+                batch_items.append((t, out_p, ts_ms))
+
+            try:
+                to_extract = [(t, out_p) for t, out_p, _ in batch_items if not out_p.exists()]
+                if to_extract:
+                    cmd = [ffmpeg_bin, FLAG_OVERWRITE, FLAG_NO_STDIN]
+                    for t, _out_p in to_extract:
+                        cmd.extend([FLAG_SKIP_FRAME, "bidir", FLAG_SEEK, f"{t:.3f}", FLAG_INPUT, str(path)])
+                    for local_i, (_t, out_p) in enumerate(to_extract):
+                        cmd.extend([
+                            FLAG_MAP, f"{local_i}:v:0",
+                            FLAG_FRAMES_VIDEO, "1",
+                            FLAG_NO_AUDIO, FLAG_NO_SUBTITLES, FLAG_NO_DATA,
+                            FLAG_FILTER_VIDEO, vf,
+                            FLAG_QUALITY_VIDEO, "2",
+                            str(out_p),
+                        ])
+                    res = subprocess.run(
+                        cmd,
+                        stdout=subprocess.DEVNULL,
+                        stderr=subprocess.DEVNULL,
+                        creationflags=SUBPROCESS_FLAGS,
+                    )
+                    if res.returncode != 0:
+                        # Fallback to individual seeks if multi-input fails
+                        for t, out_p in to_extract:
+                            if not out_p.exists():
+                                fb_cmd = [
+                                    ffmpeg_bin, FLAG_OVERWRITE, FLAG_NO_STDIN,
+                                    FLAG_SEEK, f"{t:.3f}",
+                                    FLAG_INPUT, str(path),
+                                    FLAG_NO_AUDIO, FLAG_NO_SUBTITLES, FLAG_NO_DATA,
+                                    FLAG_FRAMES_VIDEO, "1",
+                                    FLAG_FILTER_VIDEO, vf,
+                                    FLAG_QUALITY_VIDEO, "2",
+                                    str(out_p),
+                                ]
+                                try:
+                                    subprocess.run(
+                                        fb_cmd,
+                                        stdout=subprocess.DEVNULL,
+                                        stderr=subprocess.DEVNULL,
+                                        creationflags=SUBPROCESS_FLAGS,
+                                    )
+                                except Exception:
+                                    pass
+
+                newly_added = 0
+                with self._cache_lock:
+                    if key not in self._cache:
+                        self._cache[key] = []
+                    for t, out_p, _ in batch_items:
+                        if out_p.exists():
+                            if not any(abs(existing_ts - t) < 0.01 for existing_ts, _ in self._cache[key]):
+                                self._cache[key].append((t, out_p))
+                                newly_added += 1
+                    if newly_added > 0:
+                        self._cache[key].sort(key=lambda x: x[0])
+                        try:
+                            index_file = video_cache_dir / "index.json"
+                            data = [[ts, str(p)] for ts, p in self._cache[key]]
+                            index_file.write_text(json.dumps(data), encoding="utf-8")
+                        except Exception:
+                            pass
+
+                if newly_added > 0:
+                    self._notify_cache_updated(path)
+            finally:
+                with self._cache_lock:
+                    for _, _, ts_ms in batch_items:
+                        self._in_flight_refinement_timestamps.discard((key, ts_ms))
+
+            if on_done:
+                GLib.idle_add(on_done)
+
+        try:
+            future = self.executor.submit(worker)
+            with self._cache_lock:
+                self._active_futures.append(future)
+        except RuntimeError:
+            with self._cache_lock:
+                for t in needed_times:
+                    ts_ms = int(round(t * 1000))
+                    self._in_flight_refinement_timestamps.discard((key, ts_ms))
+            if on_done:
+                GLib.idle_add(on_done)
 
     def extract_exact_thumbnail_async(
         self,
@@ -352,7 +551,12 @@ class ThumbnailService:
                 if on_ready:
                     GLib.idle_add(on_ready, out_p)
 
-        self.executor.submit(worker)
+        try:
+            future = self.executor.submit(worker)
+            with self._cache_lock:
+                self._active_futures.append(future)
+        except RuntimeError:
+            pass
 
     def generate_thumbnails_async(
         self,
@@ -589,7 +793,16 @@ class ThumbnailService:
         coord_thread.start()
 
     def wait_idle(self) -> None:
-        """Wait for all active background threads to finish."""
+        """Wait for all active background threads and futures to finish."""
         for t in list(self._active_threads):
             if t.is_alive():
                 t.join(timeout=10.0)
+        with self._cache_lock:
+            futures = list(self._active_futures)
+        for f in futures:
+            try:
+                f.result(timeout=10.0)
+            except Exception:
+                pass
+        with self._cache_lock:
+            self._active_futures = [f for f in self._active_futures if not f.done()]

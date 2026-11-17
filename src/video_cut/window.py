@@ -47,6 +47,7 @@ class MainWindow(Adw.ApplicationWindow):
         # Models & Services
         self.timeline = ProjectTimeline()
         self.thumbnail_service = ThumbnailService()
+        self.thumbnail_service.add_cache_updated_listener(self._on_thumbnail_cache_updated)
         self.export_service = ExportService()
         self.clipboard_controller = ClipboardController(self)
         self.current_global_time: float = 0.0
@@ -333,6 +334,8 @@ class MainWindow(Adw.ApplicationWindow):
         self.connect("realize", on_realize)
 
         def on_window_close_request(*_):
+            if hasattr(self, "thumbnail_service") and self.thumbnail_service:
+                self.thumbnail_service.remove_cache_updated_listener(self._on_thumbnail_cache_updated)
             if hasattr(self, "player") and self.player:
                 self.player.clear()
             return False
@@ -1669,6 +1672,11 @@ class MainWindow(Adw.ApplicationWindow):
         if not self.thumbnail_service.has_pending_jobs():
             self.hide_thumbnail_progress()
         self.timeline_widget.recalculate_layout(force=True)
+
+    def _on_thumbnail_cache_updated(self, source_path: Path) -> None:
+        """Called when new thumbnails (e.g. refined frames) are added to cache."""
+        if hasattr(self, "timeline_widget") and self.timeline_widget:
+            self.timeline_widget.recalculate_layout()
 
     def split_at_cursor(self) -> None:
         """Split the segment under the playhead cursor."""
