@@ -9,7 +9,8 @@ import gi
 gi.require_version("Gtk", "4.0")
 gi.require_version("Gdk", "4.0")
 gi.require_version("Adw", "1")
-from gi.repository import Gdk, GLib, Gtk
+gi.require_version("Graphene", "1.0")
+from gi.repository import Gdk, GLib, Graphene, Gtk
 
 from .i18n import _
 from .models import ProjectTimeline, Segment
@@ -94,6 +95,24 @@ def compute_segment_widths(
         fixed[largest_id] = max(min_width, fixed[largest_id] + diff)
 
     return fixed
+
+
+def _translate_widget_coords(src: Gtk.Widget, target: Gtk.Widget, x: float, y: float) -> tuple[float, float] | None:
+    """Translate coordinates using modern Gtk.Widget.compute_point with fallback."""
+    try:
+        p = Graphene.Point().init(float(x), float(y))
+        ok, out_p = src.compute_point(target, p)
+        if ok:
+            return (out_p.x, out_p.y)
+    except Exception:
+        pass
+    try:
+        coords = src.translate_coordinates(target, x, y)
+        if coords is not None:
+            return (float(coords[0]), float(coords[1]))
+    except Exception:
+        pass
+    return None
 
 
 class TimelineWidget(Gtk.Box):
@@ -940,7 +959,7 @@ class TimelineWidget(Gtk.Box):
             if not card:
                 continue
 
-            coords = source_card.overlay.translate_coordinates(card.filmstrip_box, cur_x, cur_y)
+            coords = _translate_widget_coords(source_card.overlay, card.filmstrip_box, cur_x, cur_y)
             if coords is not None:
                 fs_x = coords[0]
             elif card.segment.id == source_card.segment.id:
@@ -988,7 +1007,7 @@ class TimelineWidget(Gtk.Box):
                 if w <= 0:
                     w = 100
 
-                coords = source_card.overlay.translate_coordinates(active_card.filmstrip_box, cur_x, cur_y)
+                coords = _translate_widget_coords(source_card.overlay, active_card.filmstrip_box, cur_x, cur_y)
                 if coords is not None:
                     fs_x = coords[0]
                 elif active_card.segment.id == source_card.segment.id:

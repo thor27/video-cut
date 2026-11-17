@@ -1737,6 +1737,7 @@ class MainWindow(Adw.ApplicationWindow):
                 self.current_global_time = clamp(self.current_global_time, 0.0, self.timeline.total_duration)
                 self.player.sync_timeline_change(self.current_global_time)
                 self.timeline_widget.rebuild_filmstrip()
+                self._mark_dirty()
                 self._update_ui_state()
                 self._show_toast(_("Deleted {count} clips").format(count=count))
 
@@ -1802,6 +1803,11 @@ class MainWindow(Adw.ApplicationWindow):
         is_cursor_in_segment = (
             seg_global_start - 0.05 <= self.current_global_time <= seg_global_end + 0.05
         )
+        if is_cursor_in_segment:
+            offset = clamp(self.current_global_time - seg_global_start, 0.0, seg.duration)
+            seg_source_time = seg.start_time + offset
+        else:
+            seg_source_time = seg.start_time
 
         def on_apply(crop, rotation, hflip, vflip) -> None:
             self.timeline.save_state(self.current_global_time)
@@ -1825,7 +1831,7 @@ class MainWindow(Adw.ApplicationWindow):
             parent=self,
             segment=seg,
             on_apply=on_apply,
-            current_time=self.current_global_time,
+            current_time=seg_source_time,
             thumbnail_service=self.thumbnail_service,
             player=self.player if is_cursor_in_segment else None,
         )
@@ -1861,6 +1867,18 @@ class MainWindow(Adw.ApplicationWindow):
         if self.player.is_playing:
             self.player.pause()
 
+        seg_idx = self.timeline.get_segment_index(seg.id)
+        seg_global_start = self.timeline.get_segment_global_start(seg_idx)
+        seg_global_end = seg_global_start + seg.duration
+        is_cursor_in_segment = (
+            seg_global_start - 0.05 <= self.current_global_time <= seg_global_end + 0.05
+        )
+        if is_cursor_in_segment:
+            offset = clamp(self.current_global_time - seg_global_start, 0.0, seg.duration)
+            seg_source_time = seg.start_time + offset
+        else:
+            seg_source_time = seg.start_time
+
         def on_apply(items) -> None:
             self.timeline.save_state(self.current_global_time)
             for sid in target_ids:
@@ -1880,7 +1898,7 @@ class MainWindow(Adw.ApplicationWindow):
             parent=self,
             segment=seg,
             on_apply=on_apply,
-            current_time=self.current_global_time,
+            current_time=seg_source_time,
             thumbnail_service=self.thumbnail_service,
         )
         dialog.present()

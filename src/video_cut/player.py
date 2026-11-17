@@ -247,16 +247,14 @@ class VideoPlayerController:
     def _cleanup_media_file(self) -> None:
         """Safely disconnect signal handlers and release media file."""
         if self.current_media_file:
+            if self.video_picture and self.video_picture.get_paintable() == self.current_media_file:
+                self.video_picture.set_paintable(None)
             for hid in self._media_file_handlers:
                 try:
                     self.current_media_file.disconnect(hid)
                 except Exception:
                     pass
             self._media_file_handlers.clear()
-            try:
-                self.current_media_file.pause()
-            except Exception:
-                pass
             self.current_media_file = None
 
     def clear(self) -> None:
@@ -267,14 +265,14 @@ class VideoPlayerController:
         self.current_segment_id = None
         self._is_seeking = False
         self._play_on_seek_done = False
+        if self.video_picture and self.video_picture.get_paintable() is not None:
+            self.video_picture.set_paintable(None)
         if self.current_transformed_paintable:
             self.current_transformed_paintable.detach()
             self.current_transformed_paintable = None
         self._cleanup_media_file()
         if hasattr(self, "_overlay_audio_player") and self._overlay_audio_player:
             self._overlay_audio_player.cleanup()
-        if self.video_picture and self.video_picture.get_paintable() is not None:
-            self.video_picture.set_paintable(None)
 
     def load_initial(self) -> None:
         """Load the first segment in the timeline if available."""
