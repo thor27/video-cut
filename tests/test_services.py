@@ -50,14 +50,10 @@ def test_thumbnail_service_timeline_positions_and_placeholders(tmp_path, sample_
     dummy_first.write_bytes(b"dummy")
     service._cache[key] = [(0.0, dummy_first)]
 
-    # Slot 0 (t=0.0) matches, while slots 1..4 (>2.0s away) return None (placeholders)
+    # All slots duplicate the fast initial frame across the segment without placeholders
     partial_thumbs = service.get_thumbnails_for_segment(p, 0.0, 5.0, max_thumbs=5)
     assert len(partial_thumbs) == 5
-    assert partial_thumbs[0] == dummy_first
-    assert partial_thumbs[1] is None
-    assert partial_thumbs[2] is None
-    assert partial_thumbs[3] is None
-    assert partial_thumbs[4] is None
+    assert all(t == dummy_first for t in partial_thumbs)
 
     # 3. Simulate fully populated uniform cache: frames at 0.0, 1.0, 2.0, 3.0, 4.0, 4.95
     frames = []

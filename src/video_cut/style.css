@@ -118,6 +118,23 @@ entry.time-badge,
     min-height: 68px;
 }
 
+@keyframes thumbnail-pulse {
+    0% {
+        opacity: 0.65;
+    }
+    50% {
+        opacity: 0.90;
+    }
+    100% {
+        opacity: 0.65;
+    }
+}
+
+.thumbnail-loading {
+    animation: thumbnail-pulse 1.5s ease-in-out infinite;
+    transition: opacity 300ms ease;
+}
+
 .thumbnail-placeholder image,
 .thumbnail-placeholder spinner {
     opacity: 0.55;
