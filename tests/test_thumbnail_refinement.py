@@ -7,9 +7,10 @@ import gi
 
 gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
-from gi.repository import Adw, GLib
+from gi.repository import Adw, GLib, Gtk
 
 from video_cut.models import Segment
+from video_cut.segment_card import SegmentCard
 from video_cut.services.thumbnail_service import ThumbnailService
 from video_cut.window import MainWindow
 
@@ -269,3 +270,52 @@ def test_thumbnail_refinement_on_segment_deletion(sample_video):
     app.run(["test"])
     if test_error:
         raise test_error
+
+
+def test_segment_card_duplicates_thumbs_and_has_no_spinners(sample_video, tmp_path):
+    """Verify SegmentCard never creates Gtk.Spinner and duplicates fast initial thumb across slots."""
+    seg = Segment(id="s_test", source_path=sample_video, start_time=0.0, end_time=2.0, source_duration=2.0)
+    card = SegmentCard(
+        segment=seg,
+        index=0,
+        is_selected=False,
+        on_select=lambda _: None,
+    )
+
+    # 1. When empty, no Gtk.Spinner in filmstrip
+    card.update_thumbnails([])
+    spinners = []
+    child = card.filmstrip_box.get_first_child()
+    while child:
+        if isinstance(child, Gtk.Spinner):
+            spinners.append(child)
+        sub = child.get_first_child() if hasattr(child, "get_first_child") else None
+        while sub:
+            if isinstance(sub, Gtk.Spinner):
+                spinners.append(sub)
+            sub = sub.get_next_sibling()
+        child = child.get_next_sibling()
+    assert len(spinners) == 0
+
+    # 2. When only 1 thumb is provided but 4 slots requested (e.g. [thumb1, None, None, None])
+    thumb1 = tmp_path / "t1.jpg"
+    thumb1.write_bytes(b"dummy")
+    card.update_thumbnails([thumb1, None, None, None])
+
+    # All 4 slots should be populated with Gtk.Picture using thumb1 as duplicate fallback, 0 spinners
+    pics = []
+    child = card.filmstrip_box.get_first_child()
+    while child:
+        if isinstance(child, Gtk.Picture):
+            pics.append(child)
+        if isinstance(child, Gtk.Spinner):
+            spinners.append(child)
+        sub = child.get_first_child() if hasattr(child, "get_first_child") else None
+        while sub:
+            if isinstance(sub, Gtk.Spinner):
+                spinners.append(sub)
+            sub = sub.get_next_sibling()
+        child = child.get_next_sibling()
+
+    assert len(spinners) == 0
+    assert len(pics) == 4

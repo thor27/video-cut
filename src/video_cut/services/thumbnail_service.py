@@ -275,7 +275,6 @@ class ThumbnailService:
         key = self._file_key(source_path)
         with self._cache_lock:
             items = list(self._cache.get(key, []))
-            is_completed = key in self._completed_keys
 
         dur = max(0.001, end_time - start_time)
         if count == 1:
@@ -294,45 +293,43 @@ class ThumbnailService:
                 target_times.append(t)
 
         if not items:
+            # Check if preview keyframe exists on disk or in preview cache as instant fallback
+            video_cache_dir = self.cache_dir / key
+            default_preview = video_cache_dir / "preview_keyframe.jpg"
+            if default_preview.exists():
+                items = [(0.0, default_preview)]
+            else:
+                with self._cache_lock:
+                    prev_items = list(self._preview_cache.get(key, []))
+                if prev_items and prev_items[0][1].exists():
+                    items = [(0.0, prev_items[0][1])]
+
+        if not items:
             return [None] * count
 
         results: list[Path | None] = []
-        dt = self._calculate_dt(dur)
-        if count == 1:
-            max_diff = max(1.5, dur)
-            step = dur
-        else:
-            step = dur / float(count - 1)
-            # While in progress, use strict tolerance so unreached positions show placeholders
-            max_diff = max(dt, step * 0.65)
-
         n_items = len(items)
         for t in target_times:
             # Binary search for closest timestamp in sorted thumbnail cache
             idx = bisect_left(items, t, key=lambda x: x[0])
             if idx == 0:
-                closest_ts, closest_path = items[0]
+                _closest_ts, closest_path = items[0]
             elif idx >= n_items:
-                closest_ts, closest_path = items[-1]
+                _closest_ts, closest_path = items[-1]
             else:
                 before = items[idx - 1]
                 after = items[idx]
                 if (after[0] - t) < (t - before[0]):
-                    closest_ts, closest_path = after
+                    _closest_ts, closest_path = after
                 else:
-                    closest_ts, closest_path = before
-            if is_completed:
-                # If extraction is completed, every slot must resolve to the closest frame
-                if closest_path.exists():
-                    results.append(closest_path)
-                else:
-                    results.append(None)
+                    _closest_ts, closest_path = before
+
+            # Always resolve each slot to the closest available thumbnail,
+            # duplicating fast-loaded frames across all slots until more frames arrive.
+            if closest_path.exists():
+                results.append(closest_path)
             else:
-                # While extraction is in progress, only show frames close enough to target time
-                if abs(closest_ts - t) <= max_diff and closest_path.exists():
-                    results.append(closest_path)
-                else:
-                    results.append(None)
+                results.append(None)
 
         if auto_refine and count > 1 and dur > 0.05:
             with self._cache_lock:

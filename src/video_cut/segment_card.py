@@ -655,7 +655,7 @@ class SegmentCard(Gtk.Box):
         self._on_split_pill_clicked()
 
     def update_thumbnails(self, thumbnails: list[Path | None]) -> None:
-        """Populate the filmstrip box with thumbnails or animated spinners for loading slots."""
+        """Populate the filmstrip box with thumbnails, duplicating fast-loaded frames across slots without spinners."""
         if getattr(self, "_current_thumb_list", None) == thumbnails:
             return
         self._current_thumb_list = list(thumbnails)
@@ -667,23 +667,24 @@ class SegmentCard(Gtk.Box):
             child = next_child
 
         # Update segment's internal thumbnail paths list
-        self.segment.thumbnails = [p for p in thumbnails if p is not None and p.exists()]
+        valid_thumbs = [p for p in thumbnails if p is not None and p.exists()]
+        if not valid_thumbs and hasattr(self, "segment") and self.segment.thumbnails:
+            valid_thumbs = [p for p in self.segment.thumbnails if p is not None and p.exists()]
 
-        if not thumbnails:
+        self.segment.thumbnails = list(valid_thumbs)
+
+        if not thumbnails or not valid_thumbs:
             placeholder = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
             placeholder.set_hexpand(True)
             placeholder.set_size_request(-1, 68)
             placeholder.add_css_class("thumbnail-placeholder")
-            spinner = Gtk.Spinner()
-            spinner.set_spinning(True)
-            spinner.set_halign(Gtk.Align.CENTER)
-            spinner.set_valign(Gtk.Align.CENTER)
-            spinner.set_size_request(24, 24)
-            placeholder.append(spinner)
             self.filmstrip_box.append(placeholder)
             return
 
-        for thumb_path in thumbnails:
+        fallback_thumb = valid_thumbs[0]
+
+        for raw_thumb in thumbnails:
+            thumb_path = raw_thumb if (raw_thumb is not None and raw_thumb.exists()) else fallback_thumb
             if thumb_path is not None and thumb_path.exists():
                 if self.segment.has_transform:
                     try:
@@ -724,17 +725,10 @@ class SegmentCard(Gtk.Box):
                 pic.set_size_request(-1, 68)
                 self.filmstrip_box.append(pic)
             else:
-                # Polished animated spinner for loading slot
                 slot = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
                 slot.set_hexpand(True)
                 slot.set_size_request(-1, 68)
                 slot.add_css_class("thumbnail-placeholder")
-                spinner = Gtk.Spinner()
-                spinner.set_spinning(True)
-                spinner.set_halign(Gtk.Align.CENTER)
-                spinner.set_valign(Gtk.Align.CENTER)
-                spinner.set_size_request(20, 20)
-                slot.append(spinner)
                 self.filmstrip_box.append(slot)
 
     def set_needle_ratio(self, ratio: float | None) -> None:
