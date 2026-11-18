@@ -13,6 +13,7 @@ fi
 if [ -z "$VERSION" ]; then
     VERSION="devel"
 fi
+export VERSION
 
 mkdir -p "${DIST_DIR}"
 
@@ -92,11 +93,20 @@ else
     snapcraft pack
 fi
 
-# Move generated snap to dist
+# Move generated snap to dist and ensure filename reflects $VERSION
 for snap_file in "${REPO_ROOT}"/*.snap; do
     if [ -f "$snap_file" ]; then
-        mv "$snap_file" "${DIST_DIR}/"
-        echo "==> Successfully generated Snap package:"
-        echo "    ${DIST_DIR}/$(basename "$snap_file")"
+        snap_base="$(basename "$snap_file")"
+        if [[ "$snap_base" =~ ^video-cut_.*_([a-z0-9_]+)\.snap$ ]]; then
+            arch_suffix="${BASH_REMATCH[1]}"
+            target_name="video-cut_${VERSION}_${arch_suffix}.snap"
+            mv "$snap_file" "${DIST_DIR}/${target_name}"
+            echo "==> Successfully generated Snap package:"
+            echo "    ${DIST_DIR}/${target_name}"
+        else
+            mv "$snap_file" "${DIST_DIR}/"
+            echo "==> Successfully generated Snap package:"
+            echo "    ${DIST_DIR}/${snap_base}"
+        fi
     fi
 done
