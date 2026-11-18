@@ -413,8 +413,18 @@ class TimelineWidget(Gtk.Box):
         """Programmatically update keyframe snap toggle state."""
         self.snap_to_keyframe = active
         self.invalidate_keyframe_points_cache()
-        if hasattr(self, "btn_keyframe_snap") and self.btn_keyframe_snap.get_active() != active:
-            self.btn_keyframe_snap.set_active(active)
+        if hasattr(self, "btn_keyframe_snap"):
+            if self.btn_keyframe_snap.get_active() != active:
+                self.btn_keyframe_snap.set_active(active)
+            else:
+                if active:
+                    self.btn_keyframe_snap.add_css_class("accent")
+                    self.btn_prev_frame.set_tooltip_text(_("Previous keyframe (,)"))
+                    self.btn_next_frame.set_tooltip_text(_("Next keyframe (.)"))
+                else:
+                    self.btn_keyframe_snap.remove_css_class("accent")
+                    self.btn_prev_frame.set_tooltip_text(_("Previous frame (,)"))
+                    self.btn_next_frame.set_tooltip_text(_("Next frame (.)"))
 
     def show_thumbnail_progress(self, completed: int, total: int) -> None:
         """Deprecated: Progress is now shown via floating toast notification in MainWindow."""
