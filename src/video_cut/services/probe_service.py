@@ -485,3 +485,64 @@ class ProbeService:
             return None
 
         return cls._store(key, sig)
+
+    @classmethod
+    def get_lossless_seek_offset(
+        cls,
+        file_path: Path | str,
+        start_time: float = 0.0,
+        keyframes: list[float] | None = None,
+    ) -> float:
+        """Calculate start seeking offset for lossless export.
+
+        For container formats without AVFMT_SEEK_TO_PTS (e.g. Matroska/WebM)
+        when video streams have B-frames, the FFmpeg demuxer (ffmpeg_demux.c)
+        subtracts 3/23s (~0.130435s) from input -ss.
+        To ensure FFmpeg seeks to the desired keyframe and does not drop back
+        to the preceding GOP, we compensate by adding 3/23s + 0.005s.
+        For other formats (e.g. MP4/MOV) or streams without B-frames, 0.005s is used.
+        """
+        path = Path(file_path)
+        key = cls._key("lossless_seek_offset", path)
+        base_offset = 0.005
+        hit, value = cls._lookup(key) if key else (False, None)
+        if hit and isinstance(value, float):
+            base_offset = value
+        else:
+            try:
+                data = cls._run_ffprobe(
+                    [
+                        "-show_entries",
+                        "format=format_name:stream=codec_type,has_b_frames",
+                        str(path),
+                    ]
+                )
+                fmt_name = data.get("format", {}).get("format_name", "").lower()
+                pts_formats = {"mov", "mp4", "m4a", "3gp", "3g2", "mj2"}
+                seeks_to_pts = any(f in pts_formats for f in fmt_name.split(","))
+
+                has_b_frames = False
+                for s in data.get("streams", []):
+                    if s.get("codec_type") == "video":
+                        if int(s.get("has_b_frames", 0) or 0) > 0:
+                            has_b_frames = True
+                            break
+
+                if not seeks_to_pts and has_b_frames:
+                    base_offset = (3.0 / 23.0) + 0.005
+                else:
+                    base_offset = 0.005
+            except Exception:
+                base_offset = 0.005
+
+            if key:
+                cls._store(key, base_offset)
+
+        if start_time > 0.05 and keyframes:
+            idx = bisect.bisect_right(keyframes, start_time + 0.001)
+            if idx < len(keyframes):
+                delta = keyframes[idx] - start_time
+                if delta > 0.002 and base_offset >= delta:
+                    return max(0.001, delta * 0.5)
+
+        return base_offset

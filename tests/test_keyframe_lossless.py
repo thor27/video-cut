@@ -672,6 +672,61 @@ def test_lossless_export_cut_does_not_include_previous_keyframe(tmp_path):
     assert len(out_kfs) == len(kfs) - 1
 
 
+def test_lossless_export_matroska_with_bframes_does_not_include_previous_gop(tmp_path):
+    # Matroska (.mkv) video with B-frames (ffmpeg demuxer subtracts 3/23s heuristic)
+    src = tmp_path / "src_bframes.mkv"
+    subprocess.run(
+        [
+            "ffmpeg", "-y", "-f", "lavfi", "-i", "testsrc=duration=6:size=320x240:rate=30",
+            "-g", "60", "-keyint_min", "60", "-sc_threshold", "0",
+            "-c:v", "libx264", "-bf", "2", "-preset", "ultrafast", str(src)
+        ],
+        check=True,
+        capture_output=True,
+    )
+    kfs = ProbeService.get_keyframe_timestamps(src)
+    assert len(kfs) >= 3
+
+    # Segment from kfs[1] to end (cut made at kfs[1], GOP 0 must NOT leak into export)
+    seg = Segment(source_path=src, source_duration=6.0, start_time=kfs[1], end_time=6.0, keyframes=kfs)
+    dest = tmp_path / "cut_output.mkv"
+
+    service = ExportService()
+    done_result = {}
+
+    def on_done(success: bool, err: str | None):
+        done_result["success"] = success
+        done_result["error"] = err
+
+    service.export_async(
+        segments=[seg],
+        output_path=dest,
+        on_progress=lambda f, s: None,
+        on_done=on_done,
+        settings=ExportSettings(container="mkv", lossless=True),
+    )
+
+    ctx = GLib.MainContext.default()
+    t_end = time.time() + 10.0
+    while "success" not in done_result and time.time() < t_end:
+        while ctx.pending():
+            ctx.iteration(False)
+        time.sleep(0.02)
+
+    assert done_result.get("success") is True, f"Export failed: {done_result.get('error')}"
+    # Verify the keyframe count in output excludes GOP 0
+    cmd_pkts = [
+        "ffprobe", "-v", "error", "-select_streams", "v:0", "-show_packets",
+        "-show_entries", "packet=pts_time,flags", "-of", "csv=p=0", str(dest)
+    ]
+    res = subprocess.run(cmd_pkts, check=True, capture_output=True, text=True)
+    lines = [line.strip() for line in res.stdout.strip().splitlines() if line.strip()]
+    assert len(lines) > 0
+    assert "K" in lines[0]
+    out_kfs = [line for line in lines if "K" in line]
+    assert len(out_kfs) == len(kfs) - 1
+
+
 def test_undo_redo_stick_to_keyframe(sample_keyframe_video):
     """Verify that undoing keyframe snap unchecks stick-to-keyframe button, and redo rechecks it."""
     app = Adw.Application(application_id="io.github.thor27.video-cut.test.undo_snap")
