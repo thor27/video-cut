@@ -6,6 +6,7 @@ import json
 import logging
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import NamedTuple
 
 from gi.repository import GLib
 
@@ -18,6 +19,16 @@ VCUT_FORMAT_IDENTIFIER = "video-cut-project"
 CURRENT_PROJECT_FORMAT_VERSION = 1
 RECENT_PROJECTS_FILE = "recent_projects.json"
 MAX_RECENT_PROJECTS = 10
+
+
+class LoadedProject(NamedTuple):
+    """Result of loading a .vcut project."""
+
+    segments: list[Segment]
+    global_time: float
+    selected_segment_id: str | None
+    missing_files: list[str]
+    snap_to_keyframe: bool = False
 
 
 class ProjectService:
@@ -38,6 +49,21 @@ class ProjectService:
 
         now_iso = datetime.now(timezone.utc).isoformat()
 
+        # Collect deduplicated keyframes per media file
+        keyframes_map: dict[str, list[float]] = {}
+        for seg in timeline.segments:
+            kfs = seg.keyframes
+            if not kfs and ProbeService.is_keyframes_cached(seg.source_path):
+                kfs = ProbeService.get_keyframe_timestamps(seg.source_path)
+                seg.keyframes = list(kfs)
+            if kfs:
+                kfs_clean = [round(float(k), 6) for k in kfs]
+                try:
+                    rel_key = str(seg.source_path.relative_to(base_dir))
+                except ValueError:
+                    rel_key = str(seg.source_path)
+                keyframes_map[rel_key] = kfs_clean
+
         segments_data = [seg.to_dict(base_dir=base_dir) for seg in timeline.segments]
 
         payload = {
@@ -49,6 +75,8 @@ class ProjectService:
             "timeline": {
                 "global_time": float(current_global_time),
                 "selected_segment_id": timeline.selected_segment_id,
+                "snap_to_keyframe": bool(timeline.snap_to_keyframe),
+                "keyframes": keyframes_map,
                 "segments": segments_data,
             },
         }
@@ -64,11 +92,11 @@ class ProjectService:
     def load_project(
         cls,
         project_path: Path | str,
-    ) -> tuple[list[Segment], float, str | None, list[str]]:
+    ) -> LoadedProject:
         """Load and deserialize a .vcut project file.
 
         Returns:
-            (segments, global_time, selected_segment_id, missing_files)
+            LoadedProject(segments, global_time, selected_segment_id, missing_files, snap_to_keyframe)
         """
         source_path = Path(project_path).resolve()
         if not source_path.exists():
@@ -89,6 +117,15 @@ class ProjectService:
 
         base_dir = source_path.parent
         raw_segments = timeline_data.get("segments", [])
+        raw_media_keyframes = timeline_data.get("keyframes", {})
+        media_keyframes_map: dict[str, list[float]] = {}
+        if isinstance(raw_media_keyframes, dict):
+            for k_path, kf_list in raw_media_keyframes.items():
+                if isinstance(kf_list, list):
+                    media_keyframes_map[str(k_path)] = [
+                        float(k) for k in kf_list if isinstance(k, (int, float))
+                    ]
+
         segments: list[Segment] = []
         missing_files: set[str] = set()
 
@@ -99,10 +136,27 @@ class ProjectService:
             if seg is None:
                 continue
 
+            # If segment doesn't have keyframes from its dict, look up in media_keyframes_map
+            if not seg.keyframes:
+                try:
+                    rel_p = str(seg.source_path.relative_to(base_dir))
+                except ValueError:
+                    rel_p = ""
+                if rel_p and rel_p in media_keyframes_map:
+                    seg.keyframes = list(media_keyframes_map[rel_p])
+                elif str(seg.source_path) in media_keyframes_map:
+                    seg.keyframes = list(media_keyframes_map[str(seg.source_path)])
+                elif seg.source_path.name in media_keyframes_map:
+                    seg.keyframes = list(media_keyframes_map[seg.source_path.name])
+
             # Check if source media exists
             if not seg.source_path.exists():
                 missing_files.add(str(seg.source_path))
             else:
+                # If keyframes exist, cache them in ProbeService immediately
+                if seg.keyframes:
+                    ProbeService.set_cached_keyframes(seg.source_path, seg.keyframes)
+
                 # If source duration was 0 or unprobed, probe it
                 if seg.source_duration <= 0.0:
                     dur = ProbeService.probe_duration(seg.source_path)
@@ -122,8 +176,15 @@ class ProjectService:
 
         global_time = float(timeline_data.get("global_time", 0.0))
         selected_segment_id = timeline_data.get("selected_segment_id")
+        snap_to_keyframe = bool(timeline_data.get("snap_to_keyframe", False))
         cls.add_recent_project(source_path)
-        return segments, global_time, selected_segment_id, sorted(missing_files)
+        return LoadedProject(
+            segments=segments,
+            global_time=global_time,
+            selected_segment_id=selected_segment_id,
+            missing_files=sorted(missing_files),
+            snap_to_keyframe=snap_to_keyframe,
+        )
 
     @classmethod
     def relink_missing_media(
@@ -140,6 +201,8 @@ class ProjectService:
                 dur = ProbeService.probe_duration(new_path)
                 if dur:
                     seg.source_duration = dur
+                if seg.keyframes and new_path.exists():
+                    ProbeService.set_cached_keyframes(new_path, seg.keyframes)
 
             if seg.orig_image_path:
                 old_img = str(seg.orig_image_path)

@@ -186,6 +186,16 @@ class ProbeService:
         return hit
 
     @classmethod
+    def set_cached_keyframes(cls, file_path: Path | str, keyframes: list[float]) -> bool:
+        """Store precomputed keyframe timestamps into the cache for file_path."""
+        path = Path(file_path)
+        key = cls._key("keyframes", path)
+        if key is None or not keyframes:
+            return False
+        cls._store(key, [float(k) for k in keyframes])
+        return True
+
+    @classmethod
     def prefetch_keyframes_async(
         cls,
         file_path: Path | str,

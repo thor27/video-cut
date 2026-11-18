@@ -395,6 +395,8 @@ class TimelineWidget(Gtk.Box):
         self.append(time_bar)
 
     def _on_keyframe_snap_toggled(self, btn: Gtk.ToggleButton) -> None:
+        if getattr(self, "_block_keyframe_snap_signal", False):
+            return
         self.snap_to_keyframe = btn.get_active()
         self.invalidate_keyframe_points_cache()
         if self.snap_to_keyframe:
@@ -409,22 +411,29 @@ class TimelineWidget(Gtk.Box):
         if self.on_toggle_keyframe_snap:
             self.on_toggle_keyframe_snap(self.snap_to_keyframe)
 
-    def set_keyframe_snap(self, active: bool) -> None:
+    def set_keyframe_snap(self, active: bool, notify: bool = True) -> None:
         """Programmatically update keyframe snap toggle state."""
         self.snap_to_keyframe = active
         self.invalidate_keyframe_points_cache()
         if hasattr(self, "btn_keyframe_snap"):
-            if self.btn_keyframe_snap.get_active() != active:
-                self.btn_keyframe_snap.set_active(active)
+            prev_block = getattr(self, "_block_keyframe_snap_signal", False)
+            if not notify:
+                self._block_keyframe_snap_signal = True
+            try:
+                if self.btn_keyframe_snap.get_active() != active:
+                    self.btn_keyframe_snap.set_active(active)
+            finally:
+                if not notify:
+                    self._block_keyframe_snap_signal = prev_block
+
+            if active:
+                self.btn_keyframe_snap.add_css_class("accent")
+                self.btn_prev_frame.set_tooltip_text(_("Previous keyframe (,)"))
+                self.btn_next_frame.set_tooltip_text(_("Next keyframe (.)"))
             else:
-                if active:
-                    self.btn_keyframe_snap.add_css_class("accent")
-                    self.btn_prev_frame.set_tooltip_text(_("Previous keyframe (,)"))
-                    self.btn_next_frame.set_tooltip_text(_("Next keyframe (.)"))
-                else:
-                    self.btn_keyframe_snap.remove_css_class("accent")
-                    self.btn_prev_frame.set_tooltip_text(_("Previous frame (,)"))
-                    self.btn_next_frame.set_tooltip_text(_("Next frame (.)"))
+                self.btn_keyframe_snap.remove_css_class("accent")
+                self.btn_prev_frame.set_tooltip_text(_("Previous frame (,)"))
+                self.btn_next_frame.set_tooltip_text(_("Next frame (.)"))
 
     def show_thumbnail_progress(self, completed: int, total: int) -> None:
         """Deprecated: Progress is now shown via floating toast notification in MainWindow."""
