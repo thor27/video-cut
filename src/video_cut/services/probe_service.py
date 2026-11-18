@@ -10,6 +10,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from ..utils import get_ffprobe_path
+
 PROBE_TIMEOUT = 30.0
 
 _CacheKey = tuple[str, str, int, int]
@@ -100,7 +102,7 @@ class ProbeService:
     @staticmethod
     def _run_ffprobe(args: list[str]) -> dict[str, Any]:
         result = subprocess.run(
-            ["ffprobe", "-v", "error", *args, "-of", "json"],
+            [get_ffprobe_path(), "-v", "error", *args, "-of", "json"],
             capture_output=True,
             text=True,
             check=True,
@@ -250,7 +252,7 @@ class ProbeService:
 
         # Tier 1: Fast Packet Index Probing (reads container packet headers in <0.1s without decoding)
         cmd_pkt = [
-            "ffprobe",
+            get_ffprobe_path(),
             "-v", "error",
             "-select_streams", "v:0",
             "-show_entries", "packet=pts_time,flags",
@@ -322,7 +324,7 @@ class ProbeService:
         # Tier 2: Accurate Frame-Level Probing Fallback (if packet probe returned <= 1 keyframe)
         keyframes.clear()
         cmd_frm = [
-            "ffprobe",
+            get_ffprobe_path(),
             "-v", "error",
             "-threads", "0",
             "-select_streams", "v:0",

@@ -21,6 +21,7 @@ from gi.repository import GLib
 
 from ..i18n import _
 from ..models import ExportSettings, OverlayItem, Segment
+from ..utils import get_ffmpeg_path
 from .ffmpeg_service import (
     FLAG_AUDIO_BITRATE,
     FLAG_CODEC_AUDIO,
@@ -266,7 +267,7 @@ class ExportService:
             return max(2, sw), max(2, sh)
 
         # 3. Assemble command inputs
-        cmd = ["ffmpeg", FLAG_OVERWRITE]
+        cmd = [get_ffmpeg_path(), FLAG_OVERWRITE]
         for p in unique_paths:
             min_s = path_to_min_start[p]
             if min_s > 0.0:
@@ -610,7 +611,7 @@ class ExportService:
             return
 
         out_path = Path(output_path)
-        part_path = out_path.with_name(f".{out_path.stem}.{secrets.token_hex(4)}.part{out_path.suffix}")
+        part_path = out_path.with_name(f"{out_path.stem}.part-{secrets.token_hex(4)}{out_path.suffix}")
 
         if settings and settings.lossless:
             def worker_lossless() -> None:
@@ -625,7 +626,7 @@ class ExportService:
                 try:
                     if len(segments) == 1:
                         seg = segments[0]
-                        cmd = ["ffmpeg", FLAG_OVERWRITE]
+                        cmd = [get_ffmpeg_path(), FLAG_OVERWRITE]
                         if seg.start_time > 0.05:
                             cmd.extend(["-ss", f"{seg.start_time + 0.005:.6f}"])
                         else:
@@ -698,7 +699,7 @@ class ExportService:
                                     GLib.idle_add(on_done, False, "Export cancelled by user")
                                     return
                                 part_seg = tmp_dir / f"seg_{idx:04d}{out_path.suffix}"
-                                cmd_cut = ["ffmpeg", FLAG_OVERWRITE]
+                                cmd_cut = [get_ffmpeg_path(), FLAG_OVERWRITE]
                                 if seg.start_time > 0.05:
                                     cmd_cut.extend(["-ss", f"{seg.start_time + 0.005:.6f}"])
                                 else:
@@ -722,7 +723,7 @@ class ExportService:
                             concat_manifest.write_text("\n".join(manifest_lines) + "\n", encoding="utf-8")
 
                             cmd_concat = [
-                                "ffmpeg", FLAG_OVERWRITE,
+                                get_ffmpeg_path(), FLAG_OVERWRITE,
                                 "-f", "concat",
                                 "-safe", "0",
                                 FLAG_INPUT, str(concat_manifest),
