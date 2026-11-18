@@ -71,14 +71,42 @@ fi
 
 # Bundle GObject-Introspection typelibs into AppDir
 mkdir -p "${APPDIR}/usr/lib/x86_64-linux-gnu/girepository-1.0"
-for tlb_dir in /usr/lib/x86_64-linux-gnu/girepository-1.0 /usr/lib64/girepository-1.0 /usr/lib/girepository-1.0; do
+mkdir -p "${APPDIR}/usr/lib/girepository-1.0"
+for tlb_dir in /usr/lib/x86_64-linux-gnu/girepository-1.0 /usr/lib64/girepository-1.0 /usr/lib/girepository-1.0 /usr/local/lib/girepository-1.0; do
     if [ -d "$tlb_dir" ]; then
         for typelib in Gtk-4.0 Gdk-4.0 Gsk-4.0 Adw-1 GdkPixbuf-2.0 Pango-1.0 PangoCairo-1.0 cairo-1.0 Gio-2.0 GLib-2.0 GObject-2.0 GModule-2.0 Graphene-1.0 HarfBuzz-0.0 freetype2-2.0 Gst-1.0 GstBase-1.0 GstAudio-1.0 GstVideo-1.0 GstPbutils-1.0 GstPlay-1.0 GstTag-1.0 GstApp-1.0 GstAllocators-1.0 GstGL-1.0; do
             if [ -f "$tlb_dir/${typelib}.typelib" ]; then
-                cp -f "$tlb_dir/${typelib}.typelib" "${APPDIR}/usr/lib/x86_64-linux-gnu/girepository-1.0/"
+                cp -f "$tlb_dir/${typelib}.typelib" "${APPDIR}/usr/lib/x86_64-linux-gnu/girepository-1.0/" 2>/dev/null || true
+                cp -f "$tlb_dir/${typelib}.typelib" "${APPDIR}/usr/lib/girepository-1.0/" 2>/dev/null || true
             fi
         done
-        break
+    fi
+done
+
+# Verify required typelibs are bundled
+for req_tlb in Gtk-4.0 Adw-1 Gst-1.0; do
+    if [ ! -f "${APPDIR}/usr/lib/x86_64-linux-gnu/girepository-1.0/${req_tlb}.typelib" ] && \
+       [ ! -f "${APPDIR}/usr/lib/girepository-1.0/${req_tlb}.typelib" ]; then
+        echo "Error: Required typelib ${req_tlb}.typelib is missing from AppDir!" >&2
+        echo "Please install gir1.2-gtk-4.0, gir1.2-adw-1, and gir1.2-gstreamer-1.0 on the build system." >&2
+        exit 1
+    fi
+done
+
+# Bundle GTK4, Libadwaita, and Graphene shared libraries into AppDir if present on build system
+mkdir -p "${APPDIR}/usr/lib/x86_64-linux-gnu"
+mkdir -p "${APPDIR}/usr/lib"
+for lib_pattern in "libgtk-4.so*" "libadwaita-1.so*" "libgraphene-1.0.so*"; do
+    for lib_dir in /usr/lib/x86_64-linux-gnu /usr/lib64 /usr/lib; do
+        if compgen -G "${lib_dir}/${lib_pattern}" > /dev/null 2>&1; then
+            cp -a ${lib_dir}/${lib_pattern} "${APPDIR}/usr/lib/x86_64-linux-gnu/" 2>/dev/null || true
+            break
+        fi
+    done
+done
+for f in "${APPDIR}/usr/lib/x86_64-linux-gnu/"*.so*; do
+    if [ -e "$f" ]; then
+        ln -sf "x86_64-linux-gnu/$(basename "$f")" "${APPDIR}/usr/lib/$(basename "$f")" 2>/dev/null || true
     fi
 done
 
