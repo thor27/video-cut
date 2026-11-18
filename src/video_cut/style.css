@@ -120,18 +120,18 @@ entry.time-badge,
 
 @keyframes thumbnail-pulse {
     0% {
-        opacity: 0.38;
+        opacity: 0.65;
     }
     50% {
-        opacity: 0.72;
+        opacity: 0.90;
     }
     100% {
-        opacity: 0.38;
+        opacity: 0.65;
     }
 }
 
 .thumbnail-loading {
-    animation: thumbnail-pulse 1.4s ease-in-out infinite;
+    animation: thumbnail-pulse 1.5s ease-in-out infinite;
     transition: opacity 300ms ease;
 }
 

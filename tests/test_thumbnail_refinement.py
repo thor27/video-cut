@@ -383,3 +383,36 @@ def test_placeholder_thumbnail_loading_class(sample_video, tmp_path):
 
     assert len(pics) == 4
     assert not any(p.has_css_class("thumbnail-loading") for p in pics)
+
+
+def test_completed_thumbnails_never_pulsate(sample_video, tmp_path):
+    """Verify that after full thumbnail generation completes, no thumbnails have is_placeholder=True or thumbnail-loading."""
+    ts = ThumbnailService(cache_dir=tmp_path)
+    ts.generate_thumbnails_async(sample_video, 2.0, on_done=lambda *_: None)
+    ts.wait_idle()
+    _drain_glib_events()
+
+    items = ts.get_segment_thumbnail_items(sample_video, start_time=0.0, end_time=2.0, max_thumbs=6)
+    assert len(items) == 6
+    # All slots have real thumbnails loaded; none are placeholders!
+    assert all(is_placeholder is False for _, is_placeholder in items)
+
+    seg = Segment(id="s_done", source_path=sample_video, start_time=0.0, end_time=2.0, source_duration=2.0)
+    card = SegmentCard(
+        segment=seg,
+        index=0,
+        is_selected=False,
+        on_select=lambda _: None,
+    )
+    card.update_thumbnails(items)
+
+    pics: list[Gtk.Picture] = []
+    child = card.filmstrip_box.get_first_child()
+    while child:
+        if isinstance(child, Gtk.Picture):
+            pics.append(child)
+        child = child.get_next_sibling()
+
+    assert len(pics) == 6
+    # None of the pictures have the thumbnail-loading animation!
+    assert not any(p.has_css_class("thumbnail-loading") for p in pics)

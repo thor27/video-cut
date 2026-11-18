@@ -298,6 +298,8 @@ class ThumbnailService:
             items = list(self._cache.get(key, []))
             is_img = key in self._image_keys
             is_in_progress = key in self._in_progress_keys
+            is_completed = key in self._completed_keys
+            has_refinements_in_flight = any(k == key for k, _ in self._in_flight_refinement_timestamps)
 
         if not is_img and ImageService.is_image(source_path):
             is_img = True
@@ -337,7 +339,7 @@ class ThumbnailService:
         if not items:
             return [(None, True)] * count
 
-        results: list[tuple[Path | None, bool]] = []
+        raw_closest: list[tuple[Path | None, float]] = []
         n_items = len(items)
         for t in target_times:
             # Binary search for closest timestamp in sorted thumbnail cache
@@ -355,13 +357,12 @@ class ThumbnailService:
                     closest_ts, closest_path = before
 
             if closest_path.exists():
-                is_placeholder = False if is_img else (abs(closest_ts - t) > tolerance)
-                results.append((closest_path, is_placeholder))
+                raw_closest.append((closest_path, closest_ts))
             else:
-                results.append((None, True))
+                raw_closest.append((None, closest_ts))
 
         if auto_refine and count > 1 and dur > 0.05 and not is_img and not is_in_progress:
-            valid_paths = [p for p, _ in results if p is not None]
+            valid_paths = [p for p, _ in raw_closest if p is not None]
             if len(valid_paths) > 1 and len(set(valid_paths)) < len(valid_paths):
                 missing_times: list[float] = []
                 for t in target_times:
@@ -369,6 +370,28 @@ class ThumbnailService:
                         missing_times.append(t)
                 if missing_times:
                     self.refine_segment_thumbnails_async(source_path, missing_times)
+                    has_refinements_in_flight = True
+
+        results: list[tuple[Path | None, bool]] = []
+        seen_paths: set[Path] = set()
+        is_actively_loading = is_in_progress or has_refinements_in_flight or (not is_completed)
+
+        for closest_path, _ in raw_closest:
+            if closest_path is None or not closest_path.exists():
+                results.append((None, True))
+            elif is_img:
+                results.append((closest_path, False))
+            elif closest_path.name == "preview_keyframe.jpg":
+                # Preview keyframe is a temporary placeholder while awaiting real thumbnails
+                results.append((closest_path, True))
+            elif is_actively_loading:
+                if closest_path in seen_paths:
+                    results.append((closest_path, True))
+                else:
+                    seen_paths.add(closest_path)
+                    results.append((closest_path, False))
+            else:
+                results.append((closest_path, False))
 
         return results
 
@@ -806,6 +829,7 @@ class ThumbnailService:
                 except Exception:
                     pass
 
+            self._notify_cache_updated(path)
             GLib.idle_add(on_done, path, final_results)
 
         coord_thread = threading.Thread(target=coordinator, daemon=True)
