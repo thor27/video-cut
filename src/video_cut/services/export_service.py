@@ -628,7 +628,9 @@ class ExportService:
                         seg = segments[0]
                         cmd = [get_ffmpeg_path(), FLAG_OVERWRITE]
                         if seg.start_time > 0.05:
-                            cmd.extend(["-ss", f"{seg.start_time + 0.005:.6f}"])
+                            kfs = seg.keyframes or (ProbeService.get_keyframe_timestamps(seg.source_path) if ProbeService.is_keyframes_cached(seg.source_path) else None)
+                            offset = ProbeService.get_lossless_seek_offset(seg.source_path, seg.start_time, kfs)
+                            cmd.extend(["-ss", f"{seg.start_time + offset:.6f}"])
                         else:
                             cmd.extend(["-ss", "0.000000"])
 
@@ -701,7 +703,9 @@ class ExportService:
                                 part_seg = tmp_dir / f"seg_{idx:04d}{out_path.suffix}"
                                 cmd_cut = [get_ffmpeg_path(), FLAG_OVERWRITE]
                                 if seg.start_time > 0.05:
-                                    cmd_cut.extend(["-ss", f"{seg.start_time + 0.005:.6f}"])
+                                    kfs = seg.keyframes or (ProbeService.get_keyframe_timestamps(seg.source_path) if ProbeService.is_keyframes_cached(seg.source_path) else None)
+                                    offset = ProbeService.get_lossless_seek_offset(seg.source_path, seg.start_time, kfs)
+                                    cmd_cut.extend(["-ss", f"{seg.start_time + offset:.6f}"])
                                 else:
                                     cmd_cut.extend(["-ss", "0.000000"])
 
