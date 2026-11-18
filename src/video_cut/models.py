@@ -393,6 +393,7 @@ class TimelineSnapshot:
     selected_segment_id: str | None
     global_time: float
     selected_segment_ids: set[str] = field(default_factory=set)
+    snap_to_keyframe: bool | None = None
 
 
 class ProjectTimeline:
@@ -404,6 +405,8 @@ class ProjectTimeline:
         self._selected_segment_ids: set[str] = set()
         self.undo_stack: list[TimelineSnapshot] = []
         self.redo_stack: list[TimelineSnapshot] = []
+        self.snap_to_keyframe: bool = False
+        self.last_restored_snap_to_keyframe: bool | None = None
 
     @property
     def selected_segment_ids(self) -> set[str]:
@@ -439,29 +442,37 @@ class ProjectTimeline:
     def can_redo(self) -> bool:
         return len(self.redo_stack) > 0
 
-    def save_state(self, global_time: float) -> None:
+    def save_state(self, global_time: float, snap_to_keyframe: bool | None = None) -> None:
         """Save current timeline state to the undo stack."""
+        snap_val = self.snap_to_keyframe if snap_to_keyframe is None else snap_to_keyframe
         snapshot = TimelineSnapshot(
             segments=[seg.copy() for seg in self.segments],
             selected_segment_id=self.selected_segment_id,
             global_time=global_time,
             selected_segment_ids=set(self.selected_segment_ids),
+            snap_to_keyframe=snap_val,
         )
         self.undo_stack.append(snapshot)
         if len(self.undo_stack) > 50:
             self.undo_stack.pop(0)
         self.redo_stack.clear()
 
-    def undo(self, current_global_time: float) -> float | None:
+    def undo(
+        self, current_global_time: float, current_snap_to_keyframe: bool | None = None
+    ) -> float | None:
         """Undo last timeline change. Returns restored global_time or None."""
         if not self.can_undo:
             return None
 
+        current_snap_val = (
+            self.snap_to_keyframe if current_snap_to_keyframe is None else current_snap_to_keyframe
+        )
         current_snap = TimelineSnapshot(
             segments=[seg.copy() for seg in self.segments],
             selected_segment_id=self.selected_segment_id,
             global_time=current_global_time,
             selected_segment_ids=set(self.selected_segment_ids),
+            snap_to_keyframe=current_snap_val,
         )
         self.redo_stack.append(current_snap)
 
@@ -469,18 +480,27 @@ class ProjectTimeline:
         self.segments = [seg.copy() for seg in target.segments]
         self.selected_segment_id = target.selected_segment_id
         self._selected_segment_ids = set(target.selected_segment_ids)
+        if target.snap_to_keyframe is not None:
+            self.snap_to_keyframe = target.snap_to_keyframe
+        self.last_restored_snap_to_keyframe = target.snap_to_keyframe
         return target.global_time
 
-    def redo(self, current_global_time: float) -> float | None:
+    def redo(
+        self, current_global_time: float, current_snap_to_keyframe: bool | None = None
+    ) -> float | None:
         """Redo previously undone timeline change. Returns restored global_time or None."""
         if not self.can_redo:
             return None
 
+        current_snap_val = (
+            self.snap_to_keyframe if current_snap_to_keyframe is None else current_snap_to_keyframe
+        )
         current_snap = TimelineSnapshot(
             segments=[seg.copy() for seg in self.segments],
             selected_segment_id=self.selected_segment_id,
             global_time=current_global_time,
             selected_segment_ids=set(self.selected_segment_ids),
+            snap_to_keyframe=current_snap_val,
         )
         self.undo_stack.append(current_snap)
 
@@ -488,6 +508,9 @@ class ProjectTimeline:
         self.segments = [seg.copy() for seg in target.segments]
         self.selected_segment_id = target.selected_segment_id
         self._selected_segment_ids = set(target.selected_segment_ids)
+        if target.snap_to_keyframe is not None:
+            self.snap_to_keyframe = target.snap_to_keyframe
+        self.last_restored_snap_to_keyframe = target.snap_to_keyframe
         return target.global_time
 
     def get_segment(self, segment_id: str) -> Segment | None:

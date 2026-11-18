@@ -493,9 +493,12 @@ class MainWindow(Adw.ApplicationWindow):
 
     def undo(self) -> None:
         """Undo last timeline change."""
-        restored = self.timeline.undo(self.current_global_time)
+        restored = self.timeline.undo(self.current_global_time, self.snap_to_keyframe)
         if restored is not None:
             self.current_global_time = restored
+            if self.timeline.last_restored_snap_to_keyframe is not None:
+                if self.snap_to_keyframe != self.timeline.last_restored_snap_to_keyframe:
+                    self._on_toggle_keyframe_snap(self.timeline.last_restored_snap_to_keyframe)
             self.player.sync_timeline_change(self.current_global_time)
             self.timeline_widget.rebuild_filmstrip()
             self._mark_dirty()
@@ -503,9 +506,12 @@ class MainWindow(Adw.ApplicationWindow):
 
     def redo(self) -> None:
         """Redo undone timeline change."""
-        restored = self.timeline.redo(self.current_global_time)
+        restored = self.timeline.redo(self.current_global_time, self.snap_to_keyframe)
         if restored is not None:
             self.current_global_time = restored
+            if self.timeline.last_restored_snap_to_keyframe is not None:
+                if self.snap_to_keyframe != self.timeline.last_restored_snap_to_keyframe:
+                    self._on_toggle_keyframe_snap(self.timeline.last_restored_snap_to_keyframe)
             self.player.sync_timeline_change(self.current_global_time)
             self.timeline_widget.rebuild_filmstrip()
             self._mark_dirty()
@@ -668,6 +674,7 @@ class MainWindow(Adw.ApplicationWindow):
 
     def _on_toggle_keyframe_snap(self, enabled: bool) -> None:
         self.snap_to_keyframe = enabled
+        self.timeline.snap_to_keyframe = enabled
         if hasattr(self, "timeline_widget") and self.timeline_widget.snap_to_keyframe != enabled:
             self.timeline_widget.set_keyframe_snap(enabled)
         if not enabled or self.timeline.is_empty:
@@ -678,6 +685,7 @@ class MainWindow(Adw.ApplicationWindow):
 
         def on_cancel():
             self.snap_to_keyframe = False
+            self.timeline.snap_to_keyframe = False
             if hasattr(self, "timeline_widget"):
                 self.timeline_widget.set_keyframe_snap(False)
             self._show_toast(_("Keyframe indexing cancelled"))
@@ -711,7 +719,8 @@ class MainWindow(Adw.ApplicationWindow):
             new_ranges.append((ns, ne))
 
         if needs_snapping:
-            self.timeline.save_state(self.current_global_time)
+            self.timeline.save_state(self.current_global_time, snap_to_keyframe=False)
+            self.timeline.snap_to_keyframe = True
             for seg, (ns, ne) in zip(self.timeline.segments, new_ranges, strict=True):
                 seg.start_time = ns
                 seg.end_time = ne

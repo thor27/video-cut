@@ -121,13 +121,13 @@ def test_can_lossless_export_eligibility(sample_video, sample_video2):
     seg_crop = replace(seg1, crop=(0.1, 0.1, 0.8, 0.8))
     can_lossless, reason = service.can_lossless_export([seg_crop])
     assert can_lossless is False
-    assert "crop" in reason.lower()
+    assert "crop" in reason.lower() or "recorte" in reason.lower()
 
     # 6. Overlay applied: Ineligible
     seg_overlay = replace(seg1, overlays=[OverlayItem(text="Watermark")])
     can_lossless, reason = service.can_lossless_export([seg_overlay])
     assert can_lossless is False
-    assert "overlay" in reason.lower()
+    assert "overlay" in reason.lower() or "sobreposi" in reason.lower()
 
     # 7. Non-existent file: Ineligible
     seg_bad = replace(seg1, source_path=Path("/path/to/missing_video_12345.mp4"))
@@ -255,7 +255,7 @@ def test_advanced_export_dialog_lossless_toggle():
 def test_keyframe_help_dialog():
     win = Gtk.Window()
     dialog = KeyframeHelpDialog(parent=win)
-    assert dialog.get_title() == "Keyframes & Lossless Cutting"
+    assert dialog.get_title() in ("Keyframes & Lossless Cutting", "Quadros-chave e Corte sem Perdas")
     assert dialog.get_modal() is True
 
 
@@ -670,6 +670,78 @@ def test_lossless_export_cut_does_not_include_previous_keyframe(tmp_path):
     # Exported video MUST contain exactly len(kfs) - 1 keyframes (it MUST NOT include kfs[0])
     out_kfs = ProbeService.get_keyframe_timestamps(dest)
     assert len(out_kfs) == len(kfs) - 1
+
+
+def test_undo_redo_stick_to_keyframe(sample_keyframe_video):
+    """Verify that undoing keyframe snap unchecks stick-to-keyframe button, and redo rechecks it."""
+    app = Adw.Application(application_id="io.github.thor27.video-cut.test.undo_snap")
+    test_error = None
+
+    def run_test(app):
+        nonlocal test_error
+        win = None
+        try:
+            win = MainWindow(application=app)
+
+            def wait_for(condition_fn, timeout=10.0):
+                ctx = GLib.MainContext.default()
+                t_end = time.time() + timeout
+                while not condition_fn() and time.time() < t_end:
+                    while ctx.pending():
+                        ctx.iteration(False)
+                    time.sleep(0.02)
+                assert condition_fn()
+
+            # Create a segment with start cut at 0.4s (not a keyframe; keyframes are at 0.0, 1.0, 2.0...)
+            seg = Segment(
+                id="seg_snap",
+                source_path=sample_keyframe_video,
+                start_time=0.4,
+                end_time=3.0,
+                source_duration=5.0,
+            )
+            win.timeline.segments = [seg]
+            win.timeline_widget.rebuild_filmstrip()
+
+            assert win.snap_to_keyframe is False
+            assert win.timeline_widget.btn_keyframe_snap.get_active() is False
+
+            # Enable stick to keyframe
+            win._on_toggle_keyframe_snap(True)
+
+            # Wait for async indexing and cut snapping to finish
+            wait_for(lambda: abs(win.timeline.segments[0].start_time - 0.0) < 1e-3)
+
+            assert win.snap_to_keyframe is True
+            assert win.timeline_widget.btn_keyframe_snap.get_active() is True
+
+            # Undo the keyframe snapping
+            win.undo()
+
+            # The original cut should be restored and stick to keyframe UNCHECKED!
+            assert abs(win.timeline.segments[0].start_time - 0.4) < 1e-3
+            assert win.snap_to_keyframe is False
+            assert win.timeline_widget.btn_keyframe_snap.get_active() is False
+
+            # Redo the keyframe snapping
+            win.redo()
+
+            # Cuts should be snapped back and stick to keyframe CHECKED!
+            assert abs(win.timeline.segments[0].start_time - 0.0) < 1e-3
+            assert win.snap_to_keyframe is True
+            assert win.timeline_widget.btn_keyframe_snap.get_active() is True
+
+        except BaseException as e:
+            test_error = e
+        finally:
+            if win:
+                win.close()
+            app.quit()
+
+    app.connect("activate", run_test)
+    app.run(["test"])
+    if test_error:
+        raise test_error
 
 
 
