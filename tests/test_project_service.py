@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 
 from video_cut.models import OverlayItem, ProjectTimeline, Segment
+from video_cut.services.probe_service import ProbeService
 from video_cut.services.project_service import (
     CURRENT_PROJECT_FORMAT_VERSION,
     VCUT_FORMAT_IDENTIFIER,
@@ -130,11 +131,12 @@ def test_project_save_and_load_roundtrip(tmp_path: Path):
     assert len(raw_json["timeline"]["segments"]) == 2
 
     # Now load project back
-    segments, global_time, selected_id, missing = ProjectService.load_project(project_file)
+    segments, global_time, selected_id, missing, snap_to_keyframe = ProjectService.load_project(project_file)
     assert len(missing) == 0
     assert global_time == 12.5
     assert selected_id == seg2.id
     assert len(segments) == 2
+    assert snap_to_keyframe is False
 
     s1, s2 = segments
     assert s1.source_path == media1
@@ -166,7 +168,7 @@ def test_project_load_missing_files_and_relink(tmp_path: Path):
     ProjectService.save_project(project_file, timeline)
 
     # Loading should report missing files
-    segments, _, _, missing = ProjectService.load_project(project_file)
+    segments, _, _, missing, _ = ProjectService.load_project(project_file)
     assert len(missing) == 2
     assert str(missing_video) in missing
     assert str(missing_overlay) in missing
@@ -326,6 +328,153 @@ def test_prompt_unsaved_changes_messages(tmp_path: Path):
             err.append(e)
         finally:
             Adw.AlertDialog.choose = orig_choose
+            if win:
+                win.close()
+            app.quit()
+
+    app.connect("activate", run_test)
+    app.run(["test"])
+    if err:
+        raise err[0]
+
+
+def test_project_keyframes_and_snap_to_keyframe_serialization(tmp_path: Path):
+    proj_dir = tmp_path / "proj"
+    proj_dir.mkdir()
+    project_file = proj_dir / "keyframe_test.vcut"
+
+    video_file = tmp_path / "video.mp4"
+    video_file.write_text("fake video content", encoding="utf-8")
+
+    timeline = ProjectTimeline()
+    seg = timeline.add_video(video_file, source_duration=30.0)
+    expected_kfs = [0.0, 1.25, 2.5, 3.75, 5.0, 10.0, 20.0]
+    seg.keyframes = list(expected_kfs)
+    timeline.snap_to_keyframe = True
+
+    ProjectService.save_project(project_file, timeline)
+
+    assert project_file.exists()
+    with open(project_file, encoding="utf-8") as f:
+        data = json.load(f)
+
+    assert data["timeline"]["snap_to_keyframe"] is True
+    assert "keyframes" in data["timeline"]
+    assert any(kfs == expected_kfs for kfs in data["timeline"]["keyframes"].values())
+    assert data["timeline"]["segments"][0]["keyframes"] == expected_kfs
+
+    # Clear ProbeService cache to test that load_project repopulates it
+    ProbeService.clear_cache()
+    assert not ProbeService.is_keyframes_cached(video_file)
+
+    loaded = ProjectService.load_project(project_file)
+    assert loaded.snap_to_keyframe is True
+    assert len(loaded.segments) == 1
+    assert loaded.segments[0].keyframes == expected_kfs
+
+    # ProbeService cache must now be pre-populated
+    assert ProbeService.is_keyframes_cached(video_file)
+    assert ProbeService.get_keyframe_timestamps(video_file) == expected_kfs
+
+
+def test_project_backward_compatibility_v1_without_keyframes(tmp_path: Path):
+    project_file = tmp_path / "legacy.vcut"
+    video_file = tmp_path / "legacy_video.mp4"
+    video_file.write_text("dummy", encoding="utf-8")
+
+    legacy_payload = {
+        "format": VCUT_FORMAT_IDENTIFIER,
+        "version": CURRENT_PROJECT_FORMAT_VERSION,
+        "app_version": "0.5.0",
+        "timeline": {
+            "global_time": 5.0,
+            "selected_segment_id": "seg-1",
+            "segments": [
+                {
+                    "id": "seg-1",
+                    "source_path": str(video_file),
+                    "source_duration": 10.0,
+                    "start_time": 0.0,
+                    "end_time": 10.0,
+                }
+            ],
+        },
+    }
+
+    with open(project_file, "w", encoding="utf-8") as f:
+        json.dump(legacy_payload, f)
+
+    loaded = ProjectService.load_project(project_file)
+    assert loaded.snap_to_keyframe is False
+    assert loaded.segments[0].keyframes == []
+    assert loaded.global_time == 5.0
+
+
+def test_project_relink_missing_media_restores_keyframes_cache(tmp_path: Path):
+    proj_dir = tmp_path / "proj"
+    proj_dir.mkdir()
+    project_file = proj_dir / "relink_kfs.vcut"
+
+    missing_video = tmp_path / "missing_dir" / "lost.mp4"
+    timeline = ProjectTimeline()
+    seg = timeline.add_video(missing_video, source_duration=15.0)
+    seg.keyframes = [0.0, 3.0, 6.0, 9.0]
+
+    ProjectService.save_project(project_file, timeline)
+
+    loaded = ProjectService.load_project(project_file)
+    assert len(loaded.missing_files) == 1
+
+    # Relink to existing file
+    found_video = tmp_path / "found.mp4"
+    found_video.write_text("found content", encoding="utf-8")
+
+    ProbeService.clear_cache()
+    assert not ProbeService.is_keyframes_cached(found_video)
+
+    ProjectService.relink_missing_media(loaded.segments, {str(missing_video): found_video})
+    assert loaded.segments[0].source_path == found_video
+    assert ProbeService.is_keyframes_cached(found_video)
+    assert ProbeService.get_keyframe_timestamps(found_video) == [0.0, 3.0, 6.0, 9.0]
+
+
+def test_window_loads_snap_to_keyframe_state(tmp_path: Path):
+    import gi
+    gi.require_version("Gtk", "4.0")
+    gi.require_version("Adw", "1")
+    from gi.repository import Adw
+
+    from video_cut.window import MainWindow
+
+    project_file = tmp_path / "window_snap.vcut"
+    video_file = tmp_path / "test_snap_video.mp4"
+    video_file.write_text("video", encoding="utf-8")
+
+    timeline = ProjectTimeline()
+    seg = timeline.add_video(video_file, source_duration=20.0)
+    seg.keyframes = [0.0, 2.5, 5.0, 7.5, 10.0]
+    timeline.snap_to_keyframe = True
+
+    ProjectService.save_project(project_file, timeline)
+
+    app = Adw.Application(application_id="io.github.thor27.video-cut.test-snap-kfs")
+    err: list[Exception] = []
+
+    def run_test(application):
+        win = None
+        try:
+            win = MainWindow(application=application)
+            win.open_project_file(project_file)
+
+            assert win.snap_to_keyframe is True
+            assert win.timeline.snap_to_keyframe is True
+            assert win.timeline_widget.snap_to_keyframe is True
+            assert win.timeline_widget.btn_keyframe_snap.get_active() is True
+            assert "accent" in win.timeline_widget.btn_keyframe_snap.get_css_classes()
+            assert not win.is_dirty
+        except Exception as e:
+            err.append(e)
+        finally:
             if win:
                 win.close()
             app.quit()

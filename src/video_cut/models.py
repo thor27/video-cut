@@ -193,6 +193,7 @@ class Segment:
     vflip: bool = False
     orig_image_path: Path | None = None
     overlays: list[OverlayItem] = field(default_factory=list)
+    keyframes: list[float] = field(default_factory=list)
 
     def __post_init__(self) -> None:
         self.source_path = Path(self.source_path)
@@ -204,6 +205,7 @@ class Segment:
         self.end_time = clamp(self.end_time, self.start_time, self.source_duration)
         self.rotation = int(self.rotation) % 360
         self.overlays = [item.copy() if hasattr(item, "copy") else item for item in self.overlays]
+        self.keyframes = [float(k) for k in self.keyframes] if self.keyframes else []
 
     @property
     def duration(self) -> float:
@@ -253,6 +255,7 @@ class Segment:
             vflip=self.vflip,
             orig_image_path=self.orig_image_path,
             overlays=[item.clone() for item in self.overlays],
+            keyframes=list(self.keyframes),
         )
 
     def copy(self) -> Segment:
@@ -271,10 +274,19 @@ class Segment:
             vflip=self.vflip,
             orig_image_path=self.orig_image_path,
             overlays=[item.copy() for item in self.overlays],
+            keyframes=list(self.keyframes),
         )
 
     def to_dict(self, base_dir: Path | None = None) -> dict[str, object]:
         """Convert segment to a serializable dictionary for project files."""
+        kfs = self.keyframes
+        if not kfs:
+            from .services.probe_service import ProbeService
+
+            if ProbeService.is_keyframes_cached(self.source_path):
+                kfs = ProbeService.get_keyframe_timestamps(self.source_path)
+                self.keyframes = list(kfs)
+
         d: dict[str, object] = {
             "id": self.id,
             "source_path": str(self.source_path),
@@ -288,6 +300,7 @@ class Segment:
             "vflip": self.vflip,
             "orig_image_path": str(self.orig_image_path) if self.orig_image_path else None,
             "overlays": [ov.to_dict(base_dir=base_dir) for ov in self.overlays],
+            "keyframes": [round(float(k), 6) for k in kfs] if kfs else [],
         }
         if base_dir:
             try:
@@ -363,6 +376,13 @@ class Segment:
             if ov is not None:
                 overlays_list.append(ov)
 
+        raw_kfs = data.get("keyframes") or []
+        kfs: list[float] = []
+        if isinstance(raw_kfs, list):
+            for k in raw_kfs:
+                if isinstance(k, (int, float)):
+                    kfs.append(float(k))
+
         seg_id = str(data.get("id")) if data.get("id") else generate_id()
 
         try:
@@ -380,6 +400,7 @@ class Segment:
                 vflip=bool(data.get("vflip", False)),
                 orig_image_path=orig_img,
                 overlays=overlays_list,
+                keyframes=kfs,
             )
         except Exception:
             return None

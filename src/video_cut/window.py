@@ -678,6 +678,8 @@ class MainWindow(Adw.ApplicationWindow):
         threading.Thread(target=worker, daemon=True).start()
 
     def _on_toggle_keyframe_snap(self, enabled: bool) -> None:
+        if self.snap_to_keyframe != enabled:
+            self._mark_dirty()
         self.snap_to_keyframe = enabled
         self.timeline.snap_to_keyframe = enabled
         if hasattr(self, "timeline_widget") and self.timeline_widget.snap_to_keyframe != enabled:
@@ -1143,13 +1145,20 @@ class MainWindow(Adw.ApplicationWindow):
             if self.player.is_playing:
                 self.player.pause()
 
-            segments, global_time, selected_id, missing = ProjectService.load_project(project_path)
+            loaded = ProjectService.load_project(project_path)
+            segments = loaded.segments
+            global_time = loaded.global_time
+            selected_id = loaded.selected_segment_id
+            missing = loaded.missing_files
+            snap_to_keyframe = loaded.snap_to_keyframe
 
             if missing:
-                self._show_missing_media_dialog(project_path, segments, global_time, selected_id, missing)
+                self._show_missing_media_dialog(
+                    project_path, segments, global_time, selected_id, missing, snap_to_keyframe
+                )
                 return
 
-            self._apply_loaded_project(project_path, segments, global_time, selected_id)
+            self._apply_loaded_project(project_path, segments, global_time, selected_id, snap_to_keyframe)
         except Exception as e:
             self._show_toast(_("Failed to load project: {error}").format(error=e))
 
@@ -1160,6 +1169,7 @@ class MainWindow(Adw.ApplicationWindow):
         global_time: float,
         selected_id: str | None,
         missing: list[str],
+        snap_to_keyframe: bool = False,
     ) -> None:
         dialog = Adw.AlertDialog.new(
             _("Missing Media Files"),
@@ -1184,7 +1194,7 @@ class MainWindow(Adw.ApplicationWindow):
                     resp = None
 
             if resp == "load_anyway":
-                self._apply_loaded_project(project_path, segments, global_time, selected_id)
+                self._apply_loaded_project(project_path, segments, global_time, selected_id, snap_to_keyframe)
             elif resp == "relink":
                 first_missing = missing[0]
                 relink_dlg = Gtk.FileDialog.new()
@@ -1200,9 +1210,13 @@ class MainWindow(Adw.ApplicationWindow):
                             ProjectService.relink_missing_media(segments, relink_map)
                             rem = [f for f in missing if f != first_missing]
                             if rem:
-                                self._show_missing_media_dialog(project_path, segments, global_time, selected_id, rem)
+                                self._show_missing_media_dialog(
+                                    project_path, segments, global_time, selected_id, rem, snap_to_keyframe
+                                )
                             else:
-                                self._apply_loaded_project(project_path, segments, global_time, selected_id)
+                                self._apply_loaded_project(
+                                    project_path, segments, global_time, selected_id, snap_to_keyframe
+                                )
                     except Exception:
                         pass
 
@@ -1216,6 +1230,7 @@ class MainWindow(Adw.ApplicationWindow):
         segments: list[Segment],
         global_time: float,
         selected_id: str | None,
+        snap_to_keyframe: bool = False,
     ) -> None:
         self.timeline.clear()
         self.timeline.segments = segments
@@ -1224,6 +1239,11 @@ class MainWindow(Adw.ApplicationWindow):
         self.current_project_path = project_path
         self.is_dirty = False
         self.current_global_time = global_time
+
+        self.snap_to_keyframe = snap_to_keyframe
+        self.timeline.snap_to_keyframe = snap_to_keyframe
+        if hasattr(self, "timeline_widget"):
+            self.timeline_widget.set_keyframe_snap(snap_to_keyframe, notify=False)
 
         if segments:
             self._start_thumbnails_for_segments(segments)
