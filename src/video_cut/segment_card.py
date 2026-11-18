@@ -654,8 +654,11 @@ class SegmentCard(Gtk.Box):
     def _on_popover_split_clicked(self) -> None:
         self._on_split_pill_clicked()
 
-    def update_thumbnails(self, thumbnails: list[Path | None]) -> None:
-        """Populate the filmstrip box with thumbnails, duplicating fast-loaded frames across slots without spinners."""
+    def update_thumbnails(
+        self,
+        thumbnails: list[Path | None] | list[tuple[Path | None, bool]],
+    ) -> None:
+        """Populate filmstrip box with thumbnails, applying pulsating transparency to placeholder slots."""
         if getattr(self, "_current_thumb_list", None) == thumbnails:
             return
         self._current_thumb_list = list(thumbnails)
@@ -666,8 +669,15 @@ class SegmentCard(Gtk.Box):
             self.filmstrip_box.remove(child)
             child = next_child
 
-        # Update segment's internal thumbnail paths list
-        valid_thumbs = [p for p in thumbnails if p is not None and p.exists()]
+        # Normalize items into (path, is_placeholder)
+        normalized: list[tuple[Path | None, bool]] = []
+        for item in thumbnails:
+            if isinstance(item, tuple):
+                normalized.append((item[0], item[1]))
+            else:
+                normalized.append((item, False))
+
+        valid_thumbs = [p for p, _ in normalized if p is not None and p.exists()]
         if not valid_thumbs and hasattr(self, "segment") and self.segment.thumbnails:
             valid_thumbs = [p for p in self.segment.thumbnails if p is not None and p.exists()]
 
@@ -678,13 +688,16 @@ class SegmentCard(Gtk.Box):
             placeholder.set_hexpand(True)
             placeholder.set_size_request(-1, 68)
             placeholder.add_css_class("thumbnail-placeholder")
+            placeholder.add_css_class("thumbnail-loading")
             self.filmstrip_box.append(placeholder)
             return
 
         fallback_thumb = valid_thumbs[0]
 
-        for raw_thumb in thumbnails:
+        for raw_thumb, is_placeholder in normalized:
             thumb_path = raw_thumb if (raw_thumb is not None and raw_thumb.exists()) else fallback_thumb
+            is_item_placeholder = is_placeholder or (raw_thumb is None or not raw_thumb.exists())
+
             if thumb_path is not None and thumb_path.exists():
                 if self.segment.has_transform:
                     try:
@@ -723,12 +736,17 @@ class SegmentCard(Gtk.Box):
                 pic.set_hexpand(True)
                 pic.set_content_fit(Gtk.ContentFit.COVER)
                 pic.set_size_request(-1, 68)
+
+                if is_item_placeholder:
+                    pic.add_css_class("thumbnail-loading")
+
                 self.filmstrip_box.append(pic)
             else:
                 slot = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
                 slot.set_hexpand(True)
                 slot.set_size_request(-1, 68)
                 slot.add_css_class("thumbnail-placeholder")
+                slot.add_css_class("thumbnail-loading")
                 self.filmstrip_box.append(slot)
 
     def set_needle_ratio(self, ratio: float | None) -> None:

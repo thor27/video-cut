@@ -319,3 +319,67 @@ def test_segment_card_duplicates_thumbs_and_has_no_spinners(sample_video, tmp_pa
 
     assert len(spinners) == 0
     assert len(pics) == 4
+
+
+def test_placeholder_thumbnail_loading_class(sample_video, tmp_path):
+    """Verify placeholder thumbnails receive thumbnail-loading CSS class and lose it when refined."""
+    ts = ThumbnailService(cache_dir=tmp_path)
+    key = ts._file_key(sample_video)
+
+    thumb1 = tmp_path / "t1.jpg"
+    thumb1.write_bytes(b"dummy1")
+
+    with ts._cache_lock:
+        ts._cache[key] = [(0.0, thumb1)]
+        ts._completed_keys.add(key)
+
+    items = ts.get_segment_thumbnail_items(sample_video, start_time=0.0, end_time=2.0, max_thumbs=4)
+    assert len(items) == 4
+    # First slot is at ~0.0s, matches closest timestamp within tolerance -> is_placeholder is False
+    assert items[0] == (thumb1, False)
+    # Remaining slots are distant borrowed frames -> is_placeholder is True
+    assert items[1] == (thumb1, True)
+    assert items[2] == (thumb1, True)
+    assert items[3] == (thumb1, True)
+
+    seg = Segment(id="s_load", source_path=sample_video, start_time=0.0, end_time=2.0, source_duration=2.0)
+    card = SegmentCard(
+        segment=seg,
+        index=0,
+        is_selected=False,
+        on_select=lambda _: None,
+    )
+    card.update_thumbnails(items)
+
+    pics: list[Gtk.Picture] = []
+    child = card.filmstrip_box.get_first_child()
+    while child:
+        if isinstance(child, Gtk.Picture):
+            pics.append(child)
+        child = child.get_next_sibling()
+
+    assert len(pics) == 4
+    assert not pics[0].has_css_class("thumbnail-loading")
+    assert pics[1].has_css_class("thumbnail-loading")
+    assert pics[2].has_css_class("thumbnail-loading")
+    assert pics[3].has_css_class("thumbnail-loading")
+
+    # Now simulate when refined thumbnails are extracted and all are real
+    thumb2 = tmp_path / "t2.jpg"
+    thumb3 = tmp_path / "t3.jpg"
+    thumb4 = tmp_path / "t4.jpg"
+    thumb2.write_bytes(b"dummy2")
+    thumb3.write_bytes(b"dummy3")
+    thumb4.write_bytes(b"dummy4")
+    refined_items = [(thumb1, False), (thumb2, False), (thumb3, False), (thumb4, False)]
+    card.update_thumbnails(refined_items)
+
+    pics = []
+    child = card.filmstrip_box.get_first_child()
+    while child:
+        if isinstance(child, Gtk.Picture):
+            pics.append(child)
+        child = child.get_next_sibling()
+
+    assert len(pics) == 4
+    assert not any(p.has_css_class("thumbnail-loading") for p in pics)

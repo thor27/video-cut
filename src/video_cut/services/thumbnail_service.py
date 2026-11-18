@@ -271,17 +271,45 @@ class ThumbnailService:
         The first item corresponds to start_time, the last item to end_time,
         and intermediate items to evenly distributed timestamps in [start_time, end_time].
         """
+        return [p for p, _ in self.get_segment_thumbnail_items(
+            source_path=source_path,
+            start_time=start_time,
+            end_time=end_time,
+            max_thumbs=max_thumbs,
+            auto_refine=auto_refine,
+        )]
+
+    def get_segment_thumbnail_items(
+        self,
+        source_path: Path,
+        start_time: float,
+        end_time: float,
+        max_thumbs: int = 1,
+        auto_refine: bool = True,
+    ) -> list[tuple[Path | None, bool]]:
+        """Retrieve thumbnails for a segment along with placeholder status.
+
+        Returns list of (path, is_placeholder) tuples. is_placeholder is True when a slot
+        is temporarily borrowing a distant cached thumbnail while awaiting exact extraction.
+        """
         count = max(1, max_thumbs)
         key = self._file_key(source_path)
         with self._cache_lock:
             items = list(self._cache.get(key, []))
+            is_img = key in self._image_keys
+            is_in_progress = key in self._in_progress_keys
+
+        if not is_img and ImageService.is_image(source_path):
+            is_img = True
 
         dur = max(0.001, end_time - start_time)
         if count == 1:
             target_times = [start_time + dur / 2.0]
+            step = dur
         else:
             target_times = []
             first_t = 10.0 if (start_time == 0.0 and dur > 60.0) else start_time
+            step = dur / float(count - 1)
             for i in range(count):
                 ratio = i / float(count - 1)
                 if i == 0:
@@ -291,6 +319,8 @@ class ThumbnailService:
                 if i == count - 1 and dur > 0.08:
                     t = min(t, end_time - 0.04)
                 target_times.append(t)
+
+        tolerance = min(0.15, step * 0.4)
 
         if not items:
             # Check if preview keyframe exists on disk or in preview cache as instant fallback
@@ -305,47 +335,40 @@ class ThumbnailService:
                     items = [(0.0, prev_items[0][1])]
 
         if not items:
-            return [None] * count
+            return [(None, True)] * count
 
-        results: list[Path | None] = []
+        results: list[tuple[Path | None, bool]] = []
         n_items = len(items)
         for t in target_times:
             # Binary search for closest timestamp in sorted thumbnail cache
             idx = bisect_left(items, t, key=lambda x: x[0])
             if idx == 0:
-                _closest_ts, closest_path = items[0]
+                closest_ts, closest_path = items[0]
             elif idx >= n_items:
-                _closest_ts, closest_path = items[-1]
+                closest_ts, closest_path = items[-1]
             else:
                 before = items[idx - 1]
                 after = items[idx]
                 if (after[0] - t) < (t - before[0]):
-                    _closest_ts, closest_path = after
+                    closest_ts, closest_path = after
                 else:
-                    _closest_ts, closest_path = before
+                    closest_ts, closest_path = before
 
-            # Always resolve each slot to the closest available thumbnail,
-            # duplicating fast-loaded frames across all slots until more frames arrive.
             if closest_path.exists():
-                results.append(closest_path)
+                is_placeholder = False if is_img else (abs(closest_ts - t) > tolerance)
+                results.append((closest_path, is_placeholder))
             else:
-                results.append(None)
+                results.append((None, True))
 
-        if auto_refine and count > 1 and dur > 0.05:
-            with self._cache_lock:
-                is_img = key in self._image_keys
-                is_in_progress = key in self._in_progress_keys
-            if not is_img and not is_in_progress and not ImageService.is_image(source_path):
-                valid_results = [p for p in results if p is not None]
-                if len(valid_results) > 1 and len(set(valid_results)) < len(valid_results):
-                    step = dur / float(count - 1)
-                    tolerance = min(0.15, step * 0.4)
-                    missing_times: list[float] = []
-                    for t in target_times:
-                        if not items or not any(abs(c_ts - t) <= tolerance for c_ts, _ in items):
-                            missing_times.append(t)
-                    if missing_times:
-                        self.refine_segment_thumbnails_async(source_path, missing_times)
+        if auto_refine and count > 1 and dur > 0.05 and not is_img and not is_in_progress:
+            valid_paths = [p for p, _ in results if p is not None]
+            if len(valid_paths) > 1 and len(set(valid_paths)) < len(valid_paths):
+                missing_times: list[float] = []
+                for t in target_times:
+                    if not items or not any(abs(c_ts - t) <= tolerance for c_ts, _ in items):
+                        missing_times.append(t)
+                if missing_times:
+                    self.refine_segment_thumbnails_async(source_path, missing_times)
 
         return results
 

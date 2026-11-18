@@ -342,8 +342,10 @@ class MainWindow(Adw.ApplicationWindow):
 
         self.connect("close-request", on_window_close_request)
 
-    def _get_segment_thumbnails(self, seg: Segment, target_count: int) -> list[Path | None]:
-        return self.thumbnail_service.get_thumbnails_for_segment(
+    def _get_segment_thumbnails(
+        self, seg: Segment, target_count: int
+    ) -> list[tuple[Path | None, bool]]:
+        return self.thumbnail_service.get_segment_thumbnail_items(
             seg.source_path, seg.start_time, seg.end_time, max_thumbs=target_count
         )
 
