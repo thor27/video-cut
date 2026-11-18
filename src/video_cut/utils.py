@@ -1,21 +1,39 @@
 """Utility functions for time formatting and calculations."""
 
 import math
+import os
 import shutil
 import subprocess
 import sys
 import uuid
+from pathlib import Path
 
 SUBPROCESS_FLAGS: int = subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0
 
 
 def get_ffmpeg_path() -> str:
     """Return resolved path to ffmpeg executable."""
+    if "SNAP" in os.environ:
+        snap_bin = Path(os.environ["SNAP"]) / "usr" / "bin" / "ffmpeg"
+        if snap_bin.is_file() and os.access(snap_bin, os.X_OK):
+            return str(snap_bin)
+    if "APPDIR" in os.environ:
+        appdir_bin = Path(os.environ["APPDIR"]) / "usr" / "bin" / "ffmpeg"
+        if appdir_bin.is_file() and os.access(appdir_bin, os.X_OK):
+            return str(appdir_bin)
     return shutil.which("ffmpeg") or "ffmpeg"
 
 
 def get_ffprobe_path() -> str:
     """Return resolved path to ffprobe executable."""
+    if "SNAP" in os.environ:
+        snap_bin = Path(os.environ["SNAP"]) / "usr" / "bin" / "ffprobe"
+        if snap_bin.is_file() and os.access(snap_bin, os.X_OK):
+            return str(snap_bin)
+    if "APPDIR" in os.environ:
+        appdir_bin = Path(os.environ["APPDIR"]) / "usr" / "bin" / "ffprobe"
+        if appdir_bin.is_file() and os.access(appdir_bin, os.X_OK):
+            return str(appdir_bin)
     return shutil.which("ffprobe") or "ffprobe"
 
 

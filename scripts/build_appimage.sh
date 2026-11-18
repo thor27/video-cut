@@ -125,6 +125,76 @@ if __name__ == "__main__":
 EOF
 chmod 755 "${APPDIR}/usr/bin/video-cut"
 
+# Bundle ffmpeg and ffprobe into AppDir
+echo "==> Bundling ffmpeg and ffprobe into AppDir..."
+FFMPEG_BUNDLED=0
+# Check if cached in TOOLS_DIR
+if [ -x "${TOOLS_DIR}/ffmpeg" ] && [ -x "${TOOLS_DIR}/ffprobe" ]; then
+    echo "    Using cached static ffmpeg and ffprobe from ${TOOLS_DIR}..."
+    cp -f "${TOOLS_DIR}/ffmpeg" "${APPDIR}/usr/bin/ffmpeg"
+    cp -f "${TOOLS_DIR}/ffprobe" "${APPDIR}/usr/bin/ffprobe"
+    chmod +x "${APPDIR}/usr/bin/ffmpeg" "${APPDIR}/usr/bin/ffprobe"
+    FFMPEG_BUNDLED=1
+fi
+
+# If not cached, attempt to download static ffmpeg release (self-contained, no host library requirements)
+if [ "$FFMPEG_BUNDLED" -eq 0 ]; then
+    echo "==> Downloading static ffmpeg release..."
+    FFMPEG_STATIC_URL="https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-amd64-static.tar.xz"
+    FFMPEG_TMP="$(mktemp -d)"
+    if curl -fsSL --connect-timeout 15 --max-time 120 -o "${FFMPEG_TMP}/ffmpeg.tar.xz" "${FFMPEG_STATIC_URL}" 2>/dev/null; then
+        if tar -xf "${FFMPEG_TMP}/ffmpeg.tar.xz" -C "${FFMPEG_TMP}" 2>/dev/null; then
+            STATIC_BIN_DIR="$(find "${FFMPEG_TMP}" -type d -name "ffmpeg-*-static" 2>/dev/null | head -n 1)"
+            if [ -n "$STATIC_BIN_DIR" ] && [ -x "${STATIC_BIN_DIR}/ffmpeg" ] && [ -x "${STATIC_BIN_DIR}/ffprobe" ]; then
+                cp -f "${STATIC_BIN_DIR}/ffmpeg" "${TOOLS_DIR}/ffmpeg"
+                cp -f "${STATIC_BIN_DIR}/ffprobe" "${TOOLS_DIR}/ffprobe"
+                cp -f "${STATIC_BIN_DIR}/ffmpeg" "${APPDIR}/usr/bin/ffmpeg"
+                cp -f "${STATIC_BIN_DIR}/ffprobe" "${APPDIR}/usr/bin/ffprobe"
+                chmod +x "${APPDIR}/usr/bin/ffmpeg" "${APPDIR}/usr/bin/ffprobe"
+                FFMPEG_BUNDLED=1
+            fi
+        fi
+    fi
+    rm -rf "${FFMPEG_TMP}"
+fi
+
+# Fallback: Copy host ffmpeg and ffprobe and their shared libraries
+if [ "$FFMPEG_BUNDLED" -eq 0 ]; then
+    if command -v ffmpeg >/dev/null 2>&1 && command -v ffprobe >/dev/null 2>&1; then
+        echo "==> Bundling system ffmpeg and ffprobe as fallback..."
+        HOST_FFMPEG="$(command -v ffmpeg)"
+        HOST_FFPROBE="$(command -v ffprobe)"
+        cp -f "$HOST_FFMPEG" "${APPDIR}/usr/bin/ffmpeg"
+        cp -f "$HOST_FFPROBE" "${APPDIR}/usr/bin/ffprobe"
+        chmod +x "${APPDIR}/usr/bin/ffmpeg" "${APPDIR}/usr/bin/ffprobe"
+
+        # Copy ffmpeg/ffprobe library dependencies into AppDir
+        for bin in "$HOST_FFMPEG" "$HOST_FFPROBE"; do
+            for lib in $(ldd "$bin" 2>/dev/null | grep "=> /" | awk '{print $3}'); do
+                if [ -f "$lib" ]; then
+                    libname="$(basename "$lib")"
+                    case "$libname" in
+                        libc.so*|ld-linux*|libpthread.so*|libdl.so*|librt.so*)
+                            continue
+                            ;;
+                        *)
+                            cp -u "$lib" "${APPDIR}/usr/lib/x86_64-linux-gnu/" 2>/dev/null || true
+                            ln -sf "x86_64-linux-gnu/${libname}" "${APPDIR}/usr/lib/${libname}" 2>/dev/null || true
+                            ;;
+                    esac
+                fi
+            done
+        done
+        FFMPEG_BUNDLED=1
+    fi
+fi
+
+if [ "$FFMPEG_BUNDLED" -eq 0 ] || [ ! -x "${APPDIR}/usr/bin/ffmpeg" ] || [ ! -x "${APPDIR}/usr/bin/ffprobe" ]; then
+    echo "Error: ffmpeg and ffprobe binaries could not be bundled into AppDir!" >&2
+    echo "Please ensure internet connectivity or install ffmpeg and ffprobe on the build system." >&2
+    exit 1
+fi
+
 # 4. Copy Desktop Entry, MIME definition, and AppStream MetaInfo
 cp "${REPO_ROOT}/src/video_cut/resources/io.github.thor27.video-cut.desktop" \
    "${APPDIR}/io.github.thor27.video-cut.desktop"
