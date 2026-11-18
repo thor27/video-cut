@@ -23,8 +23,9 @@ jobs:
           sudo apt-get install -y \
             python3-venv python3-gi python3-cairo python3-pil \
             gir1.2-gtk-4.0 gir1.2-adw-1 gir1.2-gstreamer-1.0 \
+            libgtk-4-1 libadwaita-1-0 libgraphene-1.0-0 \
             gstreamer1.0-plugins-base gstreamer1.0-plugins-good gstreamer1.0-libav \
-            ffmpeg xvfb appstream desktop-file-utils
+            ffmpeg xvfb appstream desktop-file-utils squashfs-tools
 
       - name: Install Package
         run: |
@@ -39,6 +40,7 @@ jobs:
           desktop-file-validate src/video_cut/resources/io.github.thor27.video-cut.desktop
           appstreamcli validate --no-net io.github.thor27.video-cut.metainfo.xml
           ./scripts/build_flatpak.sh --validate-only
+          ./scripts/build_appimage.sh
 
       - name: Run Tests
         run: xvfb-run -a .venv/bin/python -m pytest -q
