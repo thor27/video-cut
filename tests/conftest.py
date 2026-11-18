@@ -4,6 +4,8 @@ from pathlib import Path
 
 import pytest
 
+from video_cut.utils import get_ffmpeg_path
+
 # GTK's GL renderer aborts inside libepoxy on displays without GL, such as
 # Xvfb in CI; the Cairo renderer is enough for the widget tests.
 os.environ.setdefault("GSK_RENDERER", "cairo")
@@ -12,7 +14,7 @@ os.environ.setdefault("GSK_RENDERER", "cairo")
 def _generate_sample_video(path: Path, duration: float) -> Path:
     subprocess.run(
         [
-            "ffmpeg", "-loglevel", "error", "-y",
+            get_ffmpeg_path(), "-loglevel", "error", "-y",
             "-f", "lavfi", "-i", "testsrc=size=640x360:rate=30",
             "-f", "lavfi", "-i", "sine=frequency=440:sample_rate=48000",
             "-t", str(duration),

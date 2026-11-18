@@ -611,7 +611,7 @@ class ExportService:
             return
 
         out_path = Path(output_path)
-        part_path = out_path.with_name(f".{out_path.stem}.{secrets.token_hex(4)}.part{out_path.suffix}")
+        part_path = out_path.with_name(f"{out_path.stem}.part-{secrets.token_hex(4)}{out_path.suffix}")
 
         if settings and settings.lossless:
             def worker_lossless() -> None:
