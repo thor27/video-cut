@@ -93,22 +93,81 @@ for req_tlb in Gtk-4.0 Adw-1 Gst-1.0; do
     fi
 done
 
+# Bundle glibc loader and core runtime libraries to ensure self-contained compatibility across distros
+echo "==> Bundling glibc runtime..."
+mkdir -p "${APPDIR}/glibc"
+for lib in ld-linux-x86-64.so.2 libc.so.6 libm.so.6 libdl.so.2 libpthread.so.0 librt.so.1 libresolv.so.2 libutil.so.1 libgcc_s.so.1; do
+    for dir in /lib/x86_64-linux-gnu /usr/lib/x86_64-linux-gnu /lib64 /usr/lib64 /lib /usr/lib; do
+        if [ -e "$dir/$lib" ]; then
+            cp -L "$dir/$lib" "${APPDIR}/glibc/"
+            break
+        fi
+    done
+done
+
 # Bundle GTK4, Libadwaita, and Graphene shared libraries into AppDir if present on build system
+echo "==> Bundling GTK4, Libadwaita, and dependencies..."
 mkdir -p "${APPDIR}/usr/lib/x86_64-linux-gnu"
 mkdir -p "${APPDIR}/usr/lib"
 for lib_pattern in "libgtk-4.so*" "libadwaita-1.so*" "libgraphene-1.0.so*"; do
     for lib_dir in /usr/lib/x86_64-linux-gnu /usr/lib64 /usr/lib; do
         if compgen -G "${lib_dir}/${lib_pattern}" > /dev/null 2>&1; then
-            cp -a ${lib_dir}/${lib_pattern} "${APPDIR}/usr/lib/x86_64-linux-gnu/" 2>/dev/null || true
+            cp -a ${lib_dir}/${lib_pattern} "${APPDIR}/usr/lib/" 2>/dev/null || true
             break
         fi
     done
 done
-for f in "${APPDIR}/usr/lib/x86_64-linux-gnu/"*.so*; do
-    if [ -e "$f" ]; then
-        ln -sf "x86_64-linux-gnu/$(basename "$f")" "${APPDIR}/usr/lib/$(basename "$f")" 2>/dev/null || true
+
+# Recursively resolve dependencies of all bundled .so files, excluding host GPU/driver libraries
+DEPS_FILE="$(mktemp)"
+ORIG_LD_LIBRARY_PATH="${LD_LIBRARY_PATH:-}"
+export LD_LIBRARY_PATH="${APPDIR}/usr/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+while true; do
+    NEW_COPIED=0
+    find "${APPDIR}/usr/lib" -maxdepth 1 -type f -name '*.so*' -print0 | xargs -0 -n1 ldd 2>/dev/null | awk '/=> \//{print $3}' | sort -u > "$DEPS_FILE"
+    while read -r lib; do
+        [ -z "$lib" ] && continue
+        case "$lib" in "${APPDIR}"/*) continue ;; esac
+        lib_name="$(basename "$lib")"
+        case "$lib_name" in
+            libGL*|libEGL*|libOpenGL*|libglapi*|libdrm*|libgbm*|libX*|libxcb*|libudev*|libdbus-1*) continue ;;
+            ld-linux*|libc.so*|libm.so*|libdl.so*|libpthread.so*|librt.so*|libresolv.so*|libutil.so*) continue ;;
+            libnss_*|libgcc_s.so*) continue ;;
+        esac
+        if [ ! -e "${APPDIR}/usr/lib/${lib_name}" ]; then
+            cp -nL "$lib" "${APPDIR}/usr/lib/" 2>/dev/null || true
+            NEW_COPIED=$((NEW_COPIED + 1))
+        fi
+    done < "$DEPS_FILE"
+    if [ "$NEW_COPIED" -eq 0 ]; then
+        break
     fi
 done
+rm -f "$DEPS_FILE"
+if [ -n "$ORIG_LD_LIBRARY_PATH" ]; then
+    export LD_LIBRARY_PATH="$ORIG_LD_LIBRARY_PATH"
+else
+    unset LD_LIBRARY_PATH
+fi
+
+# Provide x86_64-linux-gnu directory compatibility symlinks
+for f in "${APPDIR}/usr/lib/"*.so*; do
+    if [ -f "$f" ]; then
+        ln -sf "../$(basename "$f")" "${APPDIR}/usr/lib/x86_64-linux-gnu/$(basename "$f")" 2>/dev/null || true
+    fi
+done
+
+# Bundle and compile GSettings schemas for GTK4 and Libadwaita
+echo "==> Bundling GSettings schemas..."
+mkdir -p "${APPDIR}/usr/share/glib-2.0/schemas"
+for schema in /usr/share/glib-2.0/schemas/*gtk4* /usr/share/glib-2.0/schemas/*adw*; do
+    if [ -f "$schema" ]; then
+        cp -f "$schema" "${APPDIR}/usr/share/glib-2.0/schemas/"
+    fi
+done
+if command -v glib-compile-schemas >/dev/null 2>&1; then
+    glib-compile-schemas "${APPDIR}/usr/share/glib-2.0/schemas" 2>/dev/null || true
+fi
 
 # Clean up pycache in staging
 find "${APPDIR}" -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
@@ -118,6 +177,9 @@ find "${APPDIR}" -type f -name "*.pyc" -delete 2>/dev/null || true
 cat << 'EOF' > "${APPDIR}/usr/bin/video-cut"
 #!/usr/bin/env python3
 import sys
+for dist_pkg in ("/appdir/usr/lib/python3/dist-packages", "/usr/lib/python3/dist-packages", "/usr/local/lib/python3/dist-packages"):
+    if dist_pkg not in sys.path:
+        sys.path.append(dist_pkg)
 from video_cut.__main__ import main
 
 if __name__ == "__main__":
