@@ -137,9 +137,30 @@ if [ -x "${TOOLS_DIR}/ffmpeg" ] && [ -x "${TOOLS_DIR}/ffprobe" ]; then
     FFMPEG_BUNDLED=1
 fi
 
-# If not cached, attempt to download static ffmpeg release (self-contained, no host library requirements)
+# If not cached, attempt to download static ffmpeg release from GitHub Releases (eugeneware/ffmpeg-static)
 if [ "$FFMPEG_BUNDLED" -eq 0 ]; then
-    echo "==> Downloading static ffmpeg release..."
+    echo "==> Downloading static ffmpeg release from GitHub (eugeneware/ffmpeg-static)..."
+    FFMPEG_TMP="$(mktemp -d)"
+    GITHUB_FFMPEG_URL="https://github.com/eugeneware/ffmpeg-static/releases/download/b6.1.1/ffmpeg-linux-x64.gz"
+    GITHUB_FFPROBE_URL="https://github.com/eugeneware/ffmpeg-static/releases/download/b6.1.1/ffprobe-linux-x64.gz"
+    if curl -fsSL --connect-timeout 15 --max-time 180 "$GITHUB_FFMPEG_URL" | gzip -d > "${FFMPEG_TMP}/ffmpeg" 2>/dev/null && \
+       curl -fsSL --connect-timeout 15 --max-time 180 "$GITHUB_FFPROBE_URL" | gzip -d > "${FFMPEG_TMP}/ffprobe" 2>/dev/null; then
+        if [ -s "${FFMPEG_TMP}/ffmpeg" ] && [ -s "${FFMPEG_TMP}/ffprobe" ]; then
+            chmod +x "${FFMPEG_TMP}/ffmpeg" "${FFMPEG_TMP}/ffprobe"
+            cp -f "${FFMPEG_TMP}/ffmpeg" "${TOOLS_DIR}/ffmpeg"
+            cp -f "${FFMPEG_TMP}/ffprobe" "${TOOLS_DIR}/ffprobe"
+            cp -f "${FFMPEG_TMP}/ffmpeg" "${APPDIR}/usr/bin/ffmpeg"
+            cp -f "${FFMPEG_TMP}/ffprobe" "${APPDIR}/usr/bin/ffprobe"
+            FFMPEG_BUNDLED=1
+            echo "    Successfully downloaded and bundled static ffmpeg and ffprobe from GitHub."
+        fi
+    fi
+    rm -rf "${FFMPEG_TMP}"
+fi
+
+# Secondary fallback: John Van Sickle static tarball
+if [ "$FFMPEG_BUNDLED" -eq 0 ]; then
+    echo "==> Downloading static ffmpeg release from johnvansickle.com..."
     FFMPEG_STATIC_URL="https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-amd64-static.tar.xz"
     FFMPEG_TMP="$(mktemp -d)"
     if curl -fsSL --connect-timeout 15 --max-time 120 -o "${FFMPEG_TMP}/ffmpeg.tar.xz" "${FFMPEG_STATIC_URL}" 2>/dev/null; then
@@ -152,13 +173,14 @@ if [ "$FFMPEG_BUNDLED" -eq 0 ]; then
                 cp -f "${STATIC_BIN_DIR}/ffprobe" "${APPDIR}/usr/bin/ffprobe"
                 chmod +x "${APPDIR}/usr/bin/ffmpeg" "${APPDIR}/usr/bin/ffprobe"
                 FFMPEG_BUNDLED=1
+                echo "    Successfully downloaded and bundled static ffmpeg and ffprobe from johnvansickle.com."
             fi
         fi
     fi
     rm -rf "${FFMPEG_TMP}"
 fi
 
-# Fallback: Copy host ffmpeg and ffprobe and their shared libraries
+# Fallback: Copy host ffmpeg and ffprobe binaries (do NOT copy desktop/graphics libraries which break GTK/GdkPixbuf)
 if [ "$FFMPEG_BUNDLED" -eq 0 ]; then
     if command -v ffmpeg >/dev/null 2>&1 && command -v ffprobe >/dev/null 2>&1; then
         echo "==> Bundling system ffmpeg and ffprobe as fallback..."
@@ -167,24 +189,6 @@ if [ "$FFMPEG_BUNDLED" -eq 0 ]; then
         cp -f "$HOST_FFMPEG" "${APPDIR}/usr/bin/ffmpeg"
         cp -f "$HOST_FFPROBE" "${APPDIR}/usr/bin/ffprobe"
         chmod +x "${APPDIR}/usr/bin/ffmpeg" "${APPDIR}/usr/bin/ffprobe"
-
-        # Copy ffmpeg/ffprobe library dependencies into AppDir
-        for bin in "$HOST_FFMPEG" "$HOST_FFPROBE"; do
-            for lib in $(ldd "$bin" 2>/dev/null | grep "=> /" | awk '{print $3}'); do
-                if [ -f "$lib" ]; then
-                    libname="$(basename "$lib")"
-                    case "$libname" in
-                        libc.so*|ld-linux*|libpthread.so*|libdl.so*|librt.so*)
-                            continue
-                            ;;
-                        *)
-                            cp -u "$lib" "${APPDIR}/usr/lib/x86_64-linux-gnu/" 2>/dev/null || true
-                            ln -sf "x86_64-linux-gnu/${libname}" "${APPDIR}/usr/lib/${libname}" 2>/dev/null || true
-                            ;;
-                    esac
-                fi
-            done
-        done
         FFMPEG_BUNDLED=1
     fi
 fi

@@ -55,8 +55,11 @@ find "${PKG_DIR}" -type f -name "*.pyc" -delete 2>/dev/null || true
 
 # 3. Create Binary Executable Wrapper
 cat << 'EOF' > "${PKG_DIR}/usr/bin/video-cut"
-#!/usr/bin/env python3
+#!/usr/bin/python3
 import sys
+for dist_pkg in ("/usr/lib/python3/dist-packages", "/usr/local/lib/python3/dist-packages"):
+    if dist_pkg not in sys.path:
+        sys.path.append(dist_pkg)
 from video_cut.__main__ import main
 
 if __name__ == "__main__":
