@@ -10,54 +10,6 @@ export APPDIR
 export PATH="${APPDIR}/usr/bin:${PATH}"
 export XDG_DATA_DIRS="${APPDIR}/usr/share:${XDG_DATA_DIRS:-/usr/local/share:/usr/share}"
 
-# Point to bundled GSettings schemas if present
-if [ -d "${APPDIR}/usr/share/glib-2.0/schemas" ]; then
-    export GSETTINGS_SCHEMA_DIR="${APPDIR}/usr/share/glib-2.0/schemas:${GSETTINGS_SCHEMA_DIR:-}"
-fi
-
-# GObject Introspection typelib search paths: bundled AppDir first, followed by system locations
-for dir in \
-    "${APPDIR}/usr/lib/x86_64-linux-gnu/girepository-1.0" \
-    "${APPDIR}/usr/lib/girepository-1.0" \
-    "${APPDIR}/usr/lib64/girepository-1.0" \
-    /usr/lib/x86_64-linux-gnu/girepository-1.0 \
-    /usr/lib/aarch64-linux-gnu/girepository-1.0 \
-    /usr/lib64/girepository-1.0 \
-    /usr/lib/girepository-1.0 \
-    /usr/local/lib/girepository-1.0; do
-    if [ -d "$dir" ]; then
-        GI_TYPELIB_PATH="${GI_TYPELIB_PATH:+$GI_TYPELIB_PATH:}$dir"
-    fi
-done
-export GI_TYPELIB_PATH
-
-# GStreamer plugin search paths
-for dir in \
-    "${APPDIR}/usr/lib/x86_64-linux-gnu/gstreamer-1.0" \
-    "${APPDIR}/usr/lib/gstreamer-1.0" \
-    "${APPDIR}/usr/lib64/gstreamer-1.0" \
-    /usr/lib/x86_64-linux-gnu/gstreamer-1.0 \
-    /usr/lib/aarch64-linux-gnu/gstreamer-1.0 \
-    /usr/lib64/gstreamer-1.0 \
-    /usr/lib/gstreamer-1.0; do
-    if [ -d "$dir" ]; then
-        GST_PLUGIN_SYSTEM_PATH_1_0="${GST_PLUGIN_SYSTEM_PATH_1_0:+$GST_PLUGIN_SYSTEM_PATH_1_0:}$dir"
-    fi
-done
-export GST_PLUGIN_SYSTEM_PATH_1_0
-
-# Ensure display server backend matches available socket
-if [ -n "$WAYLAND_DISPLAY" ]; then
-    RUNTIME_DIR="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
-    if [ ! -S "${RUNTIME_DIR}/${WAYLAND_DISPLAY}" ] && [ ! -S "/tmp/${WAYLAND_DISPLAY}" ]; then
-        unset WAYLAND_DISPLAY
-        unset GDK_BACKEND
-    fi
-fi
-if [ -z "$WAYLAND_DISPLAY" ] && [ -n "$DISPLAY" ]; then
-    export GDK_BACKEND=x11
-fi
-
 # Clear foreign Python environment overrides (e.g. from Conda, Pyenv)
 unset PYTHONHOME
 
@@ -102,16 +54,81 @@ for py_dir in /usr/lib/python3* /usr/local/lib/python3*; do
 done
 export PYTHONPATH
 
-# Library search path: bundled glibc & runtime libraries first, host fallback for display/GPU drivers
-LIB_PATH="${APPDIR}/glibc:${APPDIR}/usr/lib:${APPDIR}/usr/lib/x86_64-linux-gnu:/usr/lib/x86_64-linux-gnu:/lib/x86_64-linux-gnu:/usr/lib64:/lib64"
-
-# Execute Video Cut
+# Execute target arguments
 EXEC_TARGET="${APPDIR}/usr/bin/video-cut"
 if [ ! -x "$EXEC_TARGET" ]; then
     EXEC_ARGS=("-m" "video_cut" "$@")
 else
     EXEC_ARGS=("$EXEC_TARGET" "$@")
 fi
+
+# Check if host system provides a fully capable native GTK4/Libadwaita/GStreamer environment
+HOST_NATIVE_OK=0
+if "$PYTHON_BIN" -c "
+import gi
+gi.require_version('Gtk', '4.0')
+gi.require_version('Adw', '1')
+gi.require_version('Gst', '1.0')
+from gi.repository import Adw, Gst
+assert hasattr(Adw, 'ToolbarView')
+Gst.init(None)
+assert Gst.ElementFactory.make('playbin3', None) is not None or Gst.ElementFactory.make('playbin', None) is not None
+" 2>/dev/null; then
+    HOST_NATIVE_OK=1
+fi
+
+if [ "$HOST_NATIVE_OK" -eq 1 ]; then
+    # Run natively: gives full hardware acceleration (EGL/Vulkan/NGL), native GTK theme,
+    # and direct matching with host GStreamer plugins without symbol mismatches.
+    exec "$PYTHON_BIN" "${EXEC_ARGS[@]}"
+fi
+
+# Fallback mode for older LTS systems (e.g. Ubuntu 22.04) or minimal environments without host GTK4/Libadwaita:
+# 1. Point to bundled GSettings schemas
+if [ -d "${APPDIR}/usr/share/glib-2.0/schemas" ]; then
+    export GSETTINGS_SCHEMA_DIR="${APPDIR}/usr/share/glib-2.0/schemas:${GSETTINGS_SCHEMA_DIR:-}"
+fi
+
+# 2. GObject Introspection typelib search paths: bundled AppDir first
+for dir in \
+    "${APPDIR}/usr/lib/x86_64-linux-gnu/girepository-1.0" \
+    "${APPDIR}/usr/lib/girepository-1.0" \
+    "${APPDIR}/usr/lib64/girepository-1.0"; do
+    if [ -d "$dir" ]; then
+        GI_TYPELIB_PATH="${GI_TYPELIB_PATH:+$GI_TYPELIB_PATH:}$dir"
+    fi
+done
+export GI_TYPELIB_PATH
+
+# 3. GStreamer plugin search paths: bundled plugins first
+for dir in \
+    "${APPDIR}/usr/lib/x86_64-linux-gnu/gstreamer-1.0" \
+    "${APPDIR}/usr/lib/gstreamer-1.0" \
+    "${APPDIR}/usr/lib64/gstreamer-1.0"; do
+    if [ -d "$dir" ]; then
+        GST_PLUGIN_SYSTEM_PATH_1_0="${GST_PLUGIN_SYSTEM_PATH_1_0:+$GST_PLUGIN_SYSTEM_PATH_1_0:}$dir"
+    fi
+done
+export GST_PLUGIN_SYSTEM_PATH_1_0
+
+# 4. Ensure display server backend matches available socket
+if [ -n "$WAYLAND_DISPLAY" ]; then
+    RUNTIME_DIR="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
+    if [ ! -S "${RUNTIME_DIR}/${WAYLAND_DISPLAY}" ] && [ ! -S "/tmp/${WAYLAND_DISPLAY}" ]; then
+        unset WAYLAND_DISPLAY
+        unset GDK_BACKEND
+    fi
+fi
+if [ -z "$WAYLAND_DISPLAY" ] && [ -n "$DISPLAY" ]; then
+    export GDK_BACKEND=x11
+    # On headless/Xvfb or minimal environments without EGL drivers, prefer Cairo renderer
+    if [ -z "$GSK_RENDERER" ]; then
+        export GSK_RENDERER=cairo
+    fi
+fi
+
+# 5. Library search path: bundled glibc & runtime libraries
+LIB_PATH="${APPDIR}/glibc:${APPDIR}/usr/lib:${APPDIR}/usr/lib/x86_64-linux-gnu:/usr/lib/x86_64-linux-gnu:/lib/x86_64-linux-gnu:/usr/lib64:/lib64"
 
 if [ -f "${APPDIR}/glibc/ld-linux-x86-64.so.2" ]; then
     exec "${APPDIR}/glibc/ld-linux-x86-64.so.2" --library-path "$LIB_PATH" "$PYTHON_BIN" "${EXEC_ARGS[@]}"

@@ -105,11 +105,14 @@ for lib in ld-linux-x86-64.so.2 libc.so.6 libm.so.6 libdl.so.2 libpthread.so.0 l
     done
 done
 
-# Bundle GTK4, Libadwaita, and Graphene shared libraries into AppDir if present on build system
-echo "==> Bundling GTK4, Libadwaita, and dependencies..."
+# Bundle GTK4, Libadwaita, Graphene, and GStreamer shared libraries into AppDir
+echo "==> Bundling GTK4, Libadwaita, and GStreamer dependencies..."
 mkdir -p "${APPDIR}/usr/lib/x86_64-linux-gnu"
 mkdir -p "${APPDIR}/usr/lib"
-for lib_pattern in "libgtk-4.so*" "libadwaita-1.so*" "libgraphene-1.0.so*"; do
+for lib_pattern in "libgtk-4.so*" "libadwaita-1.so*" "libgraphene-1.0.so*" \
+                   "libgstreamer-1.0.so*" "libgstbase-1.0.so*" "libgstaudio-1.0.so*" \
+                   "libgstvideo-1.0.so*" "libgstpbutils-1.0.so*" "libgstapp-1.0.so*" \
+                   "libgsttag-1.0.so*" "libgstallocators-1.0.so*" "libgstgl-1.0.so*"; do
     for lib_dir in /usr/lib/x86_64-linux-gnu /usr/lib64 /usr/lib; do
         if compgen -G "${lib_dir}/${lib_pattern}" > /dev/null 2>&1; then
             cp -a ${lib_dir}/${lib_pattern} "${APPDIR}/usr/lib/" 2>/dev/null || true
@@ -118,19 +121,34 @@ for lib_pattern in "libgtk-4.so*" "libadwaita-1.so*" "libgraphene-1.0.so*"; do
     done
 done
 
+# Bundle essential GStreamer plugins for fallback mode
+mkdir -p "${APPDIR}/usr/lib/gstreamer-1.0"
+for gst_dir in /usr/lib/x86_64-linux-gnu/gstreamer-1.0 /usr/lib64/gstreamer-1.0 /usr/lib/gstreamer-1.0; do
+    if [ -d "$gst_dir" ]; then
+        for plugin in libgstcoreelements.so libgstplayback.so libgsttypefindfunctions.so \
+                      libgstautodetect.so libgstvideoconvertscale.so libgstvideoconvert.so \
+                      libgstvideoscale.so libgstaudioconvert.so libgstaudioresample.so \
+                      libgstapp.so libgstgtk4.so libgstpulse.so libgstalsa.so libgstvolume.so; do
+            if [ -f "$gst_dir/$plugin" ]; then
+                cp -nL "$gst_dir/$plugin" "${APPDIR}/usr/lib/gstreamer-1.0/" 2>/dev/null || true
+            fi
+        done
+        break
+    fi
+done
+
 # Recursively resolve dependencies of all bundled .so files, excluding host GPU/driver libraries
 DEPS_FILE="$(mktemp)"
 ORIG_LD_LIBRARY_PATH="${LD_LIBRARY_PATH:-}"
 export LD_LIBRARY_PATH="${APPDIR}/usr/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
 while true; do
     NEW_COPIED=0
-    find "${APPDIR}/usr/lib" -maxdepth 1 -type f -name '*.so*' -print0 | xargs -0 -n1 ldd 2>/dev/null | awk '/=> \//{print $3}' | sort -u > "$DEPS_FILE"
+    find "${APPDIR}/usr/lib" -maxdepth 2 -type f -name '*.so*' -print0 | xargs -0 -n1 ldd 2>/dev/null | awk '/=> \//{print $3}' | sort -u > "$DEPS_FILE"
     while read -r lib; do
         [ -z "$lib" ] && continue
         case "$lib" in "${APPDIR}"/*) continue ;; esac
         lib_name="$(basename "$lib")"
         case "$lib_name" in
-            libGL*|libEGL*|libOpenGL*|libglapi*|libdrm*|libgbm*|libX*|libxcb*|libudev*|libdbus-1*) continue ;;
             ld-linux*|libc.so*|libm.so*|libdl.so*|libpthread.so*|librt.so*|libresolv.so*|libutil.so*) continue ;;
             libnss_*|libgcc_s.so*) continue ;;
         esac
