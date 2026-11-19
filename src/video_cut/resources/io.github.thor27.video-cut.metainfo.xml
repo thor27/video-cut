@@ -53,6 +53,18 @@
   </screenshots>
 
   <releases>
+    <release version="0.6.1" date="2026-11-19">
+      <url type="details">https://github.com/thor27/video-cut/releases/tag/v0.6.1</url>
+      <description>
+        <p>Highlights of version 0.6.1:</p>
+        <ul>
+          <li>Fully Self-Contained AppImage: bundled glibc loader and core C runtime along with recursive GTK4, Libadwaita, and GStreamer shared libraries, ensuring reliable operation on older LTS distributions and catalog runners (Ubuntu 22.04 LTS)</li>
+          <li>AppImage Display Detection: automated Wayland and X11 display socket fallback for sandboxed and headless environments</li>
+          <li>Bundled GSettings Schemas: compiled GTK4 and Libadwaita schemas inside AppImage</li>
+          <li>Packaging Stability: hardened build scripts and restored library paths</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.6.0" date="2026-11-19">
       <url type="details">https://github.com/thor27/video-cut/releases/tag/v0.6.0</url>
       <description>

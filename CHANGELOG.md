@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.6.1] - 2026-11-19
+
+### 📦 Packaging & AppImage Portability Hardening
+- **Fully Self-Contained AppImage**: Bundled glibc loader (`ld-linux-x86-64.so.2`) and core C runtime (`libc.so.6`, `libm.so.6`, etc.) in `$APPDIR/glibc` alongside recursive non-driver shared libraries (`libgtk-4`, `libadwaita-1`, `libgraphene-1.0`, etc.) in `$APPDIR/usr/lib`. This eliminates GLIBC and library version mismatches on older distributions and AppImage catalog verification runners (Ubuntu 22.04 LTS).
+- **Automated Display Fallback in AppRun**: Added automatic detection for available Wayland sockets; gracefully falls back to `GDK_BACKEND=x11` when running in headless, Xvfb, or sandboxed environments without an active Wayland compositor.
+- **Bundled & Compiled GSettings Schemas**: Bundled and compiled GTK4 and Libadwaita GSettings schemas in `$APPDIR/usr/share/glib-2.0/schemas`.
+- **Packaging Pipeline Hardening**: Preserved and restored `$LD_LIBRARY_PATH` during dependency resolution in `build_appimage.sh` to avoid polluting subsequent packaging tools.
+
+---
+
 ## [0.6.0] - 2026-11-19
 
 ### ⚡ Lossless Video Cutting & Stream Copy
