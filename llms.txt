@@ -49,7 +49,7 @@ Video Cut is a free and open-source desktop video editor designed specifically f
 
 ## Packaging & Installation
 
-- **AppImage**: Download portable VideoCut-0.5.1-x86_64.AppImage directly from GitHub Releases.
+- **AppImage**: Download portable VideoCut-0.6.0-x86_64.AppImage directly from GitHub Releases.
 - **Snap**: Install from the Canonical Snap Store: `sudo snap install video-cut`
 - **Flatpak**: Available as a standalone .flatpak bundle from GitHub Releases.
 - **Source Code**: Clone `https://github.com/thor27/video-cut.git` and run with Python 3.11+ and PyGObject.

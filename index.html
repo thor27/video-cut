@@ -64,7 +64,7 @@
           "priceCurrency": "USD"
         },
         "description": "Trim, split, crop, rotate, add rich text and graphic overlays, and combine video clips and photos. Fast, native GTK4/Libadwaita video editor for Linux desktops.",
-        "softwareVersion": "0.5.1",
+        "softwareVersion": "0.6.0",
         "license": "https://www.gnu.org/licenses/gpl-3.0.html",
         "downloadUrl": "https://github.com/thor27/video-cut/releases",
         "screenshot": [
@@ -146,7 +146,7 @@
   }
   </script>
 </head>
-<body data-version="0.5.1">
+<body data-version="0.6.0">
 
   <!-- Header / Navigation -->
   <header class="site-header">
@@ -166,6 +166,7 @@
         <ul class="nav-list">
           <li><a href="#features" class="nav-link">Features</a></li>
           <li><a href="#screenshots" class="nav-link">Screenshots</a></li>
+          <li><a href="#cutting-modes" class="nav-link">Cutting Modes</a></li>
           <li><a href="#faq" class="nav-link">FAQ</a></li>
           <li><a href="#download" class="nav-link">Download</a></li>
           <li><a href="https://github.com/thor27/video-cut/releases" class="nav-link" target="_blank" rel="noopener">Releases</a></li>
@@ -201,7 +202,7 @@
       <div class="hero-content">
         <div class="badge-pill">
           <span class="badge-dot"></span>
-          <span>v0.5.1 is out · Free &amp; Open Source</span>
+          <span>v0.6.0 is out · Free &amp; Open Source</span>
         </div>
 
         <h1 class="hero-title">
@@ -217,7 +218,7 @@
         <!-- Dynamic Hero CTA container (AppImage default / Snap if Ubuntu) -->
         <div class="hero-cta-wrapper" id="hero-cta-wrapper">
           <div class="hero-cta-primary" id="hero-cta-primary">
-            <a href="https://github.com/thor27/video-cut/releases/download/v0.5.1/VideoCut-0.5.1-x86_64.AppImage"
+            <a href="https://github.com/thor27/video-cut/releases/download/v0.6.0/VideoCut-0.6.0-x86_64.AppImage"
                class="btn btn-primary btn-lg"
                id="primary-download-btn">
               <svg class="icon btn-icon" viewBox="0 0 24 24" width="22" height="22" fill="currentColor" aria-hidden="true">
@@ -225,7 +226,7 @@
               </svg>
               <span class="btn-text-group">
                 <span class="btn-main-text" id="primary-btn-title">Download AppImage</span>
-                <span class="btn-sub-text" id="primary-btn-sub">v0.5.1 · 64-bit Linux · Portable</span>
+                <span class="btn-sub-text" id="primary-btn-sub">v0.6.0 · 64-bit Linux · Portable</span>
               </span>
             </a>
           </div>
@@ -463,6 +464,242 @@
     </div>
   </section>
 
+  <!-- Cutting Modes Comparison Section (Precise vs Lossless) -->
+  <section class="cutting-modes-section" id="cutting-modes">
+    <div class="container">
+      <div class="section-header">
+        <h2 class="section-title">Precise Cut vs. Lossless Cut</h2>
+        <p class="section-subtitle">
+          Choose the right mode for your workflow: render complex compositions with millisecond accuracy, or trim raw footage at the speed of light without touching a single pixel.
+        </p>
+      </div>
+
+      <!-- Mode Cards Overview -->
+      <div class="modes-summary-grid">
+        <div class="mode-summary-card">
+          <div class="mode-card-header">
+            <span class="mode-badge badge-precise">Precise Cut</span>
+            <h3 class="mode-title">Frame-Accurate Re-encoding</h3>
+            <p class="mode-desc">
+              Cuts on any exact frame down to the millisecond. Re-encodes the stream so you can apply overlays, transformations, and audio adjustments with zero playback glitches.
+            </p>
+          </div>
+          <div class="mode-highlights">
+            <div class="mode-hl-item">
+              <span class="mode-hl-icon">🎯</span>
+              <span><strong>Exact Frame Precision:</strong> Cut anywhere on the timeline without keyframe boundary restrictions.</span>
+            </div>
+            <div class="mode-hl-item">
+              <span class="mode-hl-icon">🎨</span>
+              <span><strong>Full Creative Suite:</strong> Add multiline text, vector shapes, logos, PiP video, and background music.</span>
+            </div>
+            <div class="mode-hl-item">
+              <span class="mode-hl-icon">⚙️</span>
+              <span><strong>Codec &amp; Quality Control:</strong> Export to H.264, H.265, AV1, VP9, or Apple ProRes with custom CRF and presets.</span>
+            </div>
+            <div class="mode-hl-item">
+              <span class="mode-hl-icon">💡</span>
+              <span><strong>Best for:</strong> YouTube videos, social media clips, tutorials, subtitles, and detailed narrative edits.</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="mode-summary-card">
+          <div class="mode-card-header">
+            <span class="mode-badge badge-lossless">Lossless Cut</span>
+            <h3 class="mode-title">Instant Stream Copy</h3>
+            <p class="mode-desc">
+              Copies video and audio packets directly from source to destination without re-encoding. Near-instant exports with 100% original quality preserved.
+            </p>
+          </div>
+          <div class="mode-highlights">
+            <div class="mode-hl-item">
+              <span class="mode-hl-icon">⚡</span>
+              <span><strong>Blazing Speed:</strong> Exports gigabytes in seconds, bounded only by your drive's disk read/write speed.</span>
+            </div>
+            <div class="mode-hl-item">
+              <span class="mode-hl-icon">💎</span>
+              <span><strong>Zero Quality Loss:</strong> 100% bit-for-bit identical to source. Zero recompression and zero generation loss.</span>
+            </div>
+            <div class="mode-hl-item">
+              <span class="mode-hl-icon">🧲</span>
+              <span><strong>Keyframe Snapping:</strong> Magnetic timeline snapping and dedicated keyframe step buttons (<kbd>,</kbd> / <kbd>.</kbd>).</span>
+            </div>
+            <div class="mode-hl-item">
+              <span class="mode-hl-icon">💡</span>
+              <span><strong>Best for:</strong> Trimming long streams, TV/commercial cuts, CCTV, action cams, and archiving raw footage.</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Comparative Table -->
+      <div class="table-responsive-wrapper">
+        <table class="comparison-table">
+          <thead>
+            <tr>
+              <th class="col-feature">Feature / Capability</th>
+              <th class="col-precise">
+                <div class="th-content">
+                  <span class="th-tag tag-precise">Precise Cut</span>
+                  <span class="th-sub">Re-encoded Stream</span>
+                </div>
+              </th>
+              <th class="col-lossless">
+                <div class="th-content">
+                  <span class="th-tag tag-lossless">Lossless Cut</span>
+                  <span class="th-sub">Direct Stream Copy</span>
+                </div>
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>
+                <div class="feature-label">
+                  <strong>Export Speed</strong>
+                  <span class="feature-hint">Time needed to produce output file</span>
+                </div>
+              </td>
+              <td class="cell-precise">
+                <span class="tag-neutral table-tag">Normal</span>
+                <span class="cell-detail">Encodes video through CPU or GPU (H.264, HEVC, AV1). Takes seconds to minutes depending on duration.</span>
+              </td>
+              <td class="cell-lossless">
+                <span class="tag-success table-tag">⚡ Blazing Fast (Instant)</span>
+                <span class="cell-detail">Direct packet stream copy. A 2-hour 4K recording exports in mere seconds, limited only by disk I/O.</span>
+              </td>
+            </tr>
+            <tr>
+              <td>
+                <div class="feature-label">
+                  <strong>Video &amp; Audio Quality</strong>
+                  <span class="feature-hint">Fidelity compared to the source file</span>
+                </div>
+              </td>
+              <td class="cell-precise">
+                <span class="tag-neutral table-tag">High Fidelity</span>
+                <span class="cell-detail">Re-encoded with customizable CRF and bitrate presets (Fast, Balanced, High Quality, ProRes).</span>
+              </td>
+              <td class="cell-lossless">
+                <span class="tag-success table-tag">100% Lossless</span>
+                <span class="cell-detail">Bit-for-bit identical to source. Zero recompression, zero compression artifacts, zero generation loss.</span>
+              </td>
+            </tr>
+            <tr>
+              <td>
+                <div class="feature-label">
+                  <strong>Cut Accuracy</strong>
+                  <span class="feature-hint">Where cut points can be placed</span>
+                </div>
+              </td>
+              <td class="cell-precise">
+                <span class="tag-success table-tag">Millisecond Precision</span>
+                <span class="cell-detail">Cut exactly on any arbitrary frame across the entire timeline without restriction.</span>
+              </td>
+              <td class="cell-lossless">
+                <span class="tag-warning table-tag">Keyframe (I-Frame) Boundaries</span>
+                <span class="cell-detail">Cuts snap to nearest keyframes. Supported by automatic keyframe scanning &amp; magnetic snapping.</span>
+              </td>
+            </tr>
+            <tr>
+              <td>
+                <div class="feature-label">
+                  <strong>Timeline Navigation</strong>
+                  <span class="feature-hint">Seeking and playhead control</span>
+                </div>
+              </td>
+              <td class="cell-precise">
+                <span class="cell-detail">Smooth timeline scrubbing and <kbd>←</kbd> / <kbd>→</kbd> frame-by-frame stepping anywhere.</span>
+              </td>
+              <td class="cell-lossless">
+                <span class="cell-detail">Magnetic keyframe snapping toggle plus dedicated <kbd>,</kbd> / <kbd>.</kbd> previous/next keyframe step shortcuts.</span>
+              </td>
+            </tr>
+            <tr>
+              <td>
+                <div class="feature-label">
+                  <strong>Graphic Overlays &amp; Text</strong>
+                  <span class="feature-hint">Titles, vector shapes, logos, PiP</span>
+                </div>
+              </td>
+              <td class="cell-precise">
+                <span class="table-check">✓ Fully Supported</span>
+                <span class="cell-detail">Add rich text titles, shapes, transparent PNG logos, SVG graphics, animated GIFs, and PiP clips.</span>
+              </td>
+              <td class="cell-lossless">
+                <span class="table-cross">✗ Not Supported</span>
+                <span class="cell-detail">Stream copy bypasses decoding pipeline; pixel modifications require re-encoding.</span>
+              </td>
+            </tr>
+            <tr>
+              <td>
+                <div class="feature-label">
+                  <strong>Video Transformations</strong>
+                  <span class="feature-hint">Crop, rotation, background audio</span>
+                </div>
+              </td>
+              <td class="cell-precise">
+                <span class="table-check">✓ Fully Supported</span>
+                <span class="cell-detail">Crop to any aspect ratio, rotate 90°/180°/270°, flip, and attach background music tracks with volume control.</span>
+              </td>
+              <td class="cell-lossless">
+                <span class="table-cross">✗ Not Supported</span>
+                <span class="cell-detail">Preserves original stream dimensions, orientation, and native audio tracks intact.</span>
+              </td>
+            </tr>
+            <tr>
+              <td>
+                <div class="feature-label">
+                  <strong>Multi-Segment Concatenation</strong>
+                  <span class="feature-hint">Combining cut segments together</span>
+                </div>
+              </td>
+              <td class="cell-precise">
+                <span class="table-check">✓ Any mixed formats</span>
+                <span class="cell-detail">Combine different clips, aspect ratios, framerates, and codecs seamlessly into a unified video.</span>
+              </td>
+              <td class="cell-lossless">
+                <span class="table-check">✓ Same file / codec</span>
+                <span class="cell-detail">Cut multiple portions from a single video and losslessly merge the remaining segments into one file.</span>
+              </td>
+            </tr>
+            <tr>
+              <td>
+                <div class="feature-label">
+                  <strong>CPU &amp; Battery Impact</strong>
+                  <span class="feature-hint">Resource utilization during export</span>
+                </div>
+              </td>
+              <td class="cell-precise">
+                <span class="tag-neutral table-tag">Moderate to High</span>
+                <span class="cell-detail">Encoders utilize CPU/GPU cores heavily during export.</span>
+              </td>
+              <td class="cell-lossless">
+                <span class="tag-success table-tag">Near Zero</span>
+                <span class="cell-detail">No encoding computations required. Minimal CPU and battery drain, ideal on laptops.</span>
+              </td>
+            </tr>
+            <tr>
+              <td>
+                <div class="feature-label">
+                  <strong>Recommended Use Cases</strong>
+                  <span class="feature-hint">When to choose which mode</span>
+                </div>
+              </td>
+              <td class="cell-precise">
+                <span class="cell-detail">YouTube videos, social media reels, podcasts, gameplay commentary with subtitles, presentations, and creative vlogs.</span>
+              </td>
+              <td class="cell-lossless">
+                <span class="cell-detail">Trimming raw camera/action cam footage, deleting TV commercials, splitting long gameplay recordings, CCTV archiving.</span>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
   <!-- Frequently Asked Questions (FAQ) -->
   <section class="faq-section" id="faq">
     <div class="container">
@@ -481,7 +718,19 @@
           </summary>
           <div class="faq-answer">
             <p>
-              Video Cut leverages FFmpeg's filter complex to perform <strong>frame-accurate cuts down to the millisecond</strong>, apply transformations like crop and rotation, and composite rich graphics. Because clips are re-encoded through modern codecs (H.264, H.265, AV1, VP9, or Apple ProRes), cuts land precisely on the exact frame you choose without keyframe boundary restrictions, maintaining pristine high-fidelity output quality with customizable presets.
+              Video Cut provides two distinct export workflows powered by FFmpeg: <strong>Precise Cut</strong> (frame-accurate re-encoding down to the millisecond with full overlay and transformation support) and <strong>Lossless Cut</strong> (near-instant direct stream copy preserving 100% original quality without re-encoding).
+            </p>
+          </div>
+        </details>
+
+        <details class="faq-item">
+          <summary class="faq-question">
+            <span>When should I choose Precise Cut vs. Lossless Cut?</span>
+            <span class="faq-icon" aria-hidden="true">▾</span>
+          </summary>
+          <div class="faq-answer">
+            <p>
+              Choose <strong>Lossless Cut</strong> when you want instant exports without losing any original quality — ideal for trimming long recordings, live streams, CCTV footage, or removing TV commercials in seconds. Choose <strong>Precise Cut</strong> whenever you need millisecond-level frame precision between keyframes, or wish to add text overlays, titles, logos, crops, rotations, background audio, or convert codecs.
             </p>
           </div>
         </details>
@@ -561,7 +810,7 @@
       <div class="section-header">
         <h2 class="section-title">Download Video Cut for Linux</h2>
         <p class="section-subtitle">
-          Choose the package format that best suits your distribution. Current version: <span class="version-tag">v0.5.1</span>
+          Choose the package format that best suits your distribution. Current version: <span class="version-tag">v0.6.0</span>
         </p>
       </div>
 
@@ -579,14 +828,14 @@
             Runs out of the box on Fedora, Arch, Debian, openSUSE, and any modern Linux distribution. No installation required.
           </p>
           <div class="card-actions">
-            <a href="https://github.com/thor27/video-cut/releases/download/v0.5.1/VideoCut-0.5.1-x86_64.AppImage"
+            <a href="https://github.com/thor27/video-cut/releases/download/v0.6.0/VideoCut-0.6.0-x86_64.AppImage"
                class="btn btn-primary btn-block"
                id="card-download-appimage">
               Download
             </a>
           </div>
           <div class="card-help">
-            <code>chmod +x VideoCut-0.5.1-x86_64.AppImage && ./VideoCut-0.5.1-x86_64.AppImage</code>
+            <code>chmod +x VideoCut-0.6.0-x86_64.AppImage && ./VideoCut-0.6.0-x86_64.AppImage</code>
           </div>
         </div>
 
@@ -630,7 +879,7 @@
             </a>
           </div>
           <div class="card-help">
-            <code>flatpak install --user ./VideoCut-0.5.1.flatpak</code>
+            <code>flatpak install --user ./VideoCut-0.6.0.flatpak</code>
           </div>
         </div>
 
