@@ -13,48 +13,7 @@ export XDG_DATA_DIRS="${APPDIR}/usr/share:${XDG_DATA_DIRS:-/usr/local/share:/usr
 # Clear foreign Python environment overrides (e.g. from Conda, Pyenv)
 unset PYTHONHOME
 
-# Determine Python interpreter
-PYTHON_BIN=""
-for candidate in /usr/bin/python3 /bin/python3 $(command -v python3 2>/dev/null); do
-    if [ -x "$candidate" ]; then
-        if "$candidate" -c "import gi" 2>/dev/null; then
-            PYTHON_BIN="$candidate"
-            break
-        fi
-        if [ -z "$PYTHON_BIN" ]; then
-            PYTHON_BIN="$candidate"
-        fi
-    fi
-done
-
-if [ -z "$PYTHON_BIN" ]; then
-    echo "Error: No suitable python3 interpreter found on host system." >&2
-    exit 1
-fi
-
-# Determine running Python major.minor version
-PY_VER="$("$PYTHON_BIN" -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")')"
-
-# Python environment: bundled pure-python video_cut application directory
-PYTHONPATH="${APPDIR}/usr/lib/python3/dist-packages"
-
-# If a bundled C extension directory matches the running Python version, include it
-if [ -d "${APPDIR}/usr/lib/python${PY_VER}/dist-packages" ]; then
-    PYTHONPATH="${APPDIR}/usr/lib/python${PY_VER}/dist-packages:${PYTHONPATH}"
-fi
-
-# Include host system Python dist-packages and site-packages
-for py_dir in /usr/lib/python3* /usr/local/lib/python3*; do
-    if [ -d "${py_dir}/dist-packages" ]; then
-        PYTHONPATH="${PYTHONPATH}:${py_dir}/dist-packages"
-    fi
-    if [ -d "${py_dir}/site-packages" ]; then
-        PYTHONPATH="${PYTHONPATH}:${py_dir}/site-packages"
-    fi
-done
-export PYTHONPATH
-
-# Execute target arguments
+# Target application entry point
 EXEC_TARGET="${APPDIR}/usr/bin/video-cut"
 if [ ! -x "$EXEC_TARGET" ]; then
     EXEC_ARGS=("-m" "video_cut" "$@")
@@ -62,9 +21,23 @@ else
     EXEC_ARGS=("$EXEC_TARGET" "$@")
 fi
 
-# Check if host system provides a fully capable native GTK4/Libadwaita/GStreamer environment
+# 1. Determine if host system provides a fully capable native GTK4/Libadwaita/GStreamer/Cairo/Pillow stack
 HOST_NATIVE_OK=0
-if "$PYTHON_BIN" -c "
+HOST_PYTHON=""
+for candidate in /usr/bin/python3 /bin/python3 $(command -v python3 2>/dev/null); do
+    if [ -x "$candidate" ]; then
+        if "$candidate" -c "import gi" 2>/dev/null; then
+            HOST_PYTHON="$candidate"
+            break
+        fi
+        if [ -z "$HOST_PYTHON" ]; then
+            HOST_PYTHON="$candidate"
+        fi
+    fi
+done
+
+if [ -n "$HOST_PYTHON" ] && [ -z "$FORCE_BUNDLED" ] && [ -z "$FORCE_FALLBACK" ]; then
+    if "$HOST_PYTHON" -c "
 import gi
 gi.require_version('Gtk', '4.0')
 gi.require_version('Adw', '1')
@@ -73,23 +46,27 @@ from gi.repository import Adw, Gst
 assert hasattr(Adw, 'ToolbarView')
 Gst.init(None)
 assert Gst.ElementFactory.make('playbin3', None) is not None or Gst.ElementFactory.make('playbin', None) is not None
+import cairo
+import PIL
 " 2>/dev/null; then
-    HOST_NATIVE_OK=1
+        HOST_NATIVE_OK=1
+    fi
 fi
 
 if [ "$HOST_NATIVE_OK" -eq 1 ]; then
-    # Run natively: gives full hardware acceleration (EGL/Vulkan/NGL), native GTK theme,
-    # and direct matching with host GStreamer plugins without symbol mismatches.
-    exec "$PYTHON_BIN" "${EXEC_ARGS[@]}"
+    # Run natively using host environment:
+    # Full hardware acceleration (EGL/Vulkan/NGL), native GTK theme, and direct matching with host GStreamer plugins
+    export PYTHONPATH="${APPDIR}/usr/lib/python3/dist-packages:${PYTHONPATH:-}"
+    exec "$HOST_PYTHON" "${EXEC_ARGS[@]}"
 fi
 
-# Fallback mode for older LTS systems (e.g. Ubuntu 22.04) or minimal environments without host GTK4/Libadwaita:
-# 1. Point to bundled GSettings schemas
+# 2. Fallback mode for older LTS systems (e.g. Ubuntu 22.04) or environments without complete host stack:
+# Point to bundled GSettings schemas
 if [ -d "${APPDIR}/usr/share/glib-2.0/schemas" ]; then
     export GSETTINGS_SCHEMA_DIR="${APPDIR}/usr/share/glib-2.0/schemas:${GSETTINGS_SCHEMA_DIR:-}"
 fi
 
-# 2. GObject Introspection typelib search paths: bundled AppDir first
+# GObject Introspection typelib search paths: bundled AppDir first
 for dir in \
     "${APPDIR}/usr/lib/x86_64-linux-gnu/girepository-1.0" \
     "${APPDIR}/usr/lib/girepository-1.0" \
@@ -100,7 +77,7 @@ for dir in \
 done
 export GI_TYPELIB_PATH
 
-# 3. GStreamer plugin search paths: bundled plugins first
+# GStreamer plugin search paths: bundled plugins first
 for dir in \
     "${APPDIR}/usr/lib/x86_64-linux-gnu/gstreamer-1.0" \
     "${APPDIR}/usr/lib/gstreamer-1.0" \
@@ -110,8 +87,11 @@ for dir in \
     fi
 done
 export GST_PLUGIN_SYSTEM_PATH_1_0
+if [ -x "${APPDIR}/usr/libexec/gstreamer-1.0/gst-plugin-scanner" ]; then
+    export GST_PLUGIN_SCANNER="${APPDIR}/usr/libexec/gstreamer-1.0/gst-plugin-scanner"
+fi
 
-# 4. Ensure display server backend matches available socket
+# Ensure display server backend matches available socket
 if [ -n "$WAYLAND_DISPLAY" ]; then
     RUNTIME_DIR="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
     if [ ! -S "${RUNTIME_DIR}/${WAYLAND_DISPLAY}" ] && [ ! -S "/tmp/${WAYLAND_DISPLAY}" ]; then
@@ -127,7 +107,40 @@ if [ -z "$WAYLAND_DISPLAY" ] && [ -n "$DISPLAY" ]; then
     fi
 fi
 
-# 5. Library search path: bundled glibc & runtime libraries
+# Set up Python for fallback mode: prefer bundled Python 3
+PYTHON_BIN=""
+if [ -x "${APPDIR}/usr/bin/python3" ]; then
+    PYTHON_BIN="${APPDIR}/usr/bin/python3"
+    export PYTHONHOME="${APPDIR}/usr"
+    BUNDLED_PY_VER="$("$PYTHON_BIN" -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")' 2>/dev/null || echo "")"
+    PYTHONPATH="${APPDIR}/usr/lib/python3/dist-packages"
+    if [ -n "$BUNDLED_PY_VER" ] && [ -d "${APPDIR}/usr/lib/python${BUNDLED_PY_VER}/dist-packages" ]; then
+        PYTHONPATH="${APPDIR}/usr/lib/python${BUNDLED_PY_VER}/dist-packages:${PYTHONPATH}"
+    fi
+elif [ -n "$HOST_PYTHON" ]; then
+    PYTHON_BIN="$HOST_PYTHON"
+    PY_VER="$("$PYTHON_BIN" -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")' 2>/dev/null || echo "3.10")"
+    PYTHONPATH="${APPDIR}/usr/lib/python3/dist-packages"
+    if [ -d "${APPDIR}/usr/lib/python${PY_VER}/dist-packages" ]; then
+        PYTHONPATH="${APPDIR}/usr/lib/python${PY_VER}/dist-packages:${PYTHONPATH}"
+    fi
+    for py_dir in /usr/lib/python3* /usr/local/lib/python3*; do
+        if [ -d "${py_dir}/dist-packages" ]; then
+            PYTHONPATH="${PYTHONPATH}:${py_dir}/dist-packages"
+        fi
+        if [ -d "${py_dir}/site-packages" ]; then
+            PYTHONPATH="${PYTHONPATH}:${py_dir}/site-packages"
+        fi
+    done
+fi
+
+if [ -z "$PYTHON_BIN" ]; then
+    echo "Error: No Python interpreter found in AppImage or host." >&2
+    exit 1
+fi
+export PYTHONPATH
+
+# Library search path: bundled glibc & runtime libraries
 LIB_PATH="${APPDIR}/glibc:${APPDIR}/usr/lib:${APPDIR}/usr/lib/x86_64-linux-gnu:/usr/lib/x86_64-linux-gnu:/lib/x86_64-linux-gnu:/usr/lib64:/lib64"
 
 if [ -f "${APPDIR}/glibc/ld-linux-x86-64.so.2" ]; then
