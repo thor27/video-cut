@@ -7,6 +7,70 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.6.0] - 2026-11-19
+
+### ⚡ Lossless Video Cutting & Stream Copy
+- **Instant Stream Copy Export**: Export video cuts without re-encoding using direct stream copy (`-c copy`), preserving 100% original video and audio quality with zero generation loss.
+- **Blazing Export Speed**: Exports complete in seconds, bounded purely by drive disk read/write throughput rather than CPU/GPU encoding.
+- **Accurate Keyframe Demuxer Seeking**: Added seek compensation (`3/23s` offset calculation) for non-PTS seeking containers (such as Matroska and WebM) with B-frames, eliminating unwanted preceding scenes in lossless exports.
+- **Multi-Segment Lossless Concatenation**: Cut multiple portions out of a video and losslessly merge the remaining segments into a single cohesive output file.
+
+### 🧲 Keyframe Snapping & Navigation
+- **Stick to Keyframe**: Added a dedicated "Stick to Keyframe" toggle button in the transport controls with an informative visual guide dialog explaining stream-copy tradeoffs.
+- **Magnetic Timeline Snapping**: Playhead scrubbing, segment boundaries, and cut splits magnetically snap to nearest I-frame (keyframe) timestamps when enabled.
+- **Keyboard Navigation**: Stepping shortcuts `<kbd>,</kbd>` (comma) and `<kbd>.</kbd>` (period) step to previous/next keyframes across segments when Stick to Keyframe is active.
+- **Two-Tier Keyframe Indexing**: Responsive background indexing with visual progress reporting dialog and multi-tier packet analysis.
+- **Undo / Redo Integration**: Reverting keyframe-snapped cuts via `Ctrl+Z` reliably restores previous timestamps and updates the "Stick to Keyframe" toggle state.
+
+### 💾 Project Persistence
+- **Keyframe Timestamps & Snapping State in `.vcut`**: Stored cached keyframe lists and user keyframe-snap preference directly inside `.vcut` project files, eliminating re-probing and restoring workflow configuration instantly on open.
+
+### 🖼️ Dynamic Background Thumbnail Refinement
+- **Progressive Background Refinement**: Expanding or lengthening a timeline segment automatically schedules background thumbnail regeneration for newly exposed regions.
+- **Smooth Pulsating Placeholders**: Clean CSS pulsating placeholders for loading thumbnails, replacing spinners and preventing layout jitter.
+
+### 📦 Packaging & Portability Hardening
+- **Self-Contained FFmpeg & FFprobe**: Bundled static `ffmpeg` and `ffprobe` binaries in AppImage and Snap packages, ensuring out-of-the-box operation on minimal distributions.
+- **AppImage Catalog Compatibility**: Bundled GTK4, Libadwaita, Graphene, and GObject typelib files in the AppImage bundle, resolving sandbox errors on catalog runners without host GTK4.
+- **Snap Environment Fixes**: Corrected `$PATH` and `$LD_LIBRARY_PATH` inheritance, resolved temporary file path naming to avoid AppArmor denials, and normalized generated package filenames to match `$VERSION`.
+
+### 🛠️ Stability & Maintenance
+- **Media Player Cleanup**: Improved player pipeline teardown and media disposal order.
+- **Coordinate Translation**: Enhanced canvas coordinate mapping and dialog source timestamps.
+- **Test Suite Reliability**: Expanded test coverage for keyframe probing, lossless export, undo/redo, and packaging utilities.
+
+---
+
+## [0.5.1] - 2026-11-15
+
+### 📦 Distribution & Packaging
+- **Automated Flatpak Bundles**: Added automated Flatpak build and bundling to CI release workflows.
+- **Draft Releases**: Enabled automated draft release generation in GitHub Actions for safe release staging.
+
+---
+
+## [0.5.0] - 2026-11-13
+
+### 💾 Project Save & Load (`.vcut`)
+- **Native Project Files**: Full project persistence and restoration saving timeline segments, split timestamps, crop/rotate settings, and rich graphic overlays.
+- **Missing Media Detection & Relinking**: Interactive relinking dialog to quickly locate moved or renamed media assets.
+- **Recent Projects**: Fast access to recent `.vcut` projects from the header menu and welcome screen.
+
+### ✂️ Multi-Segment Timeline Operations
+- **Multiple Clip Selection**: Select multiple timeline clips with `Ctrl+Click`, `Shift+Click`, or `Ctrl+A` / Select All.
+- **Bulk Transformations & Overlays**: Apply crop, rotation, and graphic overlays to all selected segments simultaneously.
+- **Batch Editing**: Multi-copy, multi-cut, and multi-delete operations across selected timeline segments.
+
+### 🎨 Media Import
+- **SVG Image Import**: Import scalable vector graphics (SVG) directly as video segments with custom duration presets and soundtrack audio.
+
+### 📦 Platform & Packaging
+- **Flatpak Upgrade**: Updated Flatpak runtime to GNOME 51 and Pillow 13.0.0.
+- **Distribution Hardening**: Hardened Debian, AppImage, Snap, and Flatpak builds.
+- **Security & Community**: Added `SECURITY.md` and `CONTRIBUTING.md`.
+
+---
+
 ## [0.4.0] - 2026-11-07
 
 ### 🎨 Video Overlay Editor

@@ -1,4 +1,4 @@
-__version__ = "devel"
+__version__ = "0.6.0"
 
 
 def _get_pep440_version(ver: str) -> str:

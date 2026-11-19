@@ -53,6 +53,21 @@
   </screenshots>
 
   <releases>
+    <release version="0.6.0" date="2026-11-19">
+      <url type="details">https://github.com/thor27/video-cut/releases/tag/v0.6.0</url>
+      <description>
+        <p>Highlights of version 0.6.0:</p>
+        <ul>
+          <li>Lossless Video Cutting: instant stream copy export (-c copy) without re-encoding, preserving 100% original quality</li>
+          <li>Keyframe Snapping &amp; Stepping: "Stick to Keyframe" toggle button, magnetic timeline snapping, and keyboard navigation (comma/period)</li>
+          <li>Accurate Seek Compensation: fixes FFmpeg demuxer seek heuristics to ensure exact GOP/keyframe start boundaries</li>
+          <li>Project Persistence: save and restore keyframe timestamps and keyframe snap settings in .vcut project files</li>
+          <li>Dynamic Background Thumbnail Refinement: progressive background generation and smooth pulsating placeholders when clips are enlarged</li>
+          <li>Standalone Packaging Hardening: self-contained FFmpeg/FFprobe binaries in AppImage and Snap, with complete GTK4 and Libadwaita typelibs</li>
+          <li>Enhanced Player &amp; Undo Stability: full undo/redo integration for keyframe snapping and robust player pipeline teardown</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.5.1" date="2026-11-15">
       <url type="details">https://github.com/thor27/video-cut/releases/tag/v0.5.1</url>
       <description>
