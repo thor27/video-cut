@@ -18,6 +18,7 @@ from .advanced_export_dialog import AdvancedExportDialog
 from .clipboard_controller import ClipboardController, parse_uri_list
 from .crop_rotate_dialog import CropRotateDialog
 from .ffmpeg_error_dialog import FFmpegErrorDialog
+from .health_dialog import HealthCheckDialog
 from .i18n import _
 from .image_import_dialog import ImageImportDialog
 from .keyframe_help_dialog import KeyframeHelpDialog
@@ -27,6 +28,7 @@ from .paths import APP_ID, load_application_css, register_resource_icons
 from .player import VideoPlayerController
 from .progress_modal import ProgressModal
 from .services.export_service import ExportService
+from .services.health_service import HealthService
 from .services.image_service import ImageService
 from .services.probe_service import ProbeService, VideoMetadata
 from .services.project_service import ProjectService
@@ -159,6 +161,10 @@ class MainWindow(Adw.ApplicationWindow):
         self.action_about.connect("activate", lambda *_: self._show_about_dialog())
         self.add_action(self.action_about)
 
+        self.action_system_health = Gio.SimpleAction.new("system_health", None)
+        self.action_system_health.connect("activate", lambda *_: self._show_health_dialog())
+        self.add_action(self.action_system_health)
+
         self.action_fullscreen = Gio.SimpleAction.new("fullscreen", None)
         self.action_fullscreen.connect("activate", lambda *_: self.toggle_fullscreen())
         self.add_action(self.action_fullscreen)
@@ -182,6 +188,7 @@ class MainWindow(Adw.ApplicationWindow):
         menu.append_section(None, export_section)
 
         about_section = Gio.Menu.new()
+        about_section.append(_("System Health & Setup..."), "win.system_health")
         about_section.append(_("About Video Cut"), "win.about")
         menu.append_section(None, about_section)
 
@@ -206,6 +213,16 @@ class MainWindow(Adw.ApplicationWindow):
         self.header_bar.pack_end(self.btn_export)
 
         self.toolbar_view.add_top_bar(self.header_bar)
+
+        # Healthcheck Banner
+        self.health_banner = Adw.Banner()
+        self.health_banner.set_title(
+            _("System setup recommended: Some features or file associations need configuration.")
+        )
+        self.health_banner.set_button_label(_("Review & Fix"))
+        self.health_banner.connect("button-clicked", lambda _: self._show_health_dialog())
+        self.health_banner.set_revealed(False)
+        self.toolbar_view.add_top_bar(self.health_banner)
 
         # 2. Main content area: Video area and bottom timeline
         main_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
@@ -342,6 +359,7 @@ class MainWindow(Adw.ApplicationWindow):
             return False
 
         self.connect("close-request", on_window_close_request)
+        self._check_initial_system_health()
 
     def _get_segment_thumbnails(
         self, seg: Segment, target_count: int
@@ -2232,6 +2250,29 @@ class MainWindow(Adw.ApplicationWindow):
             message=message,
             error_details=error_details,
         )
+        dialog.present()
+
+    def _check_initial_system_health(self) -> None:
+        """Run initial health check in background on first run and alert if fixes are needed."""
+        def worker() -> None:
+            if not HealthService.has_run_initial_check():
+                items = HealthService.run_all_checks()
+                HealthService.mark_initial_check_done()
+                has_issues = any(it.status in ("error", "warning") for it in items)
+                if has_issues:
+                    GLib.idle_add(lambda: self.health_banner.set_revealed(True))
+
+        threading.Thread(target=worker, daemon=True).start()
+
+    def _show_health_dialog(self) -> None:
+        """Open the System Health and Setup dialog."""
+        def on_status_changed() -> None:
+            items = HealthService.run_all_checks()
+            has_issues = any(it.status in ("error", "warning") for it in items)
+            if not has_issues:
+                self.health_banner.set_revealed(False)
+
+        dialog = HealthCheckDialog(parent=self, on_status_changed=on_status_changed)
         dialog.present()
 
     def show_thumbnail_progress(self, completed: int = 0, total: int = 0) -> None:
