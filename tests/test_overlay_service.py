@@ -329,3 +329,59 @@ def test_emoji_system_rendering_and_scaling():
         surf_none = OverlayRenderService.get_emoji_surface("🔥", 64)
         assert surf_none is None
 
+
+def test_text_wrapping_fidelity_between_preview_and_export():
+    """Verify that multi-line word wrapping is 100% identical between preview and export resolutions (Issue #52)."""
+    import cairo
+
+    class RecordingContext:
+        def __init__(self, cr, line_collector):
+            self._cr = cr
+            self._lines = line_collector
+
+        def show_text(self, text):
+            self._lines.append(text)
+            return self._cr.show_text(text)
+
+        def __getattr__(self, name):
+            return getattr(self._cr, name)
+
+    test_cases = [
+        # (text, font_size, width, bold, preview_size, export_size)
+        ("Texto de Exemplo", 42, 0.20, True, (533, 300), (1920, 1080)),
+        ("Sample Text", 42, 0.25, True, (300, 300), (1080, 1080)),
+        ("A very long sentence that wraps across multiple lines cleanly", 36, 0.35, False, (640, 360), (1920, 1080)),
+        ("Short", 42, 0.35, True, (480, 270), (3840, 2160)),
+    ]
+
+    for text, font_size, width, bold, (prev_w, prev_h), (exp_w, exp_h) in test_cases:
+        item = OverlayItem(
+            item_type="text",
+            text=text,
+            font_size=font_size,
+            width=width,
+            bold=bold,
+        )
+
+        # 1. Check get_wrapped_text_lines directly
+        aspect_prev = prev_w / prev_h
+        aspect_exp = exp_w / exp_h
+        lines_calc_prev = OverlayRenderService.get_wrapped_text_lines(item, aspect_ratio=aspect_prev)
+        lines_calc_exp = OverlayRenderService.get_wrapped_text_lines(item, aspect_ratio=aspect_exp)
+        assert lines_calc_prev == lines_calc_exp
+
+        # 2. Check actual rendered show_text calls
+        prev_lines: list[str] = []
+        surf_prev = cairo.ImageSurface(cairo.FORMAT_ARGB32, prev_w, prev_h)
+        rec_prev = RecordingContext(cairo.Context(surf_prev), prev_lines)
+        OverlayRenderService.render_item(rec_prev, item, prev_w, prev_h)
+
+        exp_lines: list[str] = []
+        surf_exp = cairo.ImageSurface(cairo.FORMAT_ARGB32, exp_w, exp_h)
+        rec_exp = RecordingContext(cairo.Context(surf_exp), exp_lines)
+        OverlayRenderService.render_item(rec_exp, item, exp_w, exp_h)
+
+        assert prev_lines == exp_lines, f"Mismatch for '{text}': preview={prev_lines} vs export={exp_lines}"
+        assert prev_lines == lines_calc_prev
+
+

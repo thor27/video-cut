@@ -804,34 +804,18 @@ class OverlayDialog(Adw.Window):
         if not display_text:
             return
 
-        ref_scale = max(0.2, vh / 1080.0)
-        eff_font_size = max(8.0, float(item.font_size) * ref_scale)
+        aspect = vw / vh if vh > 0 else 16.0 / 9.0
+        wrapped_lines = OverlayRenderService.get_wrapped_text_lines(
+            item,
+            aspect_ratio=aspect,
+            display_text=display_text,
+        )
+        total_lines = max(1, len(wrapped_lines))
+
+        ref_scale = vh / 1080.0
+        eff_font_size = float(item.font_size) * ref_scale
         line_height = eff_font_size * 1.25
-        pad = max(4.0 * ref_scale, 4.0)
-
-        box_w_px = max(20.0, item.width * vw)
-        max_line_w = max(10.0, box_w_px - pad * 2.0)
-
-        # Estimate line count based on average character width (~0.55 of eff_font_size)
-        avg_char_w = max(4.0, eff_font_size * 0.55)
-        chars_per_line = max(1, int(max_line_w / avg_char_w))
-
-        total_lines = 0
-        for paragraph in display_text.split("\n"):
-            if not paragraph:
-                total_lines += 1
-                continue
-            words = paragraph.split(" ")
-            curr_len = 0
-            para_lines = 1
-            for word in words:
-                w_len = len(word)
-                if curr_len + w_len + (1 if curr_len else 0) <= chars_per_line:
-                    curr_len += w_len + (1 if curr_len else 0)
-                else:
-                    para_lines += 1
-                    curr_len = w_len
-            total_lines += max(1, para_lines)
+        pad = 4.0 * ref_scale
 
         needed_px = total_lines * line_height + pad * 2.0 + eff_font_size * 0.6
         needed_norm_h = round(needed_px / vh, 4)

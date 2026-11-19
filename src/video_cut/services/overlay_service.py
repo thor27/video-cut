@@ -6,8 +6,11 @@ import io
 import math
 import re
 import subprocess
+import threading
 from pathlib import Path
 from typing import Any
+
+_measure_local = threading.local()
 
 import cairo
 import gi
@@ -585,9 +588,9 @@ class OverlayRenderService:
                         cr.set_source_surface(emoji_surf, -ew / 2.0, -eh / 2.0)
                         cr.paint_with_alpha(item.opacity)
                     else:
-                        cls._render_text(cr, item, text_content, w, h, canvas_h)
+                        cls._render_text(cr, item, text_content, w, h, canvas_h, canvas_w)
                 else:
-                    cls._render_text(cr, item, text_content, w, h, canvas_h)
+                    cls._render_text(cr, item, text_content, w, h, canvas_h, canvas_w)
 
             # 4. Media (Image, SVG, GIF, Video clip)
             elif item.item_type in ("image", "svg", "gif", "video"):
@@ -649,6 +652,79 @@ class OverlayRenderService:
             cr.restore()
 
     @classmethod
+    def _get_measuring_context(cls) -> cairo.Context:
+        """Return a thread-local lightweight Cairo context for text metrics."""
+        cr = getattr(_measure_local, "cr", None)
+        if cr is None:
+            surf = cairo.ImageSurface(cairo.FORMAT_ARGB32, 1, 1)
+            cr = cairo.Context(surf)
+            _measure_local.cr = cr
+        return cr
+
+    @classmethod
+    def get_wrapped_text_lines(
+        cls,
+        item: OverlayItem,
+        aspect_ratio: float = 16.0 / 9.0,
+        display_text: str | None = None,
+    ) -> list[str]:
+        """Compute canonical multi-line word wrapping at reference 1080p scale.
+
+        Ensures identical line breaks across preview canvas and video export at any resolution.
+        """
+        text = item.text if display_text is None else display_text
+        if not text:
+            return []
+
+        slant = cairo.FONT_SLANT_ITALIC if item.italic else cairo.FONT_SLANT_NORMAL
+        weight = cairo.FONT_WEIGHT_BOLD if item.bold else cairo.FONT_WEIGHT_NORMAL
+        font_fam = item.font_family or "Sans"
+
+        ref_w = 1080.0 * max(0.1, aspect_ratio)
+        box_w_ref = max(4.0, item.width * ref_w)
+        ref_font_size = float(item.font_size)
+        ref_pad = 4.0
+        max_line_w_ref = max(10.0, box_w_ref - ref_pad * 2.0)
+
+        cr = cls._get_measuring_context()
+
+        def _wrap(fam: str) -> list[str]:
+            cr.select_font_face(fam, slant, weight)
+            cr.set_font_size(ref_font_size)
+
+            raw_paragraphs = text.split("\n")
+            lines: list[str] = []
+            for paragraph in raw_paragraphs:
+                if not paragraph:
+                    lines.append("")
+                    continue
+                words = paragraph.split(" ")
+                curr_line = ""
+                for word in words:
+                    candidate = word if not curr_line else f"{curr_line} {word}"
+                    ext = cr.text_extents(candidate)
+                    if ext.width <= max_line_w_ref:
+                        curr_line = candidate
+                    else:
+                        if curr_line:
+                            lines.append(curr_line)
+                            curr_line = word
+                        else:
+                            lines.append(candidate)
+                            curr_line = ""
+                if curr_line:
+                    lines.append(curr_line)
+            return lines
+
+        try:
+            return _wrap(font_fam)
+        except Exception:
+            try:
+                return _wrap("Sans")
+            except Exception:
+                return text.split("\n")
+
+    @classmethod
     def _render_text(
         cls,
         cr: cairo.Context,
@@ -657,14 +733,15 @@ class OverlayRenderService:
         box_w: float,
         box_h: float,
         canvas_h: float,
+        canvas_w: float | None = None,
     ) -> None:
         """Render typography with custom font family, size, style, color, alignment, wrapping, and clipping."""
         slant = cairo.FONT_SLANT_ITALIC if item.italic else cairo.FONT_SLANT_NORMAL
         weight = cairo.FONT_WEIGHT_BOLD if item.bold else cairo.FONT_WEIGHT_NORMAL
         font_fam = item.font_family or "Sans"
 
-        ref_scale = max(0.2, canvas_h / 1080.0)
-        eff_font_size = max(8.0, float(item.font_size) * ref_scale)
+        ref_scale = canvas_h / 1080.0 if canvas_h > 0 else 1.0
+        eff_font_size = float(item.font_size) * ref_scale
 
         half_w = box_w / 2.0
         half_h = box_h / 2.0
@@ -688,36 +765,22 @@ class OverlayRenderService:
         cr.rectangle(-half_w, -half_h, box_w, box_h)
         cr.clip()
 
-        pad = max(4.0 * ref_scale, 4.0)
-        max_line_w = max(10.0, box_w - pad * 2.0)
+        pad = 4.0 * ref_scale
 
-        # Multi-line word wrapping and rendering with safe font fallback
+        # Calculate aspect ratio
+        if canvas_w is not None and canvas_h > 0:
+            aspect = canvas_w / canvas_h
+        elif item.width > 0 and canvas_h > 0:
+            aspect = (box_w / item.width) / canvas_h
+        else:
+            aspect = 16.0 / 9.0
+
+        wrapped_lines = cls.get_wrapped_text_lines(item, aspect_ratio=aspect, display_text=display_text)
+
+        # Multi-line word rendering with safe font fallback
         def _draw_lines_with_font(fam: str) -> None:
             cr.select_font_face(fam, slant, weight)
             cr.set_font_size(eff_font_size)
-
-            raw_paragraphs = display_text.split("\n")
-            wrapped_lines: list[str] = []
-            for paragraph in raw_paragraphs:
-                if not paragraph:
-                    wrapped_lines.append("")
-                    continue
-                words = paragraph.split(" ")
-                curr_line = ""
-                for word in words:
-                    candidate = word if not curr_line else f"{curr_line} {word}"
-                    ext = cr.text_extents(candidate)
-                    if ext.width <= max_line_w:
-                        curr_line = candidate
-                    else:
-                        if curr_line:
-                            wrapped_lines.append(curr_line)
-                            curr_line = word
-                        else:
-                            wrapped_lines.append(candidate)
-                            curr_line = ""
-                if curr_line:
-                    wrapped_lines.append(curr_line)
 
             # Line height and vertical positioning
             line_height = eff_font_size * 1.25
