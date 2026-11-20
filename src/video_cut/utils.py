@@ -21,6 +21,25 @@ def get_ffmpeg_path() -> str:
         appdir_bin = Path(os.environ["APPDIR"]) / "usr" / "bin" / "ffmpeg"
         if appdir_bin.is_file() and os.access(appdir_bin, os.X_OK):
             return str(appdir_bin)
+
+    # Check PyInstaller frozen bundle locations (macOS / Windows / Linux)
+    if getattr(sys, "frozen", False):
+        meipass = getattr(sys, "_MEIPASS", None)
+        if meipass:
+            for cand in [Path(meipass) / "bin" / "ffmpeg", Path(meipass) / "ffmpeg"]:
+                if cand.is_file() and os.access(cand, os.X_OK):
+                    return str(cand)
+        exe_dir = Path(sys.executable).resolve().parent
+        for cand in [exe_dir / "bin" / "ffmpeg", exe_dir / "ffmpeg", exe_dir.parent / "Resources" / "bin" / "ffmpeg"]:
+            if cand.is_file() and os.access(cand, os.X_OK):
+                return str(cand)
+
+    # Standard macOS Homebrew locations
+    if sys.platform == "darwin":
+        for brew_bin in [Path("/opt/homebrew/bin/ffmpeg"), Path("/usr/local/bin/ffmpeg")]:
+            if brew_bin.is_file() and os.access(brew_bin, os.X_OK):
+                return str(brew_bin)
+
     return shutil.which("ffmpeg") or "ffmpeg"
 
 
@@ -34,6 +53,25 @@ def get_ffprobe_path() -> str:
         appdir_bin = Path(os.environ["APPDIR"]) / "usr" / "bin" / "ffprobe"
         if appdir_bin.is_file() and os.access(appdir_bin, os.X_OK):
             return str(appdir_bin)
+
+    # Check PyInstaller frozen bundle locations (macOS / Windows / Linux)
+    if getattr(sys, "frozen", False):
+        meipass = getattr(sys, "_MEIPASS", None)
+        if meipass:
+            for cand in [Path(meipass) / "bin" / "ffprobe", Path(meipass) / "ffprobe"]:
+                if cand.is_file() and os.access(cand, os.X_OK):
+                    return str(cand)
+        exe_dir = Path(sys.executable).resolve().parent
+        for cand in [exe_dir / "bin" / "ffprobe", exe_dir / "ffprobe", exe_dir.parent / "Resources" / "bin" / "ffprobe"]:
+            if cand.is_file() and os.access(cand, os.X_OK):
+                return str(cand)
+
+    # Standard macOS Homebrew locations
+    if sys.platform == "darwin":
+        for brew_bin in [Path("/opt/homebrew/bin/ffprobe"), Path("/usr/local/bin/ffprobe")]:
+            if brew_bin.is_file() and os.access(brew_bin, os.X_OK):
+                return str(brew_bin)
+
     return shutil.which("ffprobe") or "ffprobe"
 
 
