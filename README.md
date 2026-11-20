@@ -74,6 +74,12 @@ sudo apt install python3-gi python3-cairo python3-pil gir1.2-gtk-4.0 gir1.2-adw-
     gstreamer1.0-plugins-good gstreamer1.0-libav ffmpeg
 ```
 
+On macOS (via Homebrew):
+```bash
+brew install gtk4 libadwaita pygobject3 gstreamer gst-plugins-base \
+    gst-plugins-good gst-plugins-bad gst-plugins-ugly gst-libav ffmpeg
+```
+
 Optional: `python3-numpy` speeds up the crop and rotate preview; without it the
 app falls back to a slower PNG conversion.
 
@@ -138,6 +144,7 @@ Build distribution packages directly using the scripts in `scripts/`:
 ./scripts/build_appimage.sh   # Builds dist/VideoCut-*.AppImage
 ./scripts/build_snap.sh       # Builds dist/video-cut_*.snap (requires snapcraft)
 ./scripts/build_flatpak.sh    # Builds dist/VideoCut-*.flatpak (requires flatpak-builder)
+./scripts/build_macos.sh      # Builds dist/VideoCut.app and dist/VideoCut-*-macOS-*.dmg
 ```
 
 Generated packages are placed in the `dist/` directory:
@@ -145,6 +152,7 @@ Generated packages are placed in the `dist/` directory:
 - **AppImage (`.AppImage`)**: Standalone binary `./dist/VideoCut-*.AppImage`
 - **Snap Package (`.snap`)**: Install locally via `sudo snap install --dangerous ./dist/video-cut_*.snap`
 - **Flatpak (`.flatpak`)**: Install locally via `flatpak install --user ./dist/VideoCut-*.flatpak` (see [FLATHUB_PUBLISHING.md](FLATHUB_PUBLISHING.md) for Flathub guide)
+- **macOS Disk Image (`.dmg`)**: Standalone DMG mounting `VideoCut.app` for drag-and-drop installation into `/Applications`
 
 #### Versioning
 

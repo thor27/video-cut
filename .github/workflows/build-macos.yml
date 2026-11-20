@@ -1,0 +1,64 @@
+name: Build macOS
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'src/**'
+      - 'packaging/macos/**'
+      - 'scripts/build_macos.sh'
+      - '.github/workflows/build-macos.yml'
+  pull_request:
+    paths:
+      - 'src/**'
+      - 'packaging/macos/**'
+      - 'scripts/build_macos.sh'
+      - '.github/workflows/build-macos.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-macos:
+    name: Build macOS (.dmg)
+    runs-on: macos-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install System Dependencies via Homebrew
+        run: |
+          brew update
+          brew install gtk4 libadwaita pygobject3 gstreamer \
+            gst-plugins-base gst-plugins-good gst-plugins-bad gst-plugins-ugly \
+            gst-libav ffmpeg
+
+      - name: Install Python Build Dependencies
+        run: |
+          pip install --upgrade pip setuptools wheel
+          pip install -e .
+          pip install pyinstaller pillow
+
+      - name: Build macOS Application (.app & .dmg)
+        run: |
+          chmod +x scripts/build_macos.sh
+          ./scripts/build_macos.sh --dmg
+
+      - name: Smoke Test Application Bundle
+        run: |
+          ./dist/VideoCut.app/Contents/MacOS/VideoCut --version
+
+      - name: Upload macOS Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: VideoCut-macOS
+          path: |
+            dist/*.dmg
+            dist/*.dmg.sha256
