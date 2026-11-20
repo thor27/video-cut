@@ -13,9 +13,17 @@ export XDG_DATA_DIRS="${APPDIR}/usr/share:${XDG_DATA_DIRS:-/usr/local/share:/usr
 # Clear foreign Python environment overrides (e.g. from Conda, Pyenv)
 unset PYTHONHOME
 
+# Filter out AppImage runtime flags if passed through to AppRun
+if [ "$1" = "--appimage-extract-and-run" ]; then
+    shift
+fi
+
 # Target application entry point
 EXEC_TARGET="${APPDIR}/usr/bin/video-cut"
-if [ ! -x "$EXEC_TARGET" ]; then
+if [ "$#" -gt 0 ] && { [ "$1" = "python3" ] || [ "$1" = "python" ]; }; then
+    shift
+    EXEC_ARGS=("$@")
+elif [ ! -x "$EXEC_TARGET" ]; then
     EXEC_ARGS=("-m" "video_cut" "$@")
 else
     EXEC_ARGS=("$EXEC_TARGET" "$@")
@@ -64,6 +72,11 @@ fi
 # Point to bundled GSettings schemas
 if [ -d "${APPDIR}/usr/share/glib-2.0/schemas" ]; then
     export GSETTINGS_SCHEMA_DIR="${APPDIR}/usr/share/glib-2.0/schemas:${GSETTINGS_SCHEMA_DIR:-}"
+fi
+
+# Isolate GIO module search path to prevent incompatible host GVFS/GIO modules from crashing
+if [ -d "${APPDIR}/usr/lib/gio/modules" ]; then
+    export GIO_MODULE_DIR="${APPDIR}/usr/lib/gio/modules"
 fi
 
 # GObject Introspection typelib search paths: bundled AppDir first

@@ -175,12 +175,24 @@ done
 
 # Bundle essential GStreamer plugins for fallback mode
 mkdir -p "${APPDIR}/usr/lib/gstreamer-1.0"
+mkdir -p "${APPDIR}/usr/lib/gio/modules"
 for gst_dir in /usr/lib/x86_64-linux-gnu/gstreamer-1.0 /usr/lib64/gstreamer-1.0 /usr/lib/gstreamer-1.0; do
     if [ -d "$gst_dir" ]; then
-        for plugin in libgstcoreelements.so libgstplayback.so libgsttypefindfunctions.so \
-                      libgstautodetect.so libgstvideoconvertscale.so libgstvideoconvert.so \
-                      libgstvideoscale.so libgstaudioconvert.so libgstaudioresample.so \
-                      libgstapp.so libgstgtk4.so libgstpulse.so libgstalsa.so libgstvolume.so; do
+        for plugin in \
+            libgstcoreelements.so libgstplayback.so libgsttypefindfunctions.so \
+            libgstautodetect.so libgstgio.so libgstvideoconvertscale.so \
+            libgstvideoconvert.so libgstvideoscale.so libgstvideofilter.so \
+            libgstaudioconvert.so libgstaudioresample.so libgstaudiofx.so \
+            libgstvolume.so libgstaudiorate.so libgstvideorate.so \
+            libgstapp.so libgstgtk4.so libgstopengl.so \
+            libgstpulse.so libgstpulseaudio.so libgstpipewire.so libgstalsa.so \
+            libgstisomp4.so libgstmatroska.so libgstavi.so libgstflv.so \
+            libgstogg.so libgstwavparse.so libgstaudioparsers.so \
+            libgstvideoparsersbad.so libgstlibav.so libgstvpx.so \
+            libgstvorbis.so libgstopus.so libgstopusparse.so libgsttheora.so \
+            libgstmpg123.so libgsttaglib.so libgstid3demux.so libgstsubparse.so \
+            libgstwaylandsink.so libgstximagesink.so libgstxvimagesink.so \
+            libgstsoundtouch.so libgstscaletempo.so; do
             if [ -f "$gst_dir/$plugin" ]; then
                 cp -nL "$gst_dir/$plugin" "${APPDIR}/usr/lib/gstreamer-1.0/" 2>/dev/null || true
             fi
