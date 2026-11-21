@@ -3,288 +3,11 @@ msgid ""
 msgstr ""
 "Project-Id-Version: video-cut 0.1.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-11-20 23:08-0500\n"
+"POT-Creation-Date: 2026-11-20 23:21-0500\n"
 "Language: es\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-
-#: src/video_cut/advanced_export_dialog.py:31
-msgid "Export Options"
-msgstr "Opciones de Exportación"
-
-#: src/video_cut/advanced_export_dialog.py:83
-msgid "Export Mode"
-msgstr "Modo de exportación"
-
-#: src/video_cut/advanced_export_dialog.py:84
-msgid "Lossless (Stream Copy)"
-msgstr "Sin pérdidas (Copia directa)"
-
-#: src/video_cut/advanced_export_dialog.py:85
-msgid "Direct stream copying without re-encoding (instant export)"
-msgstr "Copia directa de secuencias sin recodificar (exportación instantánea)"
-
-#: src/video_cut/advanced_export_dialog.py:93
-msgid "Lossless cutting & keyframe explanation"
-msgstr "Explicación de corte sin pérdidas y fotogramas clave"
-
-#: src/video_cut/advanced_export_dialog.py:118
-#: src/video_cut/crop_rotate_dialog.py:423
-#: src/video_cut/image_import_dialog.py:190
-#: src/video_cut/overlay_dialog.py:296 src/video_cut/overlay_dialog.py:4019
-#: src/video_cut/overlay_dialog.py:4044 src/video_cut/progress_modal.py:78
-#: src/video_cut/window.py:1012 src/video_cut/window.py:1026
-#: src/video_cut/window.py:1201
-msgid "Cancel"
-msgstr "Cancelar"
-
-#: src/video_cut/advanced_export_dialog.py:122
-msgid "Export…"
-msgstr "Exportar…"
-
-#: src/video_cut/advanced_export_dialog.py:131
-msgid "Video Re-encoding Options"
-msgstr "Opciones de recodificación de video"
-
-#: src/video_cut/advanced_export_dialog.py:141
-msgid "Container Format"
-msgstr "Formato del Contenedor"
-
-#: src/video_cut/advanced_export_dialog.py:149
-msgid "Resolution"
-msgstr "Resolución"
-
-#: src/video_cut/advanced_export_dialog.py:151
-#, python-brace-format
-msgid "Match Source ({w}×{h})"
-msgstr "Coincidir con fuente ({w}×{h})"
-
-#: src/video_cut/advanced_export_dialog.py:153
-#: src/video_cut/advanced_export_dialog.py:172
-msgid "Match Source"
-msgstr "Coincidir con fuente"
-
-#: src/video_cut/advanced_export_dialog.py:157
-msgid "4K UHD (3840×2160)"
-msgstr "4K UHD (3840×2160)"
-
-#: src/video_cut/advanced_export_dialog.py:158
-msgid "2K QHD (2560×1440)"
-msgstr "2K QHD (2560×1440)"
-
-#: src/video_cut/advanced_export_dialog.py:159
-msgid "1080p FHD (1920×1080)"
-msgstr "1080p FHD (1920×1080)"
-
-#: src/video_cut/advanced_export_dialog.py:160
-msgid "720p HD (1280×720)"
-msgstr "720p HD (1280×720)"
-
-#: src/video_cut/advanced_export_dialog.py:161
-msgid "480p SD (854×480)"
-msgstr "480p SD (854×480)"
-
-#: src/video_cut/advanced_export_dialog.py:168
-msgid "Frame Rate"
-msgstr "Tasa de Cuadros"
-
-#: src/video_cut/advanced_export_dialog.py:170
-#, python-brace-format
-msgid "Match Source ({fps:.2f} fps)"
-msgstr "Coincidir con fuente ({fps:.2f} fps)"
-
-#: src/video_cut/advanced_export_dialog.py:176
-msgid "60 fps"
-msgstr "60 fps"
-
-#: src/video_cut/advanced_export_dialog.py:177
-msgid "30 fps"
-msgstr "30 fps"
-
-#: src/video_cut/advanced_export_dialog.py:178
-msgid "24 fps"
-msgstr "24 fps"
-
-#: src/video_cut/advanced_export_dialog.py:185
-msgid "Video Codec"
-msgstr "Códec de Vídeo"
-
-#: src/video_cut/advanced_export_dialog.py:190
-msgid "Quality"
-msgstr "Calidad"
-
-#: src/video_cut/advanced_export_dialog.py:192
-msgid "Balanced (CRF 21)"
-msgstr "Equilibrada (CRF 21)"
-
-#: src/video_cut/advanced_export_dialog.py:193
-msgid "High Quality (CRF 18)"
-msgstr "Alta Calidad (CRF 18)"
-
-#: src/video_cut/advanced_export_dialog.py:194
-msgid "Smaller Size (CRF 26)"
-msgstr "Tamaño Menor (CRF 26)"
-
-#: src/video_cut/advanced_export_dialog.py:201
-msgid "Encoding Speed"
-msgstr "Velocidad de Codificación"
-
-#: src/video_cut/advanced_export_dialog.py:203
-msgid "Very Fast (Default)"
-msgstr "Muy Rápido (Predeterminado)"
-
-#: src/video_cut/advanced_export_dialog.py:204
-msgid "Ultrafast"
-msgstr "Ultrarrápido"
-
-#: src/video_cut/advanced_export_dialog.py:205
-msgid "Fast"
-msgstr "Rápido"
-
-#: src/video_cut/advanced_export_dialog.py:206
-msgid "Medium"
-msgstr "Medio"
-
-#: src/video_cut/advanced_export_dialog.py:207
-msgid "Slow"
-msgstr "Lento"
-
-#: src/video_cut/advanced_export_dialog.py:215
-msgid "Audio"
-msgstr "Audio"
-
-#: src/video_cut/advanced_export_dialog.py:221
-msgid "Audio Codec"
-msgstr "Códec de Audio"
-
-#: src/video_cut/advanced_export_dialog.py:226
-msgid "Audio Bitrate"
-msgstr "Tasa de Bits de Audio"
-
-#: src/video_cut/advanced_export_dialog.py:228
-msgid "192 kbps (Default)"
-msgstr "192 kbps (Predeterminado)"
-
-#: src/video_cut/advanced_export_dialog.py:229
-msgid "128 kbps"
-msgstr "128 kbps"
-
-#: src/video_cut/advanced_export_dialog.py:230
-msgid "256 kbps"
-msgstr "256 kbps"
-
-#: src/video_cut/advanced_export_dialog.py:231
-msgid "320 kbps"
-msgstr "320 kbps"
-
-#: src/video_cut/clipboard_controller.py:222
-#: src/video_cut/clipboard_controller.py:252
-#: src/video_cut/clipboard_controller.py:267
-msgid "Clipboard does not contain any video or image"
-msgstr "El portapapeles no contiene ningún video o imagen"
-
-#: src/video_cut/clipboard_controller.py:233
-msgid "Failed to read image from clipboard"
-msgstr "Error al leer imagen del portapapeles"
-
-#: src/video_cut/crop_rotate_dialog.py:55
-msgid "Free"
-msgstr "Libre"
-
-#: src/video_cut/crop_rotate_dialog.py:57
-msgid "Original"
-msgstr "Original"
-
-#: src/video_cut/crop_rotate_dialog.py:64
-msgid "Freeform (unconstrained)"
-msgstr "Libre (sin restricciones)"
-
-#: src/video_cut/crop_rotate_dialog.py:66
-msgid "Original aspect ratio"
-msgstr "Proporción original"
-
-#: src/video_cut/crop_rotate_dialog.py:68
-msgid "16:9 Widescreen"
-msgstr "16:9 Panorámico"
-
-#: src/video_cut/crop_rotate_dialog.py:70
-msgid "9:16 Vertical"
-msgstr "9:16 Vertical"
-
-#: src/video_cut/crop_rotate_dialog.py:72
-msgid "1:1 Square"
-msgstr "1:1 Cuadrado"
-
-#: src/video_cut/crop_rotate_dialog.py:74
-msgid "4:3 Standard"
-msgstr "4:3 Estándar"
-
-#: src/video_cut/crop_rotate_dialog.py:76
-msgid "3:4 Vertical Standard"
-msgstr "3:4 Vertical Estándar"
-
-#: src/video_cut/crop_rotate_dialog.py:78
-msgid "21:9 Ultrawide"
-msgstr "21:9 Ultrawide"
-
-#: src/video_cut/crop_rotate_dialog.py:80
-msgid "9:21 Vertical Ultrawide"
-msgstr "9:21 Ultrawide Vertical"
-
-#: src/video_cut/crop_rotate_dialog.py:169
-#, python-brace-format
-msgid "Crop & Rotate — {name}"
-msgstr "Recortar y Girar — {name}"
-
-#: src/video_cut/crop_rotate_dialog.py:427 src/video_cut/overlay_dialog.py:317
-msgid "Apply"
-msgstr "Aplicar"
-
-#: src/video_cut/crop_rotate_dialog.py:466
-msgid "Rotate 90° Counter-Clockwise"
-msgstr "Girar 90° en sentido antihorario"
-
-#: src/video_cut/crop_rotate_dialog.py:471
-msgid "Rotate 90° Clockwise"
-msgstr "Girar 90° en sentido horario"
-
-#: src/video_cut/crop_rotate_dialog.py:476
-msgid "Flip Horizontally"
-msgstr "Voltear Horizontalmente"
-
-#: src/video_cut/crop_rotate_dialog.py:481
-msgid "Flip Vertically"
-msgstr "Voltear Verticalmente"
-
-#: src/video_cut/crop_rotate_dialog.py:487
-msgid "Reset"
-msgstr "Restablecer"
-
-#: src/video_cut/crop_rotate_dialog.py:488
-msgid "Reset crop, rotation, and flip"
-msgstr "Restablecer recorte, rotación y volteo"
-
-#: src/video_cut/crop_rotate_dialog.py:499
-msgid "Aspect Ratio:"
-msgstr "Relación de aspecto:"
-
-#: src/video_cut/crop_rotate_dialog.py:532
-msgid " • Flip H+V"
-msgstr " • Volteo H+V"
-
-#: src/video_cut/crop_rotate_dialog.py:534
-msgid " • Flip H"
-msgstr " • Volteo H"
-
-#: src/video_cut/crop_rotate_dialog.py:536
-msgid " • Flip V"
-msgstr " • Volteo V"
-
-#: src/video_cut/crop_rotate_dialog.py:539
-#, python-brace-format
-msgid "Crop: {crop_w} × {crop_h} px ({preset}){rot_str}{flip_str}"
-msgstr "Recorte: {crop_w} × {crop_h} px ({preset}){rot_str}{flip_str}"
 
 #: src/video_cut/ffmpeg_error_dialog.py:27 src/video_cut/window.py:2124
 msgid "Export Failed"
@@ -311,8 +34,8 @@ msgid "Error Details & Command Output"
 msgstr "Detalles del error y salida del comando"
 
 #: src/video_cut/ffmpeg_error_dialog.py:120
-#: src/video_cut/ffmpeg_error_dialog.py:149 src/video_cut/health_dialog.py:181
-#: src/video_cut/health_dialog.py:193
+#: src/video_cut/ffmpeg_error_dialog.py:149 src/video_cut/health_dialog.py:170
+#: src/video_cut/health_dialog.py:182
 msgid "Copy Details"
 msgstr "Copiar detalles"
 
@@ -320,134 +43,24 @@ msgstr "Copiar detalles"
 msgid "Copy full error details to clipboard"
 msgstr "Copiar todos los detalles del error al portapapeles"
 
-#: src/video_cut/ffmpeg_error_dialog.py:127 src/video_cut/health_dialog.py:58
+#: src/video_cut/ffmpeg_error_dialog.py:127 src/video_cut/health_dialog.py:53
 #: src/video_cut/keyframe_help_dialog.py:32
 msgid "Close"
 msgstr "Cerrar"
 
-#: src/video_cut/ffmpeg_error_dialog.py:144 src/video_cut/health_dialog.py:189
-#: src/video_cut/health_dialog.py:238
+#: src/video_cut/ffmpeg_error_dialog.py:144 src/video_cut/health_dialog.py:178
+#: src/video_cut/health_dialog.py:281
 msgid "Copied!"
 msgstr "¡Copiado!"
 
-#: src/video_cut/health_dialog.py:27
-msgid "System Health & Setup"
-msgstr "Estado del Sistema y Configuración"
-
-#: src/video_cut/health_dialog.py:52
-msgid "Re-check"
-msgstr "Volver a Comprobar"
-
-#: src/video_cut/health_dialog.py:77
-msgid "System Components and Configuration"
-msgstr "Componentes y Configuración del Sistema"
-
-#: src/video_cut/health_dialog.py:80
-#: src/video_cut/services/health_service.py:174
-#: src/video_cut/services/health_service.py:205
-#: src/video_cut/services/health_service.py:217
-msgid "FFmpeg Multimedia Engine"
-msgstr "Motor Multimedia FFmpeg"
-
-#: src/video_cut/health_dialog.py:83
-msgid ".vcut Project File Association"
-msgstr "Asociación de Archivos de Proyecto .vcut"
-
-#: src/video_cut/health_dialog.py:86
-msgid "Multimedia Video and Audio Codecs"
-msgstr "Códecs Multimedia de Vídeo y Audio"
-
-#: src/video_cut/health_dialog.py:121
-msgid "View component details"
-msgstr "Ver detalles del componente"
-
-#: src/video_cut/health_dialog.py:196
-msgid "Details copied to clipboard"
-msgstr "Detalles copiados al portapapeles"
-
-#: src/video_cut/health_dialog.py:230 src/video_cut/health_dialog.py:242
-#: src/video_cut/overlay_dialog.py:3395 src/video_cut/segment_card.py:314
-msgid "Copy"
-msgstr "Copiar"
-
-#: src/video_cut/health_dialog.py:233
-msgid "Copy command to clipboard"
-msgstr "Copiar comando al portapapeles"
-
-#: src/video_cut/health_dialog.py:245
-msgid "Command copied to clipboard"
-msgstr "Comando copiado al portapapeles"
-
-#: src/video_cut/health_dialog.py:258 src/video_cut/health_dialog.py:369
-msgid "FFmpeg Website"
-msgstr "Sitio Web de FFmpeg"
-
-#: src/video_cut/health_dialog.py:278
-msgid "Running system health check..."
-msgstr "Comprobando el estado del sistema..."
-
-#: src/video_cut/health_dialog.py:279
-msgid "Probing FFmpeg, file associations, and multimedia codecs..."
-msgstr "Comprobando FFmpeg, asociaciones de archivos y códecs multimedia..."
-
-#: src/video_cut/health_dialog.py:297
-msgid "Action Required"
-msgstr "Acción Requerida"
-
-#: src/video_cut/health_dialog.py:298
-msgid "Essential multimedia components are missing or misconfigured."
-msgstr "Faltan componentes multimedia esenciales o están mal configurados."
-
-#: src/video_cut/health_dialog.py:303
-msgid "Configuration Recommended"
-msgstr "Configuración Recomendada"
-
-#: src/video_cut/health_dialog.py:304
-msgid ""
-"Video Cut is operational, but some features or associations can be improved."
-msgstr ""
-"Video Cut está operativo, pero algunas funciones o asociaciones se pueden "
-"mejorar."
-
-#: src/video_cut/health_dialog.py:309
-msgid "All Systems Operational"
-msgstr "Todos los Sistemas Operativos"
-
-#: src/video_cut/health_dialog.py:310
-msgid "FFmpeg, .vcut file associations, and multimedia codecs are ready."
-msgstr ""
-"FFmpeg, las asociaciones de archivos .vcut y los códecs multimedia están "
-"listos."
-
-#: src/video_cut/health_dialog.py:358
-msgid "Install Command"
-msgstr "Comando de Instalación"
-
-#: src/video_cut/health_dialog.py:359 src/video_cut/health_dialog.py:427
-msgid "Run this command in your terminal:"
-msgstr "Ejecute este comando en su terminal:"
-
-#: src/video_cut/health_dialog.py:366
-msgid "Official Website"
-msgstr "Sitio Web Oficial"
-
-#: src/video_cut/health_dialog.py:367
-msgid "Download binaries or source:"
-msgstr "Descargar binarios o código fuente:"
-
-#: src/video_cut/health_dialog.py:388
-#: src/video_cut/services/health_service.py:306
-msgid "Register Association"
-msgstr "Registrar Asociación"
-
-#: src/video_cut/health_dialog.py:426
-#: src/video_cut/services/health_service.py:471
-msgid "Install Extra Codecs"
-msgstr "Instalar Códecs Adicionales"
-
-#: src/video_cut/health_dialog.py:434
-msgid "Registering..."
-msgstr "Registrando..."
+#: src/video_cut/progress_modal.py:78 src/video_cut/image_import_dialog.py:190
+#: src/video_cut/overlay_dialog.py:296 src/video_cut/overlay_dialog.py:4019
+#: src/video_cut/overlay_dialog.py:4044 src/video_cut/window.py:1012
+#: src/video_cut/window.py:1026 src/video_cut/window.py:1201
+#: src/video_cut/advanced_export_dialog.py:118
+#: src/video_cut/crop_rotate_dialog.py:423
+msgid "Cancel"
+msgstr "Cancelar"
 
 #: src/video_cut/image_import_dialog.py:112
 msgid "Import Image"
@@ -523,128 +136,6 @@ msgstr "Todos los Archivos"
 msgid "Total track duration: {duration}"
 msgstr "Duración total de la pista: {duration}"
 
-#: src/video_cut/keyframe_help_dialog.py:19
-msgid "Keyframes & Lossless Cutting"
-msgstr "Fotogramas clave y Corte sin Pérdidas"
-
-#: src/video_cut/keyframe_help_dialog.py:55
-msgid "What is Lossless Cutting?"
-msgstr "¿Qué es el Corte sin Pérdidas?"
-
-#: src/video_cut/keyframe_help_dialog.py:58
-#, python-format
-msgid ""
-"Lossless cutting (stream copying) trims and combines videos by copying the "
-"original compressed data packets directly into the new file without decoding"
-" or re-encoding. Because no re-compression takes place, exports are "
-"virtually instantaneous and preserve 100% of the original video and audio "
-"quality."
-msgstr ""
-"El corte sin pérdidas (copia directa) recorta y combina videos copiando los "
-"paquetes de datos comprimidos originales directamente al nuevo archivo sin "
-"decodificar ni recodificar. Al no haber recompresión, las exportaciones son "
-"prácticamente instantáneas y conservan el 100% de la calidad original de "
-"video y audio."
-
-#: src/video_cut/keyframe_help_dialog.py:68
-msgid "What is a Keyframe?"
-msgstr "¿Qué es un Fotograma clave?"
-
-#: src/video_cut/keyframe_help_dialog.py:71
-msgid ""
-"Modern video formats (such as H.264, HEVC, VP9, and AV1) compress video by "
-"storing full images only occasionally (Keyframes or I-frames), while "
-"intermediate frames only record differences between frames. A keyframe is a "
-"complete, standalone picture that can be decoded independently."
-msgstr ""
-"Los formatos de video modernos (como H.264, HEVC, VP9 y AV1) comprimen video"
-" almacenando imágenes completas solo ocasionalmente (Fotogramas clave o "
-"I-frames), mientras que los fotogramas intermedios solo guardan diferencias."
-" Un fotograma clave es una imagen completa e independiente que se decodifica"
-" por sí sola."
-
-#: src/video_cut/keyframe_help_dialog.py:86
-msgid "Advantages of Lossless Cutting"
-msgstr "Ventajas del Corte sin Pérdidas"
-
-#: src/video_cut/keyframe_help_dialog.py:90
-msgid "Blazing Fast Speed"
-msgstr "Velocidad ultrarrápida"
-
-#: src/video_cut/keyframe_help_dialog.py:92
-msgid ""
-"Exports complete in seconds because video and audio packets are copied "
-"directly without re-encoding."
-msgstr ""
-"Las exportaciones se completan en segundos porque los paquetes de video y "
-"audio se copian directamente sin recodificar."
-
-#: src/video_cut/keyframe_help_dialog.py:99
-msgid "100% Quality Preserved"
-msgstr "100% de calidad preservada"
-
-#: src/video_cut/keyframe_help_dialog.py:101
-msgid ""
-"Zero generation loss or compression artifacts. Every pixel and audio sample "
-"remains untouched."
-msgstr ""
-"Cero pérdida de generación o artefactos de compresión. Cada píxel y muestra "
-"de audio permanece intacto."
-
-#: src/video_cut/keyframe_help_dialog.py:108
-msgid "Minimal CPU and Battery Usage"
-msgstr "Uso mínimo de CPU y batería"
-
-#: src/video_cut/keyframe_help_dialog.py:110
-msgid ""
-"Bypasses intensive CPU/GPU rendering, keeping your computer cool and "
-"preserving laptop battery."
-msgstr ""
-"Evita la renderización intensiva de CPU/GPU, manteniendo su equipo fresco y "
-"ahorrando batería en portátiles."
-
-#: src/video_cut/keyframe_help_dialog.py:118
-msgid "Disadvantages of Lossless Cutting"
-msgstr "Desventajas del Corte sin Pérdidas"
-
-#: src/video_cut/keyframe_help_dialog.py:122
-msgid "Cuts Must Align to Keyframes"
-msgstr "Los cortes deben alinearse con fotogramas clave"
-
-#: src/video_cut/keyframe_help_dialog.py:125
-msgid ""
-"Intermediate frames depend on surrounding images and cannot be split mid-"
-"stream without re-encoding. All cuts snap to the nearest keyframe."
-msgstr ""
-"Los fotogramas intermedios dependen de imágenes cercanas y no pueden "
-"dividirse a mitad de flujo sin recodificar. Todos los cortes se ajustan al "
-"fotograma clave más cercano."
-
-#: src/video_cut/keyframe_help_dialog.py:134
-msgid "No Re-encoding Filters"
-msgstr "Sin filtros de recodificación"
-
-#: src/video_cut/keyframe_help_dialog.py:137
-msgid ""
-"Transformations that alter pixels—such as rotation, cropping, flipping, and "
-"text or graphic overlays—require re-encoding and cannot be applied."
-msgstr ""
-"Las transformaciones que alteran píxeles — como rotación, recorte, volteo y "
-"superposiciones de texto o gráficos — requieren recodificación y no se "
-"pueden aplicar."
-
-#: src/video_cut/keyframe_help_dialog.py:146
-msgid "Matching Codecs Required"
-msgstr "Codecs compatibles requeridos"
-
-#: src/video_cut/keyframe_help_dialog.py:149
-msgid ""
-"When combining multiple clips, all segments must share compatible video and "
-"audio formats, codecs, and dimensions."
-msgstr ""
-"Al combinar varios clips, todos los segmentos deben compartir formatos, "
-"codecs y dimensiones de video y audio compatibles."
-
 #: src/video_cut/overlay_dialog.py:151
 #, python-brace-format
 msgid "Overlays & Drawings — {name}"
@@ -658,6 +149,10 @@ msgstr "Deshacer (Ctrl+Z)"
 #: src/video_cut/overlay_dialog.py:310
 msgid "Redo (Ctrl+Shift+Z)"
 msgstr "Rehacer (Ctrl+Shift+Z)"
+
+#: src/video_cut/overlay_dialog.py:317 src/video_cut/crop_rotate_dialog.py:427
+msgid "Apply"
+msgstr "Aplicar"
 
 #: src/video_cut/overlay_dialog.py:324
 msgid "Remove all overlays for this segment"
@@ -1009,6 +504,11 @@ msgstr "Archivos de audio (*.mp3, *.wav, *.aac, *.m4a, *.flac, *.ogg)"
 msgid "Cut"
 msgstr "Cortar"
 
+#: src/video_cut/overlay_dialog.py:3395 src/video_cut/health_dialog.py:271
+#: src/video_cut/health_dialog.py:285 src/video_cut/segment_card.py:314
+msgid "Copy"
+msgstr "Copiar"
+
 #: src/video_cut/overlay_dialog.py:3396 src/video_cut/segment_card.py:317
 msgid "Paste"
 msgstr "Pegar"
@@ -1059,62 +559,6 @@ msgstr ""
 #: src/video_cut/overlay_dialog.py:4020 src/video_cut/overlay_dialog.py:4045
 msgid "Delete All"
 msgstr "Eliminar todo"
-
-#: src/video_cut/segment_card.py:129
-msgid "Drag header to reorder clip"
-msgstr "Arrastre el encabezado para reordenar el clip"
-
-#: src/video_cut/segment_card.py:155
-msgid "This clip has overlays & drawings"
-msgstr "Este clip tiene superposiciones y dibujos"
-
-#: src/video_cut/segment_card.py:168
-msgid "Move clip left (Alt+Left)"
-msgstr "Mover clip a la izquierda (Alt+Izquierda)"
-
-#: src/video_cut/segment_card.py:179
-msgid "Move clip right (Alt+Right)"
-msgstr "Mover clip a la derecha (Alt+Derecha)"
-
-#: src/video_cut/segment_card.py:192 src/video_cut/timeline_widget.py:486
-msgid "Split clip at cursor"
-msgstr "Dividir clip en el cursor"
-
-#: src/video_cut/segment_card.py:201 src/video_cut/timeline_widget.py:497
-msgid "Split"
-msgstr "Dividir"
-
-#: src/video_cut/segment_card.py:296 src/video_cut/segment_card.py:426
-msgid "Select"
-msgstr "Seleccionar"
-
-#: src/video_cut/segment_card.py:305
-msgid "Split at Cursor"
-msgstr "Dividir en el Cursor"
-
-#: src/video_cut/segment_card.py:320
-msgid "Crop & Rotate..."
-msgstr "Recortar y Girar..."
-
-#: src/video_cut/segment_card.py:323
-msgid "Overlays & Drawings..."
-msgstr "Superposiciones y Dibujos..."
-
-#: src/video_cut/segment_card.py:329
-msgid "Move Clip Left"
-msgstr "Mover Clip a la Izquierda"
-
-#: src/video_cut/segment_card.py:332
-msgid "Move Clip Right"
-msgstr "Mover Clip a la Derecha"
-
-#: src/video_cut/segment_card.py:423
-msgid "Deselect"
-msgstr "Deseleccionar"
-
-#: src/video_cut/segment_card.py:432
-msgid "Deselect All"
-msgstr "Deseleccionar todo"
 
 #: src/video_cut/timeline_widget.py:225 src/video_cut/window.py:119
 msgid "Redo (Ctrl+Shift+Z or Ctrl+Y)"
@@ -1190,6 +634,14 @@ msgstr "Fotograma clave anterior (,)"
 msgid "Next keyframe (.)"
 msgstr "Siguiente fotograma clave (.)"
 
+#: src/video_cut/timeline_widget.py:486 src/video_cut/segment_card.py:192
+msgid "Split clip at cursor"
+msgstr "Dividir clip en el cursor"
+
+#: src/video_cut/timeline_widget.py:497 src/video_cut/segment_card.py:201
+msgid "Split"
+msgstr "Dividir"
+
 #: src/video_cut/timeline_widget.py:638 src/video_cut/window.py:1336
 msgid "Add Video or Image as Segment"
 msgstr "Añadir Vídeo o Imagen como Segmento"
@@ -1201,6 +653,245 @@ msgid ""
 msgstr ""
 "Añadir Vídeo\n"
 "o Imagen"
+
+#: src/video_cut/services/export_service.py:74
+#: src/video_cut/services/export_service.py:80
+msgid "MP4 (.mp4)"
+msgstr "MP4 (.mp4)"
+
+#: src/video_cut/services/export_service.py:75
+msgid "Matroska (.mkv)"
+msgstr "Matroska (.mkv)"
+
+#: src/video_cut/services/export_service.py:76
+msgid "WebM (.webm)"
+msgstr "WebM (.webm)"
+
+#: src/video_cut/services/export_service.py:77
+msgid "QuickTime (.mov)"
+msgstr "QuickTime (.mov)"
+
+#: src/video_cut/services/export_service.py:87
+msgid "H.264 / AVC (Most Compatible)"
+msgstr "H.264 / AVC (Más Compatible)"
+
+#: src/video_cut/services/export_service.py:88
+msgid "H.265 / HEVC (High Efficiency)"
+msgstr "H.265 / HEVC (Alta Eficiencia)"
+
+#: src/video_cut/services/export_service.py:89
+msgid "VP9 (Web Open Standard)"
+msgstr "VP9 (Estándar Abierto Web)"
+
+#: src/video_cut/services/export_service.py:90
+msgid "AV1 (Next-Gen Open Standard)"
+msgstr "AV1 (Estándar Abierto de Nueva Generación)"
+
+#: src/video_cut/services/export_service.py:91
+msgid "Apple ProRes (Editing Master)"
+msgstr "Apple ProRes (Master de Edición)"
+
+#: src/video_cut/services/export_service.py:101
+msgid "H.264 / AVC"
+msgstr "H.264 / AVC"
+
+#: src/video_cut/services/export_service.py:109
+msgid "AAC (Universal Default)"
+msgstr "AAC (Predeterminado Universal)"
+
+#: src/video_cut/services/export_service.py:110
+msgid "Opus (High Quality Voice & Music)"
+msgstr "Opus (Alta Calidad para Voz y Música)"
+
+#: src/video_cut/services/export_service.py:112
+msgid "FLAC (Lossless Audio)"
+msgstr "FLAC (Audio sin Pérdidas)"
+
+#: src/video_cut/services/export_service.py:119
+msgid "AAC"
+msgstr "AAC"
+
+#: src/video_cut/services/export_service.py:146
+msgid "No segments to export"
+msgstr "No hay segmentos para exportar"
+
+#: src/video_cut/services/export_service.py:150
+msgid "Rotation and flip transformations require re-encoding"
+msgstr "Las transformaciones de rotación y volteo requieren recodificación"
+
+#: src/video_cut/services/export_service.py:154
+msgid "Crop transformations require re-encoding"
+msgstr "Las transformaciones de recorte requieren recodificación"
+
+#: src/video_cut/services/export_service.py:156
+msgid "Graphic and text overlays require re-encoding"
+msgstr "Las superposiciones gráficas y de texto requieren recodificación"
+
+#: src/video_cut/services/export_service.py:160
+#: src/video_cut/services/export_service.py:165
+msgid "Could not inspect source video codec"
+msgstr "No se pudo inspeccionar el codec del video de origen"
+
+#: src/video_cut/services/export_service.py:173
+msgid "Segments have different video codecs or dimensions"
+msgstr "Los segmentos tienen diferentes codecs o dimensiones de video"
+
+#: src/video_cut/services/export_service.py:176
+msgid "Segments have different audio codecs"
+msgstr "Los segmentos tienen diferentes codecs de audio"
+
+#: src/video_cut/services/export_service.py:178
+msgid "Segments have different audio channels or sample rates"
+msgstr ""
+"Los segmentos tienen diferentes canales de audio o frecuencias de muestreo"
+
+#: src/video_cut/services/health_service.py:174
+#: src/video_cut/services/health_service.py:205
+#: src/video_cut/services/health_service.py:217
+#: src/video_cut/health_dialog.py:72
+msgid "FFmpeg Multimedia Engine"
+msgstr "Motor Multimedia FFmpeg"
+
+#: src/video_cut/services/health_service.py:176
+#, python-brace-format
+msgid "FFmpeg multimedia tools are missing ({missing})."
+msgstr "Faltan las herramientas multimedia de FFmpeg ({missing})."
+
+#: src/video_cut/services/health_service.py:180
+msgid ""
+"Video Cut requires FFmpeg and FFprobe to analyze, preview, and export videos.\n"
+"You can install FFmpeg using your system package manager or download it from the official site."
+msgstr ""
+"Video Cut requiere FFmpeg y FFprobe para analizar, previsualizar y exportar vídeos.\n"
+"Puede instalar FFmpeg usando el administrador de paquetes de su sistema o descargarlo desde el sitio oficial."
+
+#: src/video_cut/services/health_service.py:185
+msgid "Install FFmpeg"
+msgstr "Instalar FFmpeg"
+
+#: src/video_cut/services/health_service.py:207
+msgid "FFmpeg was found but failed to execute."
+msgstr "Se encontró FFmpeg pero no se pudo ejecutar."
+
+#: src/video_cut/services/health_service.py:211
+msgid "Reinstall FFmpeg"
+msgstr "Reinstalar FFmpeg"
+
+#: src/video_cut/services/health_service.py:219
+msgid "FFmpeg and FFprobe are installed and working."
+msgstr "FFmpeg y FFprobe están instalados y funcionando."
+
+#: src/video_cut/services/health_service.py:270
+#: src/video_cut/services/health_service.py:289
+msgid ".vcut Project Association"
+msgstr "Asociación de Proyectos .vcut"
+
+#: src/video_cut/services/health_service.py:272
+msgid ".vcut projects are registered to open with Video Cut."
+msgstr "Los proyectos .vcut están registrados para abrirse con Video Cut."
+
+#: src/video_cut/services/health_service.py:283
+msgid "MIME type for .vcut is not registered"
+msgstr "El tipo MIME para .vcut no está registrado"
+
+#: src/video_cut/services/health_service.py:285
+msgid "Video Cut is not set as default handler"
+msgstr "Video Cut no está configurado como la aplicación predeterminada"
+
+#: src/video_cut/services/health_service.py:291
+#, python-brace-format
+msgid ".vcut project files are not associated with Video Cut ({reasons})."
+msgstr ""
+"Los archivos de proyecto .vcut no están asociados con Video Cut ({reasons})."
+
+#: src/video_cut/services/health_service.py:295
+#, python-brace-format
+msgid ""
+"MIME Type: {mime_type}\n"
+"Current detected type for .vcut: {content_type}\n"
+"Current default handler: {handler}\n"
+"\n"
+"Associating .vcut files allows you to open saved projects directly by double-clicking them in your file manager."
+msgstr ""
+"Tipo MIME: {mime_type}\n"
+"Tipo detectado actual para .vcut: {content_type}\n"
+"Aplicación predeterminada actual: {handler}\n"
+"\n"
+"Asociar archivos .vcut le permite abrir proyectos guardados directamente haciendo doble clic en ellos en su administrador de archivos."
+
+#: src/video_cut/services/health_service.py:302
+#: src/video_cut/services/health_service.py:441
+msgid "None"
+msgstr "Ninguno"
+
+#: src/video_cut/services/health_service.py:306
+#: src/video_cut/health_dialog.py:326
+msgid "Register Association"
+msgstr "Registrar Asociación"
+
+#: src/video_cut/services/health_service.py:318
+msgid "MIME XML resource file not found."
+msgstr "No se encontró el archivo de recursos MIME XML."
+
+#: src/video_cut/services/health_service.py:391
+msgid "Successfully registered .vcut file association!"
+msgstr "¡Asociación de archivos .vcut registrada con éxito!"
+
+#: src/video_cut/services/health_service.py:393
+#, python-brace-format
+msgid "Failed to register file association: {error}"
+msgstr "Error al registrar la asociación de archivos: {error}"
+
+#: src/video_cut/services/health_service.py:431
+#: src/video_cut/services/health_service.py:455
+#: src/video_cut/services/health_service.py:478
+msgid "Multimedia Codecs"
+msgstr "Códecs Multimedia"
+
+#: src/video_cut/services/health_service.py:433
+#, python-brace-format
+msgid "Essential codecs ({missing}) are missing from FFmpeg."
+msgstr "Faltan códecs esenciales ({missing}) en FFmpeg."
+
+#: src/video_cut/services/health_service.py:437
+#, python-brace-format
+msgid ""
+"Installed encoders: {installed}\n"
+"Missing essential codecs: {essential}\n"
+"Install recommended package: {pkg}"
+msgstr ""
+"Codificadores instalados: {installed}\n"
+"Faltan códecs esenciales: {essential}\n"
+"Instale el paquete recomendado: {pkg}"
+
+#: src/video_cut/services/health_service.py:447
+msgid "Install Codecs"
+msgstr "Instalar Códecs"
+
+#: src/video_cut/services/health_service.py:457
+#, python-brace-format
+msgid "Standard codecs available; some optional codecs missing ({missing})."
+msgstr ""
+"Códecs estándar disponibles; faltan algunos códecs opcionales ({missing})."
+
+#: src/video_cut/services/health_service.py:461
+#, python-brace-format
+msgid ""
+"Available codecs: {installed}\n"
+"Optional missing codecs: {optional}\n"
+"To enable them, install: {pkg}"
+msgstr ""
+"Códecs disponibles: {installed}\n"
+"Códecs opcionales faltantes: {optional}\n"
+"Para habilitarlos, instale: {pkg}"
+
+#: src/video_cut/services/health_service.py:471
+msgid "Install Extra Codecs"
+msgstr "Instalar Códecs Adicionales"
+
+#: src/video_cut/services/health_service.py:480
+msgid "All recommended video and audio codecs are available."
+msgstr "Todos los códecs de vídeo y audio recomendados están disponibles."
 
 #: src/video_cut/window.py:93 src/video_cut/window.py:851
 #: src/video_cut/window.py:927 src/video_cut/window.py:2217
@@ -1661,228 +1352,552 @@ msgstr ""
 "Un editor de video fácil de usar para cortar y unir videos, agregar "
 "imágenes, recortar y rotar"
 
-#: src/video_cut/services/export_service.py:74
-#: src/video_cut/services/export_service.py:80
-msgid "MP4 (.mp4)"
-msgstr "MP4 (.mp4)"
+#: src/video_cut/advanced_export_dialog.py:31
+msgid "Export Options"
+msgstr "Opciones de Exportación"
 
-#: src/video_cut/services/export_service.py:75
-msgid "Matroska (.mkv)"
-msgstr "Matroska (.mkv)"
+#: src/video_cut/advanced_export_dialog.py:83
+msgid "Export Mode"
+msgstr "Modo de exportación"
 
-#: src/video_cut/services/export_service.py:76
-msgid "WebM (.webm)"
-msgstr "WebM (.webm)"
+#: src/video_cut/advanced_export_dialog.py:84
+msgid "Lossless (Stream Copy)"
+msgstr "Sin pérdidas (Copia directa)"
 
-#: src/video_cut/services/export_service.py:77
-msgid "QuickTime (.mov)"
-msgstr "QuickTime (.mov)"
+#: src/video_cut/advanced_export_dialog.py:85
+msgid "Direct stream copying without re-encoding (instant export)"
+msgstr "Copia directa de secuencias sin recodificar (exportación instantánea)"
 
-#: src/video_cut/services/export_service.py:87
-msgid "H.264 / AVC (Most Compatible)"
-msgstr "H.264 / AVC (Más Compatible)"
+#: src/video_cut/advanced_export_dialog.py:93
+msgid "Lossless cutting & keyframe explanation"
+msgstr "Explicación de corte sin pérdidas y fotogramas clave"
 
-#: src/video_cut/services/export_service.py:88
-msgid "H.265 / HEVC (High Efficiency)"
-msgstr "H.265 / HEVC (Alta Eficiencia)"
+#: src/video_cut/advanced_export_dialog.py:122
+msgid "Export…"
+msgstr "Exportar…"
 
-#: src/video_cut/services/export_service.py:89
-msgid "VP9 (Web Open Standard)"
-msgstr "VP9 (Estándar Abierto Web)"
+#: src/video_cut/advanced_export_dialog.py:131
+msgid "Video Re-encoding Options"
+msgstr "Opciones de recodificación de video"
 
-#: src/video_cut/services/export_service.py:90
-msgid "AV1 (Next-Gen Open Standard)"
-msgstr "AV1 (Estándar Abierto de Nueva Generación)"
+#: src/video_cut/advanced_export_dialog.py:141
+msgid "Container Format"
+msgstr "Formato del Contenedor"
 
-#: src/video_cut/services/export_service.py:91
-msgid "Apple ProRes (Editing Master)"
-msgstr "Apple ProRes (Master de Edición)"
+#: src/video_cut/advanced_export_dialog.py:149
+msgid "Resolution"
+msgstr "Resolución"
 
-#: src/video_cut/services/export_service.py:101
-msgid "H.264 / AVC"
-msgstr "H.264 / AVC"
-
-#: src/video_cut/services/export_service.py:109
-msgid "AAC (Universal Default)"
-msgstr "AAC (Predeterminado Universal)"
-
-#: src/video_cut/services/export_service.py:110
-msgid "Opus (High Quality Voice & Music)"
-msgstr "Opus (Alta Calidad para Voz y Música)"
-
-#: src/video_cut/services/export_service.py:112
-msgid "FLAC (Lossless Audio)"
-msgstr "FLAC (Audio sin Pérdidas)"
-
-#: src/video_cut/services/export_service.py:119
-msgid "AAC"
-msgstr "AAC"
-
-#: src/video_cut/services/export_service.py:146
-msgid "No segments to export"
-msgstr "No hay segmentos para exportar"
-
-#: src/video_cut/services/export_service.py:150
-msgid "Rotation and flip transformations require re-encoding"
-msgstr "Las transformaciones de rotación y volteo requieren recodificación"
-
-#: src/video_cut/services/export_service.py:154
-msgid "Crop transformations require re-encoding"
-msgstr "Las transformaciones de recorte requieren recodificación"
-
-#: src/video_cut/services/export_service.py:156
-msgid "Graphic and text overlays require re-encoding"
-msgstr "Las superposiciones gráficas y de texto requieren recodificación"
-
-#: src/video_cut/services/export_service.py:160
-#: src/video_cut/services/export_service.py:165
-msgid "Could not inspect source video codec"
-msgstr "No se pudo inspeccionar el codec del video de origen"
-
-#: src/video_cut/services/export_service.py:173
-msgid "Segments have different video codecs or dimensions"
-msgstr "Los segmentos tienen diferentes codecs o dimensiones de video"
-
-#: src/video_cut/services/export_service.py:176
-msgid "Segments have different audio codecs"
-msgstr "Los segmentos tienen diferentes codecs de audio"
-
-#: src/video_cut/services/export_service.py:178
-msgid "Segments have different audio channels or sample rates"
-msgstr ""
-"Los segmentos tienen diferentes canales de audio o frecuencias de muestreo"
-
-#: src/video_cut/services/health_service.py:176
+#: src/video_cut/advanced_export_dialog.py:151
 #, python-brace-format
-msgid "FFmpeg multimedia tools are missing ({missing})."
-msgstr "Faltan las herramientas multimedia de FFmpeg ({missing})."
+msgid "Match Source ({w}×{h})"
+msgstr "Coincidir con fuente ({w}×{h})"
 
-#: src/video_cut/services/health_service.py:180
+#: src/video_cut/advanced_export_dialog.py:153
+#: src/video_cut/advanced_export_dialog.py:172
+msgid "Match Source"
+msgstr "Coincidir con fuente"
+
+#: src/video_cut/advanced_export_dialog.py:157
+msgid "4K UHD (3840×2160)"
+msgstr "4K UHD (3840×2160)"
+
+#: src/video_cut/advanced_export_dialog.py:158
+msgid "2K QHD (2560×1440)"
+msgstr "2K QHD (2560×1440)"
+
+#: src/video_cut/advanced_export_dialog.py:159
+msgid "1080p FHD (1920×1080)"
+msgstr "1080p FHD (1920×1080)"
+
+#: src/video_cut/advanced_export_dialog.py:160
+msgid "720p HD (1280×720)"
+msgstr "720p HD (1280×720)"
+
+#: src/video_cut/advanced_export_dialog.py:161
+msgid "480p SD (854×480)"
+msgstr "480p SD (854×480)"
+
+#: src/video_cut/advanced_export_dialog.py:168
+msgid "Frame Rate"
+msgstr "Tasa de Cuadros"
+
+#: src/video_cut/advanced_export_dialog.py:170
+#, python-brace-format
+msgid "Match Source ({fps:.2f} fps)"
+msgstr "Coincidir con fuente ({fps:.2f} fps)"
+
+#: src/video_cut/advanced_export_dialog.py:176
+msgid "60 fps"
+msgstr "60 fps"
+
+#: src/video_cut/advanced_export_dialog.py:177
+msgid "30 fps"
+msgstr "30 fps"
+
+#: src/video_cut/advanced_export_dialog.py:178
+msgid "24 fps"
+msgstr "24 fps"
+
+#: src/video_cut/advanced_export_dialog.py:185
+msgid "Video Codec"
+msgstr "Códec de Vídeo"
+
+#: src/video_cut/advanced_export_dialog.py:190
+msgid "Quality"
+msgstr "Calidad"
+
+#: src/video_cut/advanced_export_dialog.py:192
+msgid "Balanced (CRF 21)"
+msgstr "Equilibrada (CRF 21)"
+
+#: src/video_cut/advanced_export_dialog.py:193
+msgid "High Quality (CRF 18)"
+msgstr "Alta Calidad (CRF 18)"
+
+#: src/video_cut/advanced_export_dialog.py:194
+msgid "Smaller Size (CRF 26)"
+msgstr "Tamaño Menor (CRF 26)"
+
+#: src/video_cut/advanced_export_dialog.py:201
+msgid "Encoding Speed"
+msgstr "Velocidad de Codificación"
+
+#: src/video_cut/advanced_export_dialog.py:203
+msgid "Very Fast (Default)"
+msgstr "Muy Rápido (Predeterminado)"
+
+#: src/video_cut/advanced_export_dialog.py:204
+msgid "Ultrafast"
+msgstr "Ultrarrápido"
+
+#: src/video_cut/advanced_export_dialog.py:205
+msgid "Fast"
+msgstr "Rápido"
+
+#: src/video_cut/advanced_export_dialog.py:206
+msgid "Medium"
+msgstr "Medio"
+
+#: src/video_cut/advanced_export_dialog.py:207
+msgid "Slow"
+msgstr "Lento"
+
+#: src/video_cut/advanced_export_dialog.py:215
+msgid "Audio"
+msgstr "Audio"
+
+#: src/video_cut/advanced_export_dialog.py:221
+msgid "Audio Codec"
+msgstr "Códec de Audio"
+
+#: src/video_cut/advanced_export_dialog.py:226
+msgid "Audio Bitrate"
+msgstr "Tasa de Bits de Audio"
+
+#: src/video_cut/advanced_export_dialog.py:228
+msgid "192 kbps (Default)"
+msgstr "192 kbps (Predeterminado)"
+
+#: src/video_cut/advanced_export_dialog.py:229
+msgid "128 kbps"
+msgstr "128 kbps"
+
+#: src/video_cut/advanced_export_dialog.py:230
+msgid "256 kbps"
+msgstr "256 kbps"
+
+#: src/video_cut/advanced_export_dialog.py:231
+msgid "320 kbps"
+msgstr "320 kbps"
+
+#: src/video_cut/health_dialog.py:27
+msgid "System Health & Setup"
+msgstr "Estado del Sistema y Configuración"
+
+#: src/video_cut/health_dialog.py:47
+msgid "Re-check"
+msgstr "Volver a Comprobar"
+
+#: src/video_cut/health_dialog.py:75
+msgid "FFmpeg Tools"
+msgstr "Herramientas FFmpeg"
+
+#: src/video_cut/health_dialog.py:79
+msgid ".vcut Project File Association"
+msgstr "Asociación de Archivos de Proyecto .vcut"
+
+#: src/video_cut/health_dialog.py:82
+msgid "Desktop File Association"
+msgstr "Asociación de Archivos del Escritorio"
+
+#: src/video_cut/health_dialog.py:117
+msgid "View component details"
+msgstr "Ver detalles del componente"
+
+#: src/video_cut/health_dialog.py:185
+msgid "Details copied to clipboard"
+msgstr "Detalles copiados al portapapeles"
+
+#: src/video_cut/health_dialog.py:196
+msgid "Running system health check..."
+msgstr "Comprobando el estado del sistema..."
+
+#: src/video_cut/health_dialog.py:197
+msgid "Probing FFmpeg and file associations..."
+msgstr "Comprobando FFmpeg y asociaciones de archivos..."
+
+#: src/video_cut/health_dialog.py:215
+msgid "Action Required"
+msgstr "Acción Requerida"
+
+#: src/video_cut/health_dialog.py:216
+msgid "Essential multimedia components are missing or misconfigured."
+msgstr "Faltan componentes multimedia esenciales o están mal configurados."
+
+#: src/video_cut/health_dialog.py:221
+msgid "Configuration Recommended"
+msgstr "Configuración Recomendada"
+
+#: src/video_cut/health_dialog.py:222
+msgid "Video Cut is operational, but file associations can be improved."
+msgstr ""
+"Video Cut está operativo, pero las asociaciones de archivos se pueden "
+"mejorar."
+
+#: src/video_cut/health_dialog.py:227
+msgid "All Systems Operational"
+msgstr "Todos los Sistemas Operativos"
+
+#: src/video_cut/health_dialog.py:228
+msgid "FFmpeg and .vcut file associations are ready."
+msgstr "FFmpeg y las asociaciones de archivos .vcut están listos."
+
+#: src/video_cut/health_dialog.py:265
+msgid "Terminal install command"
+msgstr "Comando de instalación en terminal"
+
+#: src/video_cut/health_dialog.py:274
+msgid "Copy command to clipboard"
+msgstr "Copiar comando al portapapeles"
+
+#: src/video_cut/health_dialog.py:288
+msgid "Command copied to clipboard"
+msgstr "Comando copiado al portapapeles"
+
+#: src/video_cut/health_dialog.py:297
+msgid "FFmpeg Website"
+msgstr "Sitio Web de FFmpeg"
+
+#: src/video_cut/health_dialog.py:339
+msgid "Registering..."
+msgstr "Registrando..."
+
+#: src/video_cut/clipboard_controller.py:222
+#: src/video_cut/clipboard_controller.py:252
+#: src/video_cut/clipboard_controller.py:267
+msgid "Clipboard does not contain any video or image"
+msgstr "El portapapeles no contiene ningún video o imagen"
+
+#: src/video_cut/clipboard_controller.py:233
+msgid "Failed to read image from clipboard"
+msgstr "Error al leer imagen del portapapeles"
+
+#: src/video_cut/segment_card.py:129
+msgid "Drag header to reorder clip"
+msgstr "Arrastre el encabezado para reordenar el clip"
+
+#: src/video_cut/segment_card.py:155
+msgid "This clip has overlays & drawings"
+msgstr "Este clip tiene superposiciones y dibujos"
+
+#: src/video_cut/segment_card.py:168
+msgid "Move clip left (Alt+Left)"
+msgstr "Mover clip a la izquierda (Alt+Izquierda)"
+
+#: src/video_cut/segment_card.py:179
+msgid "Move clip right (Alt+Right)"
+msgstr "Mover clip a la derecha (Alt+Derecha)"
+
+#: src/video_cut/segment_card.py:296 src/video_cut/segment_card.py:426
+msgid "Select"
+msgstr "Seleccionar"
+
+#: src/video_cut/segment_card.py:305
+msgid "Split at Cursor"
+msgstr "Dividir en el Cursor"
+
+#: src/video_cut/segment_card.py:320
+msgid "Crop & Rotate..."
+msgstr "Recortar y Girar..."
+
+#: src/video_cut/segment_card.py:323
+msgid "Overlays & Drawings..."
+msgstr "Superposiciones y Dibujos..."
+
+#: src/video_cut/segment_card.py:329
+msgid "Move Clip Left"
+msgstr "Mover Clip a la Izquierda"
+
+#: src/video_cut/segment_card.py:332
+msgid "Move Clip Right"
+msgstr "Mover Clip a la Derecha"
+
+#: src/video_cut/segment_card.py:423
+msgid "Deselect"
+msgstr "Deseleccionar"
+
+#: src/video_cut/segment_card.py:432
+msgid "Deselect All"
+msgstr "Deseleccionar todo"
+
+#: src/video_cut/keyframe_help_dialog.py:19
+msgid "Keyframes & Lossless Cutting"
+msgstr "Fotogramas clave y Corte sin Pérdidas"
+
+#: src/video_cut/keyframe_help_dialog.py:55
+msgid "What is Lossless Cutting?"
+msgstr "¿Qué es el Corte sin Pérdidas?"
+
+#: src/video_cut/keyframe_help_dialog.py:58
+#, python-format
 msgid ""
-"Video Cut requires FFmpeg and FFprobe to analyze, preview, and export videos.\n"
-"You can install FFmpeg using your system package manager or download it from the official site."
+"Lossless cutting (stream copying) trims and combines videos by copying the "
+"original compressed data packets directly into the new file without decoding"
+" or re-encoding. Because no re-compression takes place, exports are "
+"virtually instantaneous and preserve 100% of the original video and audio "
+"quality."
 msgstr ""
-"Video Cut requiere FFmpeg y FFprobe para analizar, previsualizar y exportar vídeos.\n"
-"Puede instalar FFmpeg usando el administrador de paquetes de su sistema o descargarlo desde el sitio oficial."
+"El corte sin pérdidas (copia directa) recorta y combina videos copiando los "
+"paquetes de datos comprimidos originales directamente al nuevo archivo sin "
+"decodificar ni recodificar. Al no haber recompresión, las exportaciones son "
+"prácticamente instantáneas y conservan el 100% de la calidad original de "
+"video y audio."
 
-#: src/video_cut/services/health_service.py:185
-msgid "Install FFmpeg"
-msgstr "Instalar FFmpeg"
+#: src/video_cut/keyframe_help_dialog.py:68
+msgid "What is a Keyframe?"
+msgstr "¿Qué es un Fotograma clave?"
 
-#: src/video_cut/services/health_service.py:207
-msgid "FFmpeg was found but failed to execute."
-msgstr "Se encontró FFmpeg pero no se pudo ejecutar."
-
-#: src/video_cut/services/health_service.py:211
-msgid "Reinstall FFmpeg"
-msgstr "Reinstalar FFmpeg"
-
-#: src/video_cut/services/health_service.py:219
-msgid "FFmpeg and FFprobe are installed and working."
-msgstr "FFmpeg y FFprobe están instalados y funcionando."
-
-#: src/video_cut/services/health_service.py:270
-#: src/video_cut/services/health_service.py:289
-msgid ".vcut Project Association"
-msgstr "Asociación de Proyectos .vcut"
-
-#: src/video_cut/services/health_service.py:272
-msgid ".vcut projects are registered to open with Video Cut."
-msgstr "Los proyectos .vcut están registrados para abrirse con Video Cut."
-
-#: src/video_cut/services/health_service.py:283
-msgid "MIME type for .vcut is not registered"
-msgstr "El tipo MIME para .vcut no está registrado"
-
-#: src/video_cut/services/health_service.py:285
-msgid "Video Cut is not set as default handler"
-msgstr "Video Cut no está configurado como la aplicación predeterminada"
-
-#: src/video_cut/services/health_service.py:291
-#, python-brace-format
-msgid ".vcut project files are not associated with Video Cut ({reasons})."
-msgstr ""
-"Los archivos de proyecto .vcut no están asociados con Video Cut ({reasons})."
-
-#: src/video_cut/services/health_service.py:295
-#, python-brace-format
+#: src/video_cut/keyframe_help_dialog.py:71
 msgid ""
-"MIME Type: {mime_type}\n"
-"Current detected type for .vcut: {content_type}\n"
-"Current default handler: {handler}\n"
-"\n"
-"Associating .vcut files allows you to open saved projects directly by double-clicking them in your file manager."
+"Modern video formats (such as H.264, HEVC, VP9, and AV1) compress video by "
+"storing full images only occasionally (Keyframes or I-frames), while "
+"intermediate frames only record differences between frames. A keyframe is a "
+"complete, standalone picture that can be decoded independently."
 msgstr ""
-"Tipo MIME: {mime_type}\n"
-"Tipo detectado actual para .vcut: {content_type}\n"
-"Aplicación predeterminada actual: {handler}\n"
-"\n"
-"Asociar archivos .vcut le permite abrir proyectos guardados directamente haciendo doble clic en ellos en su administrador de archivos."
+"Los formatos de video modernos (como H.264, HEVC, VP9 y AV1) comprimen video"
+" almacenando imágenes completas solo ocasionalmente (Fotogramas clave o "
+"I-frames), mientras que los fotogramas intermedios solo guardan diferencias."
+" Un fotograma clave es una imagen completa e independiente que se decodifica"
+" por sí sola."
 
-#: src/video_cut/services/health_service.py:302
-#: src/video_cut/services/health_service.py:441
-msgid "None"
-msgstr "Ninguno"
+#: src/video_cut/keyframe_help_dialog.py:86
+msgid "Advantages of Lossless Cutting"
+msgstr "Ventajas del Corte sin Pérdidas"
 
-#: src/video_cut/services/health_service.py:318
-msgid "MIME XML resource file not found."
-msgstr "No se encontró el archivo de recursos MIME XML."
+#: src/video_cut/keyframe_help_dialog.py:90
+msgid "Blazing Fast Speed"
+msgstr "Velocidad ultrarrápida"
 
-#: src/video_cut/services/health_service.py:391
-msgid "Successfully registered .vcut file association!"
-msgstr "¡Asociación de archivos .vcut registrada con éxito!"
-
-#: src/video_cut/services/health_service.py:393
-#, python-brace-format
-msgid "Failed to register file association: {error}"
-msgstr "Error al registrar la asociación de archivos: {error}"
-
-#: src/video_cut/services/health_service.py:431
-#: src/video_cut/services/health_service.py:455
-#: src/video_cut/services/health_service.py:478
-msgid "Multimedia Codecs"
-msgstr "Códecs Multimedia"
-
-#: src/video_cut/services/health_service.py:433
-#, python-brace-format
-msgid "Essential codecs ({missing}) are missing from FFmpeg."
-msgstr "Faltan códecs esenciales ({missing}) en FFmpeg."
-
-#: src/video_cut/services/health_service.py:437
-#, python-brace-format
+#: src/video_cut/keyframe_help_dialog.py:92
 msgid ""
-"Installed encoders: {installed}\n"
-"Missing essential codecs: {essential}\n"
-"Install recommended package: {pkg}"
+"Exports complete in seconds because video and audio packets are copied "
+"directly without re-encoding."
 msgstr ""
-"Codificadores instalados: {installed}\n"
-"Faltan códecs esenciales: {essential}\n"
-"Instale el paquete recomendado: {pkg}"
+"Las exportaciones se completan en segundos porque los paquetes de video y "
+"audio se copian directamente sin recodificar."
 
-#: src/video_cut/services/health_service.py:447
-msgid "Install Codecs"
-msgstr "Instalar Códecs"
+#: src/video_cut/keyframe_help_dialog.py:99
+msgid "100% Quality Preserved"
+msgstr "100% de calidad preservada"
 
-#: src/video_cut/services/health_service.py:457
-#, python-brace-format
-msgid "Standard codecs available; some optional codecs missing ({missing})."
-msgstr ""
-"Códecs estándar disponibles; faltan algunos códecs opcionales ({missing})."
-
-#: src/video_cut/services/health_service.py:461
-#, python-brace-format
+#: src/video_cut/keyframe_help_dialog.py:101
 msgid ""
-"Available codecs: {installed}\n"
-"Optional missing codecs: {optional}\n"
-"To enable them, install: {pkg}"
+"Zero generation loss or compression artifacts. Every pixel and audio sample "
+"remains untouched."
 msgstr ""
-"Códecs disponibles: {installed}\n"
-"Códecs opcionales faltantes: {optional}\n"
-"Para habilitarlos, instale: {pkg}"
+"Cero pérdida de generación o artefactos de compresión. Cada píxel y muestra "
+"de audio permanece intacto."
 
-#: src/video_cut/services/health_service.py:480
-msgid "All recommended video and audio codecs are available."
-msgstr "Todos los códecs de vídeo y audio recomendados están disponibles."
+#: src/video_cut/keyframe_help_dialog.py:108
+msgid "Minimal CPU and Battery Usage"
+msgstr "Uso mínimo de CPU y batería"
+
+#: src/video_cut/keyframe_help_dialog.py:110
+msgid ""
+"Bypasses intensive CPU/GPU rendering, keeping your computer cool and "
+"preserving laptop battery."
+msgstr ""
+"Evita la renderización intensiva de CPU/GPU, manteniendo su equipo fresco y "
+"ahorrando batería en portátiles."
+
+#: src/video_cut/keyframe_help_dialog.py:118
+msgid "Disadvantages of Lossless Cutting"
+msgstr "Desventajas del Corte sin Pérdidas"
+
+#: src/video_cut/keyframe_help_dialog.py:122
+msgid "Cuts Must Align to Keyframes"
+msgstr "Los cortes deben alinearse con fotogramas clave"
+
+#: src/video_cut/keyframe_help_dialog.py:125
+msgid ""
+"Intermediate frames depend on surrounding images and cannot be split mid-"
+"stream without re-encoding. All cuts snap to the nearest keyframe."
+msgstr ""
+"Los fotogramas intermedios dependen de imágenes cercanas y no pueden "
+"dividirse a mitad de flujo sin recodificar. Todos los cortes se ajustan al "
+"fotograma clave más cercano."
+
+#: src/video_cut/keyframe_help_dialog.py:134
+msgid "No Re-encoding Filters"
+msgstr "Sin filtros de recodificación"
+
+#: src/video_cut/keyframe_help_dialog.py:137
+msgid ""
+"Transformations that alter pixels—such as rotation, cropping, flipping, and "
+"text or graphic overlays—require re-encoding and cannot be applied."
+msgstr ""
+"Las transformaciones que alteran píxeles — como rotación, recorte, volteo y "
+"superposiciones de texto o gráficos — requieren recodificación y no se "
+"pueden aplicar."
+
+#: src/video_cut/keyframe_help_dialog.py:146
+msgid "Matching Codecs Required"
+msgstr "Codecs compatibles requeridos"
+
+#: src/video_cut/keyframe_help_dialog.py:149
+msgid ""
+"When combining multiple clips, all segments must share compatible video and "
+"audio formats, codecs, and dimensions."
+msgstr ""
+"Al combinar varios clips, todos los segmentos deben compartir formatos, "
+"codecs y dimensiones de video y audio compatibles."
+
+#: src/video_cut/crop_rotate_dialog.py:55
+msgid "Free"
+msgstr "Libre"
+
+#: src/video_cut/crop_rotate_dialog.py:57
+msgid "Original"
+msgstr "Original"
+
+#: src/video_cut/crop_rotate_dialog.py:64
+msgid "Freeform (unconstrained)"
+msgstr "Libre (sin restricciones)"
+
+#: src/video_cut/crop_rotate_dialog.py:66
+msgid "Original aspect ratio"
+msgstr "Proporción original"
+
+#: src/video_cut/crop_rotate_dialog.py:68
+msgid "16:9 Widescreen"
+msgstr "16:9 Panorámico"
+
+#: src/video_cut/crop_rotate_dialog.py:70
+msgid "9:16 Vertical"
+msgstr "9:16 Vertical"
+
+#: src/video_cut/crop_rotate_dialog.py:72
+msgid "1:1 Square"
+msgstr "1:1 Cuadrado"
+
+#: src/video_cut/crop_rotate_dialog.py:74
+msgid "4:3 Standard"
+msgstr "4:3 Estándar"
+
+#: src/video_cut/crop_rotate_dialog.py:76
+msgid "3:4 Vertical Standard"
+msgstr "3:4 Vertical Estándar"
+
+#: src/video_cut/crop_rotate_dialog.py:78
+msgid "21:9 Ultrawide"
+msgstr "21:9 Ultrawide"
+
+#: src/video_cut/crop_rotate_dialog.py:80
+msgid "9:21 Vertical Ultrawide"
+msgstr "9:21 Ultrawide Vertical"
+
+#: src/video_cut/crop_rotate_dialog.py:169
+#, python-brace-format
+msgid "Crop & Rotate — {name}"
+msgstr "Recortar y Girar — {name}"
+
+#: src/video_cut/crop_rotate_dialog.py:466
+msgid "Rotate 90° Counter-Clockwise"
+msgstr "Girar 90° en sentido antihorario"
+
+#: src/video_cut/crop_rotate_dialog.py:471
+msgid "Rotate 90° Clockwise"
+msgstr "Girar 90° en sentido horario"
+
+#: src/video_cut/crop_rotate_dialog.py:476
+msgid "Flip Horizontally"
+msgstr "Voltear Horizontalmente"
+
+#: src/video_cut/crop_rotate_dialog.py:481
+msgid "Flip Vertically"
+msgstr "Voltear Verticalmente"
+
+#: src/video_cut/crop_rotate_dialog.py:487
+msgid "Reset"
+msgstr "Restablecer"
+
+#: src/video_cut/crop_rotate_dialog.py:488
+msgid "Reset crop, rotation, and flip"
+msgstr "Restablecer recorte, rotación y volteo"
+
+#: src/video_cut/crop_rotate_dialog.py:499
+msgid "Aspect Ratio:"
+msgstr "Relación de aspecto:"
+
+#: src/video_cut/crop_rotate_dialog.py:532
+msgid " • Flip H+V"
+msgstr " • Volteo H+V"
+
+#: src/video_cut/crop_rotate_dialog.py:534
+msgid " • Flip H"
+msgstr " • Volteo H"
+
+#: src/video_cut/crop_rotate_dialog.py:536
+msgid " • Flip V"
+msgstr " • Volteo V"
+
+#: src/video_cut/crop_rotate_dialog.py:539
+#, python-brace-format
+msgid "Crop: {crop_w} × {crop_h} px ({preset}){rot_str}{flip_str}"
+msgstr "Recorte: {crop_w} × {crop_h} px ({preset}){rot_str}{flip_str}"
+
+#~ msgid "System Components and Configuration"
+#~ msgstr "Componentes y Configuración del Sistema"
+
+#~ msgid "Multimedia Video and Audio Codecs"
+#~ msgstr "Códecs Multimedia de Vídeo y Audio"
+
+#~ msgid "Probing FFmpeg, file associations, and multimedia codecs..."
+#~ msgstr "Comprobando FFmpeg, asociaciones de archivos y códecs multimedia..."
+
+#~ msgid ""
+#~ "Video Cut is operational, but some features or associations can be improved."
+#~ msgstr ""
+#~ "Video Cut está operativo, pero algunas funciones o asociaciones se pueden "
+#~ "mejorar."
+
+#~ msgid "FFmpeg, .vcut file associations, and multimedia codecs are ready."
+#~ msgstr ""
+#~ "FFmpeg, las asociaciones de archivos .vcut y los códecs multimedia están "
+#~ "listos."
+
+#~ msgid "Install Command"
+#~ msgstr "Comando de Instalación"
+
+#~ msgid "Run this command in your terminal:"
+#~ msgstr "Ejecute este comando en su terminal:"
+
+#~ msgid "Official Website"
+#~ msgstr "Sitio Web Oficial"
+
+#~ msgid "Download binaries or source:"
+#~ msgstr "Descargar binarios o código fuente:"
 
 #~ msgid "Generating thumbnails..."
 #~ msgstr "Generando miniaturas..."

@@ -483,10 +483,13 @@ class HealthService:
         )
 
     @classmethod
-    def run_all_checks(cls) -> list[HealthCheckItem]:
+    def run_all_checks(cls, include_codecs: bool = False) -> list[HealthCheckItem]:
         """Execute all health probes."""
-        return [
+        items = [
             cls.check_ffmpeg(),
             cls.check_file_association(),
-            cls.check_codecs(),
         ]
+        if include_codecs:
+            items.append(cls.check_codecs())
+        return items
+

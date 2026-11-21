@@ -7,7 +7,7 @@ import pytest
 
 gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
-from gi.repository import Adw
+from gi.repository import Adw, Gtk
 
 from video_cut.health_dialog import HealthCheckDialog
 from video_cut.i18n import _
@@ -21,14 +21,15 @@ def init_gtk():
 
 
 def test_health_dialog_init():
-    """Test dialog initialization, widgets creation, and layout."""
+    """Test dialog initialization, widgets creation, and layout with visual groups."""
     dialog = HealthCheckDialog()
     assert dialog.get_title() == _("System Health & Setup")
     assert dialog.get_modal() is True
     assert dialog.row_overall is not None
+    assert dialog.grp_ffmpeg is not None
     assert dialog.row_ffmpeg is not None
+    assert dialog.grp_association is not None
     assert dialog.row_association is not None
-    assert dialog.row_codecs is not None
     dialog.destroy()
 
 
@@ -39,19 +40,19 @@ def test_health_dialog_apply_all_ok():
     items = [
         HealthCheckItem(id="ffmpeg", title="FFmpeg", status="ok", summary="Working", details="ffmpeg v6.1"),
         HealthCheckItem(id="file_association", title="Association", status="ok", summary="Registered", details="Default"),
-        HealthCheckItem(id="codecs", title="Codecs", status="ok", summary="All codecs ready", details="h264, aac"),
     ]
 
     dialog._apply_results(items)
     assert dialog.row_overall.get_title() == _("All Systems Operational")
     assert dialog.row_ffmpeg.get_subtitle() == "Working"
     assert dialog.row_association.get_subtitle() == "Registered"
-    assert dialog.row_codecs.get_subtitle() == "All codecs ready"
+    assert dialog._suffix_ffmpeg is not None
+    assert dialog._suffix_association is not None
     dialog.destroy()
 
 
 def test_health_dialog_apply_warning_and_error():
-    """Test dialog UI when errors and warnings are present."""
+    """Test dialog UI when errors and warnings are present with inline fix widgets."""
     dialog = HealthCheckDialog()
 
     items_err = [
@@ -74,23 +75,38 @@ def test_health_dialog_apply_warning_and_error():
             can_fix=True,
             fix_type="automated",
         ),
-        HealthCheckItem(
-            id="codecs",
-            title="Codecs",
-            status="warning",
-            summary="Optional missing",
-            details="Missing hevc",
-            fix_command="sudo apt install ubuntu-restricted-extras",
-        ),
     ]
 
     dialog._apply_results(items_err)
     assert dialog.row_overall.get_title() == _("Action Required")
     assert dialog.row_ffmpeg.get_subtitle() == "FFmpeg missing"
     assert dialog.row_association.get_subtitle() == "Not registered"
-    assert dialog._row_ffmpeg_cmd is not None
-    assert dialog._row_ffmpeg_web is not None
-    assert dialog._row_codecs_cmd is not None
+
+    # Verify inline fix controls in FFmpeg row suffix
+    assert dialog._suffix_ffmpeg is not None
+    ffmpeg_children: list[Gtk.Widget] = []
+    child = dialog._suffix_ffmpeg.get_first_child()
+    while child is not None:
+        ffmpeg_children.append(child)
+        child = child.get_next_sibling()
+
+    # Should contain Entry, Copy button, Website button, and Info MenuButton
+    assert any(isinstance(w, Gtk.Entry) for w in ffmpeg_children)
+    assert any(isinstance(w, Gtk.Button) and not isinstance(w, Gtk.MenuButton) for w in ffmpeg_children)
+    assert any(isinstance(w, Gtk.MenuButton) for w in ffmpeg_children)
+
+    # Verify inline fix controls in Association row suffix
+    assert dialog._suffix_association is not None
+    assoc_children: list[Gtk.Widget] = []
+    child = dialog._suffix_association.get_first_child()
+    while child is not None:
+        assoc_children.append(child)
+        child = child.get_next_sibling()
+
+    # Should contain Fix Button and Info MenuButton
+    assert any(isinstance(w, Gtk.Button) and not isinstance(w, Gtk.MenuButton) for w in assoc_children)
+    assert any(isinstance(w, Gtk.MenuButton) for w in assoc_children)
+
     dialog.destroy()
 
 
