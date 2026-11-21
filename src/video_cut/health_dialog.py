@@ -31,6 +31,10 @@ class HealthCheckDialog(Adw.Window):
         self._items: list[HealthCheckItem] = []
 
         # Dynamic subrow references
+        self._updating_source: bool = False
+        self.row_ffmpeg_source: Adw.ComboRow | None = None
+        self.row_ffmpeg_manual: Adw.ActionRow | None = None
+        self._entry_manual_path: Gtk.Entry | None = None
         self._row_ffmpeg_cmd: Adw.ActionRow | None = None
         self._row_ffmpeg_web: Adw.ActionRow | None = None
         self._row_hwaccel_table: Adw.PreferencesRow | None = None
@@ -83,6 +87,52 @@ class HealthCheckDialog(Adw.Window):
         self.row_ffmpeg = Adw.ActionRow(title=_("FFmpeg Tools"))
         self.grp_ffmpeg.add(self.row_ffmpeg)
 
+        self.row_ffmpeg_source = Adw.ComboRow(
+            title=_("FFmpeg Source"),
+            subtitle=_("Choose between automatic smart resolution, container bundled, or system FFmpeg"),
+        )
+        source_model = Gtk.StringList.new([
+            _("Auto (Recommended)"),
+            _("Container (Bundled)"),
+            _("System"),
+            _("Manual (Custom Path)"),
+        ])
+        self.row_ffmpeg_source.set_model(source_model)
+        source_map = {"auto": 0, "container": 1, "system": 2, "manual": 3}
+        current_src = HealthService.get_ffmpeg_source()
+        self.row_ffmpeg_source.set_selected(source_map.get(current_src, 0))
+        self.row_ffmpeg_source.connect("notify::selected", self._on_ffmpeg_source_selected)
+        self.grp_ffmpeg.add(self.row_ffmpeg_source)
+
+        # Manual path row (visible only when source is 'manual')
+        self.row_ffmpeg_manual = Adw.ActionRow(
+            title=_("Custom FFmpeg Executable"),
+            subtitle=_("Specify the full path to a custom ffmpeg binary"),
+        )
+        box_manual = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
+        box_manual.set_valign(Gtk.Align.CENTER)
+
+        self._entry_manual_path = Gtk.Entry()
+        self._entry_manual_path.set_text(HealthService.get_custom_ffmpeg_path())
+        self._entry_manual_path.set_width_chars(30)
+        self._entry_manual_path.set_hexpand(True)
+        self._entry_manual_path.set_placeholder_text("/usr/local/bin/ffmpeg")
+        self._entry_manual_path.connect("activate", self._on_manual_path_submitted)
+        box_manual.append(self._entry_manual_path)
+
+        btn_browse = Gtk.Button()
+        content_browse = Adw.ButtonContent(
+            icon_name="document-open-symbolic",
+            label=_("Browse..."),
+        )
+        btn_browse.set_child(content_browse)
+        btn_browse.connect("clicked", self._on_browse_manual_path_clicked)
+        box_manual.append(btn_browse)
+
+        self.row_ffmpeg_manual.add_suffix(box_manual)
+        self.row_ffmpeg_manual.set_visible(current_src == "manual")
+        self.grp_ffmpeg.add(self.row_ffmpeg_manual)
+
         # 3. Hardware Acceleration Group
         self.grp_hwaccel = Adw.PreferencesGroup(
             title=_("Hardware Acceleration"),
@@ -124,6 +174,64 @@ class HealthCheckDialog(Adw.Window):
 
     def _on_startup_check_toggled(self, row: Adw.SwitchRow, _param: object) -> None:
         HealthService.set_check_on_startup_enabled(row.get_active())
+
+    def _on_ffmpeg_source_selected(self, _row: Adw.ComboRow, _param: object) -> None:
+        if self._updating_source or not self.row_ffmpeg_source:
+            return
+        idx = self.row_ffmpeg_source.get_selected()
+        sources = ["auto", "container", "system", "manual"]
+        new_source = sources[idx] if idx < len(sources) else "auto"
+        if self.row_ffmpeg_manual:
+            self.row_ffmpeg_manual.set_visible(new_source == "manual")
+        HealthService.set_ffmpeg_source(new_source)
+        self.refresh_checks()
+
+    def _on_manual_path_submitted(self, entry: Gtk.Entry) -> None:
+        path = entry.get_text().strip()
+        HealthService.set_custom_ffmpeg_path(path)
+        self.refresh_checks()
+
+    def _on_browse_manual_path_clicked(self, _btn: Gtk.Button) -> None:
+        if hasattr(Gtk, "FileDialog"):
+            dialog = Gtk.FileDialog(title=_("Select FFmpeg Executable"))
+
+            def on_file_selected(_dialog: Gtk.FileDialog, res: Gio.AsyncResult) -> None:
+                try:
+                    file = dialog.open_finish(res)
+                    if file:
+                        path = file.get_path()
+                        if path:
+                            if self._entry_manual_path:
+                                self._entry_manual_path.set_text(path)
+                            HealthService.set_custom_ffmpeg_path(path)
+                            self.refresh_checks()
+                except Exception:
+                    pass
+
+            dialog.open(self, None, on_file_selected)
+        else:
+            chooser = Gtk.FileChooserNative.new(
+                _("Select FFmpeg Executable"),
+                self,
+                Gtk.FileChooserAction.OPEN,
+                _("Select"),
+                _("Cancel"),
+            )
+
+            def on_response(dlg: Gtk.FileChooserNative, response_id: int) -> None:
+                if response_id == Gtk.ResponseType.ACCEPT:
+                    file = dlg.get_file()
+                    if file:
+                        path = file.get_path()
+                        if path:
+                            if self._entry_manual_path:
+                                self._entry_manual_path.set_text(path)
+                            HealthService.set_custom_ffmpeg_path(path)
+                            self.refresh_checks()
+                dlg.destroy()
+
+            chooser.connect("response", on_response)
+            chooser.show()
 
     def _show_toast(self, text: str, timeout: int = 2) -> None:
         toast = Adw.Toast.new(text)
@@ -388,10 +496,30 @@ class HealthCheckDialog(Adw.Window):
 
     def _update_ffmpeg_row(self, item: HealthCheckItem) -> None:
         self.row_ffmpeg.set_subtitle(item.summary)
-        icon_name = "object-select-symbolic" if item.status == "ok" else "dialog-error-symbolic"
+        icon_name = (
+            "object-select-symbolic" if item.status == "ok"
+            else "dialog-warning-symbolic" if item.status == "warning"
+            else "dialog-error-symbolic"
+        )
         icon = Gtk.Image.new_from_icon_name(icon_name)
-        icon.add_css_class("success" if item.status == "ok" else "error")
+        icon.add_css_class(
+            "success" if item.status == "ok"
+            else "warning" if item.status == "warning"
+            else "error"
+        )
         self._set_row_prefix(self.row_ffmpeg, "_prefix_ffmpeg", icon)
+
+        if self.row_ffmpeg_source:
+            info = HealthService.get_active_ffmpeg_info()
+            eff_src = info.get("effective_source", "system")
+            cfg_src = info.get("configured_source", "auto")
+            binary_path = info.get("ffmpeg_path", "")
+            if cfg_src == "auto":
+                eff_label = _("Container") if eff_src == "container" else (_("System") if eff_src == "system" else _("Manual"))
+                sub = f"{binary_path} ({_('Auto: {src}').format(src=eff_label)})"
+            else:
+                sub = binary_path
+            self.row_ffmpeg_source.set_subtitle(sub)
 
         if hasattr(self, "_suffix_ffmpeg") and self._suffix_ffmpeg:
             self.row_ffmpeg.remove(self._suffix_ffmpeg)

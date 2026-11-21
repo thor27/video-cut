@@ -228,3 +228,128 @@ def test_get_codecs_overview_problems_first():
         assert last_missing_idx < first_available_idx
 
 
+def test_parse_ffmpeg_version():
+    """Test parsing major and minor versions from ffmpeg -version first line."""
+    from video_cut.utils import parse_ffmpeg_version
+
+    assert parse_ffmpeg_version("ffmpeg version 6.1.1-1ubuntu1 Copyright (c) 2000-2023") == (6, 1)
+    assert parse_ffmpeg_version("ffmpeg version n5.1.2 Copyright (c) 2000-2022") == (5, 1)
+    assert parse_ffmpeg_version("ffmpeg version 4.4.2-0ubuntu0.22.04.1") == (4, 4)
+    assert parse_ffmpeg_version("ffmpeg version 4.3 Copyright (c) 2000-2020") == (4, 3)
+    assert parse_ffmpeg_version("ffmpeg version 4.2.7-0ubuntu0.1") == (4, 2)
+    assert parse_ffmpeg_version("ffmpeg version 7.0-static https://johnvansickle.com/") == (7, 0)
+    assert parse_ffmpeg_version("ffmpeg version 2024-05-02-git-5f7823b127-full_build") == (2024, 5)
+    assert parse_ffmpeg_version("ffmpeg version N-112345-gabcdef") == (99, 0)
+    assert parse_ffmpeg_version("invalid version string") is None
+    assert parse_ffmpeg_version("") is None
+
+
+def test_ffmpeg_source_get_set(tmp_path: Path):
+    """Test getting and setting ffmpeg source and custom path."""
+    with patch("pathlib.Path.home", return_value=tmp_path):
+        assert HealthService.get_ffmpeg_source() == "auto"
+        HealthService.set_ffmpeg_source("system")
+        assert HealthService.get_ffmpeg_source() == "system"
+        HealthService.set_ffmpeg_source("container")
+        assert HealthService.get_ffmpeg_source() == "container"
+        HealthService.set_ffmpeg_source("manual")
+        assert HealthService.get_ffmpeg_source() == "manual"
+
+        assert HealthService.get_custom_ffmpeg_path() == ""
+        HealthService.set_custom_ffmpeg_path("/opt/my-ffmpeg/bin/ffmpeg")
+        assert HealthService.get_custom_ffmpeg_path() == "/opt/my-ffmpeg/bin/ffmpeg"
+
+
+def test_resolve_ffmpeg_binaries_manual(tmp_path: Path):
+    """Test resolve_ffmpeg_binaries in manual mode."""
+    from video_cut.utils import resolve_ffmpeg_binaries
+
+    custom_bin = tmp_path / "custom_ffmpeg"
+    custom_bin.write_text("#!/bin/sh\n", encoding="utf-8")
+    custom_bin.chmod(0o755)
+
+    custom_probe = tmp_path / "ffprobe"
+    custom_probe.write_text("#!/bin/sh\n", encoding="utf-8")
+    custom_probe.chmod(0o755)
+
+    ff, probe, eff_src, note = resolve_ffmpeg_binaries(source="manual", custom_path=str(custom_bin))
+    assert ff == str(custom_bin)
+    assert probe == str(custom_probe)
+    assert eff_src == "manual"
+
+
+def test_resolve_ffmpeg_binaries_container_fallback_to_system():
+    """Test container source falls back to system if not running inside a container."""
+    from video_cut.utils import resolve_ffmpeg_binaries
+
+    with patch("video_cut.utils.get_container_ffmpeg_path", return_value=None), \
+         patch("video_cut.utils.get_system_ffmpeg_path", return_value="/usr/bin/ffmpeg"), \
+         patch("video_cut.utils.get_system_ffprobe_path", return_value="/usr/bin/ffprobe"):
+        ff, probe, eff_src, note = resolve_ffmpeg_binaries(source="container")
+        assert ff == "/usr/bin/ffmpeg"
+        assert eff_src == "system"
+
+
+def test_resolve_ffmpeg_binaries_auto_hwaccel():
+    """Test auto mode prefers system FFmpeg when it has hardware acceleration and essential codecs."""
+    from video_cut.utils import resolve_ffmpeg_binaries
+
+    with patch("video_cut.utils.get_container_ffmpeg_path", return_value="/appdir/usr/bin/ffmpeg"), \
+         patch("video_cut.utils.get_container_ffprobe_path", return_value="/appdir/usr/bin/ffprobe"), \
+         patch("video_cut.utils.get_system_ffmpeg_path", return_value="/usr/bin/ffmpeg"), \
+         patch("video_cut.utils.get_system_ffprobe_path", return_value="/usr/bin/ffprobe"), \
+         patch("subprocess.run") as mock_run, \
+         patch("video_cut.utils.probe_binary_encoders", return_value={"libx264", "aac", "h264_vaapi"}):
+        mock_run.return_value = MagicMock(returncode=0, stdout="ffmpeg version 6.1.1\n")
+        ff, probe, eff_src, note = resolve_ffmpeg_binaries(source="auto")
+        assert ff == "/usr/bin/ffmpeg"
+        assert eff_src == "system"
+        assert "hardware acceleration" in (note or "")
+
+
+def test_resolve_ffmpeg_binaries_auto_degraded_codecs():
+    """Test auto mode prefers container when system FFmpeg lacks essential codecs (e.g. ffmpeg-free)."""
+    from video_cut.utils import resolve_ffmpeg_binaries
+
+    with patch("video_cut.utils.get_container_ffmpeg_path", return_value="/appdir/usr/bin/ffmpeg"), \
+         patch("video_cut.utils.get_container_ffprobe_path", return_value="/appdir/usr/bin/ffprobe"), \
+         patch("video_cut.utils.get_system_ffmpeg_path", return_value="/usr/bin/ffmpeg"), \
+         patch("video_cut.utils.get_system_ffprobe_path", return_value="/usr/bin/ffprobe"), \
+         patch("subprocess.run") as mock_run, \
+         patch("video_cut.utils.probe_binary_encoders", return_value={"aac", "h264_vaapi"}):  # Missing libx264!
+        mock_run.return_value = MagicMock(returncode=0, stdout="ffmpeg version 6.1.1\n")
+        ff, probe, eff_src, note = resolve_ffmpeg_binaries(source="auto")
+        assert ff == "/appdir/usr/bin/ffmpeg"
+        assert eff_src == "container"
+        assert "essential codecs" in (note or "")
+
+
+def test_resolve_ffmpeg_binaries_auto_outdated_version():
+    """Test auto mode prefers container when system FFmpeg version is < 4.3."""
+    from video_cut.utils import resolve_ffmpeg_binaries
+
+    with patch("video_cut.utils.get_container_ffmpeg_path", return_value="/appdir/usr/bin/ffmpeg"), \
+         patch("video_cut.utils.get_container_ffprobe_path", return_value="/appdir/usr/bin/ffprobe"), \
+         patch("video_cut.utils.get_system_ffmpeg_path", return_value="/usr/bin/ffmpeg"), \
+         patch("video_cut.utils.get_system_ffprobe_path", return_value="/usr/bin/ffprobe"), \
+         patch("subprocess.run") as mock_run, \
+         patch("video_cut.utils.probe_binary_encoders", return_value={"libx264", "aac", "h264_vaapi"}):
+        mock_run.return_value = MagicMock(returncode=0, stdout="ffmpeg version 3.4.8\n")
+        ff, probe, eff_src, note = resolve_ffmpeg_binaries(source="auto")
+        assert ff == "/appdir/usr/bin/ffmpeg"
+        assert eff_src == "container"
+        assert "older than required" in (note or "")
+
+
+def test_check_ffmpeg_outdated_warning():
+    """Test check_ffmpeg returns warning status when version is < 4.3."""
+    with patch("shutil.which", return_value="/usr/bin/ffmpeg"), \
+         patch("subprocess.run") as mock_run:
+        mock_run.return_value = MagicMock(returncode=0, stdout="ffmpeg version 3.4.8\n")
+        item = HealthService.check_ffmpeg()
+        assert item.status == "warning"
+        assert "3.4" in item.summary
+        assert item.can_fix is True
+
+
+

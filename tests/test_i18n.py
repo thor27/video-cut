@@ -96,6 +96,10 @@ def test_translations_pt_br():
     assert _("Export Failed") == "Falha na exportação"
     assert _("Copy Details") == "Copiar detalhes"
     assert _("FFmpeg Operation Failed") == "Falha na operação do FFmpeg"
+    assert _("FFmpeg Source") == "Origem do FFmpeg"
+    assert _("Auto (Recommended)") == "Automático (Recomendado)"
+    assert _("Container (Bundled)") == "Contêiner (Integrado)"
+    assert _("Manual (Custom Path)") == "Manual (Caminho Personalizado)"
 
 
 def test_translations_es():
@@ -138,6 +142,10 @@ def test_translations_es():
     assert _("Export Failed") == "Error al exportar"
     assert _("Copy Details") == "Copiar detalles"
     assert _("FFmpeg Operation Failed") == "Error en la operación de FFmpeg"
+    assert _("FFmpeg Source") == "Origen de FFmpeg"
+    assert _("Auto (Recommended)") == "Automático (Recomendado)"
+    assert _("Container (Bundled)") == "Contenedor (Integrado)"
+    assert _("Manual (Custom Path)") == "Manual (Ruta Personalizada)"
 
 
 def test_translations_fr():
@@ -181,6 +189,10 @@ def test_translations_fr():
     assert _("Export Failed") == "Échec de l'exportation"
     assert _("Copy Details") == "Copier les détails"
     assert _("FFmpeg Operation Failed") == "Échec de l'opération FFmpeg"
+    assert _("FFmpeg Source") == "Source de FFmpeg"
+    assert _("Auto (Recommended)") == "Automatique (Recommandé)"
+    assert _("Container (Bundled)") == "Conteneur (Intégré)"
+    assert _("Manual (Custom Path)") == "Manuel (Chemin Personnalisé)"
 
 
 def test_translations_en_us():
@@ -214,6 +226,10 @@ def test_translations_en_us():
     assert _("Export Failed") == "Export Failed"
     assert _("Copy Details") == "Copy Details"
     assert _("FFmpeg Operation Failed") == "FFmpeg Operation Failed"
+    assert _("FFmpeg Source") == "FFmpeg Source"
+    assert _("Auto (Recommended)") == "Auto (Recommended)"
+    assert _("Container (Bundled)") == "Container (Bundled)"
+    assert _("Manual (Custom Path)") == "Manual (Custom Path)"
 
 
 def test_fallback_unsupported_language():
