@@ -328,7 +328,11 @@ class HealthService:
                 current_handler = app_id
                 executable = app_info.get_executable() or ""
                 desktop_file = app_info.get_filename() if hasattr(app_info, "get_filename") else None
-                desktop_exists = bool(not desktop_file or Path(desktop_file).exists())
+                desktop_exists = (
+                    Path(desktop_file).exists()
+                    if isinstance(desktop_file, str) and desktop_file
+                    else True
+                )
                 executable_exists = bool(shutil.which(executable) or (executable and Path(executable).exists()))
                 if (APP_ID in app_id or "video-cut" in app_id.lower()) and executable_exists and desktop_exists:
                     handler_valid = True
