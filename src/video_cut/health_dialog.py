@@ -679,7 +679,7 @@ class StartupHealthAlertModal(Adw.Window):
         on_open_setup: Callable[[], None] | None = None,
     ) -> None:
         super().__init__(transient_for=parent, modal=True)
-        self.set_title(_("System Setup Recommended"))
+        self.set_title(_("Video Cut"))
         self.set_default_size(520, -1)
         self.set_resizable(False)
 
@@ -693,7 +693,7 @@ class StartupHealthAlertModal(Adw.Window):
         self.set_content(toolbar_view)
 
         header_bar = Adw.HeaderBar()
-        header_bar.set_show_title(True)
+        header_bar.set_show_title(False)
         header_bar.set_show_end_title_buttons(False)
         header_bar.set_show_start_title_buttons(False)
         toolbar_view.add_top_bar(header_bar)
