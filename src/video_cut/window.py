@@ -17,6 +17,7 @@ from . import __version__
 from .advanced_export_dialog import AdvancedExportDialog
 from .clipboard_controller import ClipboardController, parse_uri_list
 from .crop_rotate_dialog import CropRotateDialog
+from .ffmpeg_error_dialog import FFmpegErrorDialog
 from .i18n import _
 from .image_import_dialog import ImageImportDialog
 from .keyframe_help_dialog import KeyframeHelpDialog
@@ -1586,7 +1587,15 @@ class MainWindow(Adw.ApplicationWindow):
             if error or not converted_video:
                 modal.finish()
                 if str(error) != "Conversion cancelled":
-                    self._show_toast(_("Failed to convert image: {error}").format(error=error or _("Unknown error")))
+                    self._show_ffmpeg_error_dialog(
+                        title=_("Image Conversion Failed"),
+                        heading=_("Failed to Import Image"),
+                        message=_(
+                            "An error occurred while converting the image to video. "
+                            "The complete command output is shown below:"
+                        ),
+                        error_details=str(error or _("Unknown error")),
+                    )
                 if on_done_callback:
                     on_done_callback()
                 return
@@ -2090,7 +2099,18 @@ class MainWindow(Adw.ApplicationWindow):
                 self._show_toast(msg)
                 self._open_in_default_player(destination)
             else:
-                self._show_toast(_("Export failed: {error}").format(error=error or _("Unknown error")))
+                if error == "Export cancelled by user":
+                    self._show_toast(_("Export cancelled"))
+                else:
+                    self._show_ffmpeg_error_dialog(
+                        title=_("Export Failed"),
+                        heading=_("Export Operation Failed"),
+                        message=_(
+                            "FFmpeg encountered an error while exporting the video. "
+                            "The complete command output is shown below:"
+                        ),
+                        error_details=error or _("Unknown error occurred during export."),
+                    )
 
         export_segments = list(self.timeline.segments)
         if is_lossless:
@@ -2197,6 +2217,22 @@ class MainWindow(Adw.ApplicationWindow):
         toast.set_use_markup(False)
         toast.set_timeout(timeout)
         self.toast_overlay.add_toast(toast)
+
+    def _show_ffmpeg_error_dialog(
+        self,
+        title: str | None = None,
+        heading: str | None = None,
+        message: str | None = None,
+        error_details: str | None = None,
+    ) -> None:
+        dialog = FFmpegErrorDialog(
+            parent=self,
+            title=title,
+            heading=heading,
+            message=message,
+            error_details=error_details,
+        )
+        dialog.present()
 
     def show_thumbnail_progress(self, completed: int = 0, total: int = 0) -> None:
         """Deprecated: Thumbnails are generated silently in background without blocking toasts."""

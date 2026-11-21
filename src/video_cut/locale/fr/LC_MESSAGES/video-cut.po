@@ -2,7 +2,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: video-cut 0.1.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-11-15 21:44-0500\n"
+"POT-Creation-Date: 2026-11-20 19:23-0500\n"
 "Language: fr\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
@@ -30,10 +30,10 @@ msgstr "Explication du découpage sans perte et des images clés"
 
 #: src/video_cut/advanced_export_dialog.py:118
 #: src/video_cut/crop_rotate_dialog.py:423
-#: src/video_cut/image_import_dialog.py:190 src/video_cut/overlay_dialog.py:295
-#: src/video_cut/overlay_dialog.py:4022 src/video_cut/overlay_dialog.py:4047
-#: src/video_cut/progress_modal.py:78 src/video_cut/window.py:972
-#: src/video_cut/window.py:986 src/video_cut/window.py:1153
+#: src/video_cut/image_import_dialog.py:190 src/video_cut/overlay_dialog.py:296
+#: src/video_cut/overlay_dialog.py:4035 src/video_cut/overlay_dialog.py:4060
+#: src/video_cut/progress_modal.py:78 src/video_cut/window.py:994
+#: src/video_cut/window.py:1008 src/video_cut/window.py:1183
 msgid "Cancel"
 msgstr "Annuler"
 
@@ -235,7 +235,7 @@ msgstr "9:21 Ultra-large Vertical"
 msgid "Crop & Rotate — {name}"
 msgstr "Rogner et Pivoter — {name}"
 
-#: src/video_cut/crop_rotate_dialog.py:427 src/video_cut/overlay_dialog.py:316
+#: src/video_cut/crop_rotate_dialog.py:427 src/video_cut/overlay_dialog.py:317
 msgid "Apply"
 msgstr "Appliquer"
 
@@ -283,6 +283,46 @@ msgstr " • Retourner V"
 #, python-brace-format
 msgid "Crop: {crop_w} × {crop_h} px ({preset}){rot_str}{flip_str}"
 msgstr "Rognage : {crop_w} × {crop_h} px ({preset}){rot_str}{flip_str}"
+
+#: src/video_cut/ffmpeg_error_dialog.py:27 src/video_cut/window.py:2106
+msgid "Export Failed"
+msgstr "Échec de l'exportation"
+
+#: src/video_cut/ffmpeg_error_dialog.py:30
+msgid "No error details available."
+msgstr "Aucun détail d'erreur disponible."
+
+#: src/video_cut/ffmpeg_error_dialog.py:32
+msgid "FFmpeg Operation Failed"
+msgstr "Échec de l'opération FFmpeg"
+
+#: src/video_cut/ffmpeg_error_dialog.py:35
+msgid ""
+"An error occurred during video processing. The full error output is shown "
+"below:"
+msgstr "Une erreur est survenue lors du traitement vidéo. La sortie complète de l'erreur est affichée ci-dessous :"
+
+#: src/video_cut/ffmpeg_error_dialog.py:87
+msgid "Error Details & Command Output"
+msgstr "Détails de l'erreur et sortie de la commande"
+
+#: src/video_cut/ffmpeg_error_dialog.py:120
+#: src/video_cut/ffmpeg_error_dialog.py:149
+msgid "Copy Details"
+msgstr "Copier les détails"
+
+#: src/video_cut/ffmpeg_error_dialog.py:123
+msgid "Copy full error details to clipboard"
+msgstr "Copier tous les détails de l'erreur dans le presse-papiers"
+
+#: src/video_cut/ffmpeg_error_dialog.py:127
+#: src/video_cut/keyframe_help_dialog.py:32
+msgid "Close"
+msgstr "Fermer"
+
+#: src/video_cut/ffmpeg_error_dialog.py:144
+msgid "Copied!"
+msgstr "Copié !"
 
 #: src/video_cut/image_import_dialog.py:112
 msgid "Import Image"
@@ -348,8 +388,8 @@ msgstr "Sélectionner la Bande Sonore"
 msgid "Audio Files (*.mp3, *.wav, *.aac, *.m4a, *.ogg, *.flac, *.opus)"
 msgstr "Fichiers Audio (*.mp3, *.wav, *.aac, *.m4a, *.ogg, *.flac, *.opus)"
 
-#: src/video_cut/image_import_dialog.py:448 src/video_cut/window.py:823
-#: src/video_cut/window.py:1965
+#: src/video_cut/image_import_dialog.py:448 src/video_cut/window.py:845
+#: src/video_cut/window.py:2025
 msgid "All Files"
 msgstr "Tous les Fichiers"
 
@@ -362,10 +402,6 @@ msgstr "Durée totale de la piste : {duration}"
 msgid "Keyframes & Lossless Cutting"
 msgstr "Images clés et Découpage sans Perte"
 
-#: src/video_cut/keyframe_help_dialog.py:32
-msgid "Close"
-msgstr "Fermer"
-
 #: src/video_cut/keyframe_help_dialog.py:55
 msgid "What is Lossless Cutting?"
 msgstr "Qu'est-ce que le Découpage sans Perte ?"
@@ -377,7 +413,12 @@ msgid ""
 "original compressed data packets directly into the new file without decoding "
 "or re-encoding. Because no re-compression takes place, exports are virtually "
 "instantaneous and preserve 100% of the original video and audio quality."
-msgstr "Le découpage sans perte (copie de flux) découpe et combine les vidéos en copiant directement les paquets de données compressées d'origine dans le nouveau fichier, sans décodage ni réencodage. Comme aucune recompression n'a lieu, les exportations sont quasi instantanées et conservent 100 % de la qualité audio et vidéo d'origine."
+msgstr ""
+"Le découpage sans perte (copie de flux) découpe et combine les vidéos en "
+"copiant directement les paquets de données compressées d'origine dans le "
+"nouveau fichier, sans décodage ni réencodage. Comme aucune recompression n'a "
+"lieu, les exportations sont quasi instantanées et conservent 100 % de la "
+"qualité audio et vidéo d'origine."
 
 #: src/video_cut/keyframe_help_dialog.py:68
 msgid "What is a Keyframe?"
@@ -389,7 +430,12 @@ msgid ""
 "storing full images only occasionally (Keyframes or I-frames), while "
 "intermediate frames only record differences between frames. A keyframe is a "
 "complete, standalone picture that can be decoded independently."
-msgstr "Les formats vidéo modernes (tels que H.264, HEVC, VP9 et AV1) compressent la vidéo en ne stockant des images complètes qu'occasionnellement (Images clés ou I-frames), tandis que les images intermédiaires n'enregistrent que les différences. Une image clé est une image complète et autonome qui peut être décodée indépendamment."
+msgstr ""
+"Les formats vidéo modernes (tels que H.264, HEVC, VP9 et AV1) compressent la "
+"vidéo en ne stockant des images complètes qu'occasionnellement (Images clés "
+"ou I-frames), tandis que les images intermédiaires n'enregistrent que les "
+"différences. Une image clé est une image complète et autonome qui peut être "
+"décodée indépendamment."
 
 #: src/video_cut/keyframe_help_dialog.py:86
 msgid "Advantages of Lossless Cutting"
@@ -403,7 +449,9 @@ msgstr "Vitesse ultra-rapide"
 msgid ""
 "Exports complete in seconds because video and audio packets are copied "
 "directly without re-encoding."
-msgstr "Les exportations se terminent en quelques secondes car les paquets vidéo et audio sont copiés directement sans réencodage."
+msgstr ""
+"Les exportations se terminent en quelques secondes car les paquets vidéo et "
+"audio sont copiés directement sans réencodage."
 
 #: src/video_cut/keyframe_help_dialog.py:99
 msgid "100% Quality Preserved"
@@ -413,7 +461,9 @@ msgstr "100 % de qualité préservée"
 msgid ""
 "Zero generation loss or compression artifacts. Every pixel and audio sample "
 "remains untouched."
-msgstr "Zéro perte de génération ou artefacts de compression. Chaque pixel et échantillon audio reste intact."
+msgstr ""
+"Zéro perte de génération ou artefacts de compression. Chaque pixel et "
+"échantillon audio reste intact."
 
 #: src/video_cut/keyframe_help_dialog.py:108
 msgid "Minimal CPU and Battery Usage"
@@ -423,7 +473,9 @@ msgstr "Utilisation minimale du processeur et de la batterie"
 msgid ""
 "Bypasses intensive CPU/GPU rendering, keeping your computer cool and "
 "preserving laptop battery."
-msgstr "Évite le rendu intensif par le processeur/GPU, gardant votre ordinateur frais et préservant la batterie des ordinateurs portables."
+msgstr ""
+"Évite le rendu intensif par le processeur/GPU, gardant votre ordinateur "
+"frais et préservant la batterie des ordinateurs portables."
 
 #: src/video_cut/keyframe_help_dialog.py:118
 msgid "Disadvantages of Lossless Cutting"
@@ -437,7 +489,10 @@ msgstr "Les coupes doivent s'aligner sur les images clés"
 msgid ""
 "Intermediate frames depend on surrounding images and cannot be split mid-"
 "stream without re-encoding. All cuts snap to the nearest keyframe."
-msgstr "Les images intermédiaires dépendent des images environnantes et ne peuvent pas être séparées en cours de flux sans réencodage. Toutes les coupes s'alignent sur l'image clé la plus proche."
+msgstr ""
+"Les images intermédiaires dépendent des images environnantes et ne peuvent "
+"pas être séparées en cours de flux sans réencodage. Toutes les coupes "
+"s'alignent sur l'image clé la plus proche."
 
 #: src/video_cut/keyframe_help_dialog.py:134
 msgid "No Re-encoding Filters"
@@ -447,7 +502,10 @@ msgstr "Pas de filtres de réencodage"
 msgid ""
 "Transformations that alter pixels—such as rotation, cropping, flipping, and "
 "text or graphic overlays—require re-encoding and cannot be applied."
-msgstr "Les transformations modifiant les pixels — telles que la rotation, le rognage, le retournement et les superpositions de texte ou graphiques — nécessitent un réencodage et ne peuvent pas être appliquées."
+msgstr ""
+"Les transformations modifiant les pixels — telles que la rotation, le "
+"rognage, le retournement et les superpositions de texte ou graphiques — "
+"nécessitent un réencodage et ne peuvent pas être appliquées."
 
 #: src/video_cut/keyframe_help_dialog.py:146
 msgid "Matching Codecs Required"
@@ -457,424 +515,426 @@ msgstr "Codecs compatibles requis"
 msgid ""
 "When combining multiple clips, all segments must share compatible video and "
 "audio formats, codecs, and dimensions."
-msgstr "Lors de la combinaison de plusieurs clips, tous les segments doivent partager des formats, codecs et dimensions vidéo et audio compatibles."
+msgstr ""
+"Lors de la combinaison de plusieurs clips, tous les segments doivent "
+"partager des formats, codecs et dimensions vidéo et audio compatibles."
 
-#: src/video_cut/overlay_dialog.py:150
+#: src/video_cut/overlay_dialog.py:151
 #, python-brace-format
 msgid "Overlays & Drawings — {name}"
 msgstr "Superpositions et Dessins — {name}"
 
-#: src/video_cut/overlay_dialog.py:304 src/video_cut/timeline_widget.py:198
-#: src/video_cut/window.py:108
+#: src/video_cut/overlay_dialog.py:305 src/video_cut/timeline_widget.py:217
+#: src/video_cut/window.py:110
 msgid "Undo (Ctrl+Z)"
 msgstr "Annuler (Ctrl+Z)"
 
-#: src/video_cut/overlay_dialog.py:309
+#: src/video_cut/overlay_dialog.py:310
 msgid "Redo (Ctrl+Shift+Z)"
 msgstr "Rétablir (Ctrl+Shift+Z)"
 
-#: src/video_cut/overlay_dialog.py:323
+#: src/video_cut/overlay_dialog.py:324
 msgid "Remove all overlays for this segment"
 msgstr "Supprimer tous les éléments de ce segment"
 
-#: src/video_cut/overlay_dialog.py:347
+#: src/video_cut/overlay_dialog.py:348
 msgid "Add Text"
 msgstr "Ajouter du texte"
 
-#: src/video_cut/overlay_dialog.py:350
+#: src/video_cut/overlay_dialog.py:351
 msgid "Add Rectangle"
 msgstr "Ajouter un rectangle"
 
-#: src/video_cut/overlay_dialog.py:353
+#: src/video_cut/overlay_dialog.py:354
 msgid "Add Circle / Ellipse"
 msgstr "Ajouter un cercle / ellipse"
 
-#: src/video_cut/overlay_dialog.py:356
+#: src/video_cut/overlay_dialog.py:357
 msgid "Add Image, SVG, GIF or Video"
 msgstr "Ajouter une image, SVG, GIF ou vidéo"
 
-#: src/video_cut/overlay_dialog.py:359
+#: src/video_cut/overlay_dialog.py:360
 msgid "Add Audio Track"
 msgstr "Ajouter une piste audio"
 
-#: src/video_cut/overlay_dialog.py:364
+#: src/video_cut/overlay_dialog.py:365
 msgid "Add Emoji"
 msgstr "Ajouter un emoji"
 
-#: src/video_cut/overlay_dialog.py:436 src/video_cut/overlay_dialog.py:3909
+#: src/video_cut/overlay_dialog.py:437 src/video_cut/overlay_dialog.py:3922
 msgid "Play (Space)"
 msgstr "Lire (Espace)"
 
-#: src/video_cut/overlay_dialog.py:443
+#: src/video_cut/overlay_dialog.py:444
 msgid "Step 1 second back"
 msgstr "Reculer d'une seconde"
 
-#: src/video_cut/overlay_dialog.py:450
+#: src/video_cut/overlay_dialog.py:451
 msgid "Step 1 second forward"
 msgstr "Avancer d'une seconde"
 
-#: src/video_cut/overlay_dialog.py:472
+#: src/video_cut/overlay_dialog.py:473
 msgid "Fit to Window (Ctrl+0)"
 msgstr "Ajuster à la Fenêtre (Ctrl+0)"
 
-#: src/video_cut/overlay_dialog.py:482
+#: src/video_cut/overlay_dialog.py:483
 msgid "Zoom Out (Ctrl+-)"
 msgstr "Zoom arrière (Ctrl+-)"
 
-#: src/video_cut/overlay_dialog.py:494
+#: src/video_cut/overlay_dialog.py:495
 msgid "Zoom In (Ctrl++)"
 msgstr "Zoom avant (Ctrl++)"
 
-#: src/video_cut/overlay_dialog.py:516
+#: src/video_cut/overlay_dialog.py:517
 msgid "Properties"
 msgstr "Propriétés"
 
-#: src/video_cut/overlay_dialog.py:526
+#: src/video_cut/overlay_dialog.py:527
 msgid "Select element"
 msgstr "Sélectionner un élément"
 
-#: src/video_cut/overlay_dialog.py:531
+#: src/video_cut/overlay_dialog.py:532
 msgid "Delete selected element (Delete)"
 msgstr "Supprimer l'élément sélectionné (Suppr)"
 
-#: src/video_cut/overlay_dialog.py:620 src/video_cut/overlay_dialog.py:623
+#: src/video_cut/overlay_dialog.py:626 src/video_cut/overlay_dialog.py:629
 msgid "Text"
 msgstr "Texte"
 
-#: src/video_cut/overlay_dialog.py:625
+#: src/video_cut/overlay_dialog.py:631
 msgid "Emoji"
 msgstr "Emoji"
 
-#: src/video_cut/overlay_dialog.py:627
+#: src/video_cut/overlay_dialog.py:633
 msgid "Rectangle"
 msgstr "Rectangle"
 
-#: src/video_cut/overlay_dialog.py:629
+#: src/video_cut/overlay_dialog.py:635
 msgid "Square"
 msgstr "Carré"
 
-#: src/video_cut/overlay_dialog.py:631
+#: src/video_cut/overlay_dialog.py:637
 msgid "Circle"
 msgstr "Cercle"
 
-#: src/video_cut/overlay_dialog.py:633
+#: src/video_cut/overlay_dialog.py:639
 msgid "Ellipse"
 msgstr "Ellipse"
 
-#: src/video_cut/overlay_dialog.py:635 src/video_cut/overlay_dialog.py:638
+#: src/video_cut/overlay_dialog.py:641 src/video_cut/overlay_dialog.py:644
 msgid "Image"
 msgstr "Image"
 
-#: src/video_cut/overlay_dialog.py:640 src/video_cut/overlay_dialog.py:643
+#: src/video_cut/overlay_dialog.py:646 src/video_cut/overlay_dialog.py:649
 msgid "SVG"
 msgstr "SVG"
 
-#: src/video_cut/overlay_dialog.py:645 src/video_cut/overlay_dialog.py:648
+#: src/video_cut/overlay_dialog.py:651 src/video_cut/overlay_dialog.py:654
 msgid "GIF"
 msgstr "GIF"
 
-#: src/video_cut/overlay_dialog.py:650 src/video_cut/overlay_dialog.py:653
+#: src/video_cut/overlay_dialog.py:656 src/video_cut/overlay_dialog.py:659
 msgid "Video"
 msgstr "Vidéo"
 
-#: src/video_cut/overlay_dialog.py:655 src/video_cut/overlay_dialog.py:658
+#: src/video_cut/overlay_dialog.py:661 src/video_cut/overlay_dialog.py:664
 msgid "Audio Track"
 msgstr "Piste audio"
 
-#: src/video_cut/overlay_dialog.py:669
+#: src/video_cut/overlay_dialog.py:675
 msgid "No elements"
 msgstr "Aucun élément"
 
-#: src/video_cut/overlay_dialog.py:675
+#: src/video_cut/overlay_dialog.py:681
 msgid "No selection"
 msgstr "Aucune sélection"
 
-#: src/video_cut/overlay_dialog.py:680
+#: src/video_cut/overlay_dialog.py:686
 #, python-brace-format
 msgid "({count} elements selected)"
 msgstr "({count} éléments sélectionnés)"
 
-#: src/video_cut/overlay_dialog.py:743
+#: src/video_cut/overlay_dialog.py:749
 msgid "No element selected"
 msgstr "Aucun élément sélectionné"
 
-#: src/video_cut/overlay_dialog.py:748
+#: src/video_cut/overlay_dialog.py:754
 msgid "Click an item to edit"
 msgstr "Cliquez sur un élément pour le modifier"
 
-#: src/video_cut/overlay_dialog.py:840
+#: src/video_cut/overlay_dialog.py:846
 msgid "Select Font"
 msgstr "Sélectionner la police"
 
-#: src/video_cut/overlay_dialog.py:849
+#: src/video_cut/overlay_dialog.py:855
 msgid "Select font family"
 msgstr "Sélectionner la famille de police"
 
-#: src/video_cut/overlay_dialog.py:896
+#: src/video_cut/overlay_dialog.py:902
 msgid "Text Content:"
 msgstr "Contenu du texte :"
 
-#: src/video_cut/overlay_dialog.py:929 src/video_cut/overlay_dialog.py:1846
+#: src/video_cut/overlay_dialog.py:935 src/video_cut/overlay_dialog.py:1852
 msgid "Font:"
 msgstr "Police :"
 
-#: src/video_cut/overlay_dialog.py:941 src/video_cut/overlay_dialog.py:1858
+#: src/video_cut/overlay_dialog.py:947 src/video_cut/overlay_dialog.py:1864
 msgid "Size:"
 msgstr "Taille :"
 
-#: src/video_cut/overlay_dialog.py:965 src/video_cut/overlay_dialog.py:1886
+#: src/video_cut/overlay_dialog.py:971 src/video_cut/overlay_dialog.py:1892
 msgid "Bold"
 msgstr "Gras"
 
-#: src/video_cut/overlay_dialog.py:974 src/video_cut/overlay_dialog.py:1895
+#: src/video_cut/overlay_dialog.py:980 src/video_cut/overlay_dialog.py:1901
 msgid "Italic"
 msgstr "Italique"
 
-#: src/video_cut/overlay_dialog.py:983 src/video_cut/overlay_dialog.py:1904
+#: src/video_cut/overlay_dialog.py:989 src/video_cut/overlay_dialog.py:1910
 msgid "Color:"
 msgstr "Couleur :"
 
-#: src/video_cut/overlay_dialog.py:991 src/video_cut/overlay_dialog.py:1912
+#: src/video_cut/overlay_dialog.py:997 src/video_cut/overlay_dialog.py:1918
 msgid "Text Color"
 msgstr "Couleur du texte"
 
-#: src/video_cut/overlay_dialog.py:998 src/video_cut/overlay_dialog.py:1919
+#: src/video_cut/overlay_dialog.py:1004 src/video_cut/overlay_dialog.py:1925
 msgid "Background Color"
 msgstr "Couleur d'arrière-plan"
 
-#: src/video_cut/overlay_dialog.py:1006
+#: src/video_cut/overlay_dialog.py:1012
 msgid "Align:"
 msgstr "Aligner :"
 
-#: src/video_cut/overlay_dialog.py:1016 src/video_cut/overlay_dialog.py:1784
+#: src/video_cut/overlay_dialog.py:1022 src/video_cut/overlay_dialog.py:1790
 msgid "Align Left"
 msgstr "Aligner à gauche"
 
-#: src/video_cut/overlay_dialog.py:1020 src/video_cut/overlay_dialog.py:1790
+#: src/video_cut/overlay_dialog.py:1026 src/video_cut/overlay_dialog.py:1796
 msgid "Align Center"
 msgstr "Centrer"
 
-#: src/video_cut/overlay_dialog.py:1024 src/video_cut/overlay_dialog.py:1796
+#: src/video_cut/overlay_dialog.py:1030 src/video_cut/overlay_dialog.py:1802
 msgid "Align Right"
 msgstr "Aligner à droite"
 
-#: src/video_cut/overlay_dialog.py:1065 src/video_cut/overlay_dialog.py:1816
+#: src/video_cut/overlay_dialog.py:1071 src/video_cut/overlay_dialog.py:1822
 msgid "Align Top"
 msgstr "Aligner en haut"
 
-#: src/video_cut/overlay_dialog.py:1069 src/video_cut/overlay_dialog.py:1822
+#: src/video_cut/overlay_dialog.py:1075 src/video_cut/overlay_dialog.py:1828
 msgid "Align Middle"
 msgstr "Aligner au milieu"
 
-#: src/video_cut/overlay_dialog.py:1073 src/video_cut/overlay_dialog.py:1828
+#: src/video_cut/overlay_dialog.py:1079 src/video_cut/overlay_dialog.py:1834
 msgid "Align Bottom"
 msgstr "Aligner en bas"
 
-#: src/video_cut/overlay_dialog.py:1121 src/video_cut/overlay_dialog.py:1929
+#: src/video_cut/overlay_dialog.py:1127 src/video_cut/overlay_dialog.py:1935
 msgid "Fill Color:"
 msgstr "Couleur de remplissage :"
 
-#: src/video_cut/overlay_dialog.py:1130 src/video_cut/overlay_dialog.py:1938
+#: src/video_cut/overlay_dialog.py:1136 src/video_cut/overlay_dialog.py:1944
 msgid "Border:"
 msgstr "Bordure :"
 
-#: src/video_cut/overlay_dialog.py:1146
+#: src/video_cut/overlay_dialog.py:1152
 msgid "Corner Radius:"
 msgstr "Rayon des coins :"
 
-#: src/video_cut/overlay_dialog.py:1159 src/video_cut/overlay_dialog.py:1290
+#: src/video_cut/overlay_dialog.py:1165 src/video_cut/overlay_dialog.py:1296
 msgid "Loop continuously"
 msgstr "Répéter en boucle"
 
-#: src/video_cut/overlay_dialog.py:1165
+#: src/video_cut/overlay_dialog.py:1171
 msgid "Allow audio"
 msgstr "Autoriser l'audio"
 
-#: src/video_cut/overlay_dialog.py:1173
+#: src/video_cut/overlay_dialog.py:1179
 msgid "Audio Volume:"
 msgstr "Volume audio :"
 
-#: src/video_cut/overlay_dialog.py:1208
+#: src/video_cut/overlay_dialog.py:1214
 msgid "No file"
 msgstr "Aucun fichier"
 
-#: src/video_cut/overlay_dialog.py:1218
+#: src/video_cut/overlay_dialog.py:1224
 #, python-brace-format
 msgid "Duration: {dur:.2f}s"
 msgstr "Durée : {dur:.2f}s"
 
-#: src/video_cut/overlay_dialog.py:1224
+#: src/video_cut/overlay_dialog.py:1230
 msgid "Volume:"
 msgstr "Volume :"
 
-#: src/video_cut/overlay_dialog.py:1250
+#: src/video_cut/overlay_dialog.py:1256
 msgid "Start (s):"
 msgstr "Début (s) :"
 
-#: src/video_cut/overlay_dialog.py:1262
+#: src/video_cut/overlay_dialog.py:1268
 msgid "Finish (s):"
 msgstr "Fin (s) :"
 
-#: src/video_cut/overlay_dialog.py:1325
+#: src/video_cut/overlay_dialog.py:1331
 msgid "Position (px):"
 msgstr "Position (px) :"
 
-#: src/video_cut/overlay_dialog.py:1331
+#: src/video_cut/overlay_dialog.py:1337
 msgid "X:"
 msgstr "X:"
 
-#: src/video_cut/overlay_dialog.py:1332 src/video_cut/overlay_dialog.py:1337
+#: src/video_cut/overlay_dialog.py:1338 src/video_cut/overlay_dialog.py:1343
 msgid "X Position (Horizontal)"
 msgstr "Position X (Horizontale)"
 
-#: src/video_cut/overlay_dialog.py:1341
+#: src/video_cut/overlay_dialog.py:1347
 msgid "Y:"
 msgstr "Y:"
 
-#: src/video_cut/overlay_dialog.py:1342 src/video_cut/overlay_dialog.py:1348
+#: src/video_cut/overlay_dialog.py:1348 src/video_cut/overlay_dialog.py:1354
 msgid "Y Position (Vertical)"
 msgstr "Position Y (Verticale)"
 
-#: src/video_cut/overlay_dialog.py:1356
+#: src/video_cut/overlay_dialog.py:1362
 msgid "Size (px):"
 msgstr "Taille (px) :"
 
-#: src/video_cut/overlay_dialog.py:1373
+#: src/video_cut/overlay_dialog.py:1379
 msgid "W:"
 msgstr "L :"
 
-#: src/video_cut/overlay_dialog.py:1374 src/video_cut/overlay_dialog.py:1379
+#: src/video_cut/overlay_dialog.py:1380 src/video_cut/overlay_dialog.py:1385
 msgid "Width"
 msgstr "Largeur"
 
-#: src/video_cut/overlay_dialog.py:1383
+#: src/video_cut/overlay_dialog.py:1389
 msgid "H:"
 msgstr "H :"
 
-#: src/video_cut/overlay_dialog.py:1384 src/video_cut/overlay_dialog.py:1390
+#: src/video_cut/overlay_dialog.py:1390 src/video_cut/overlay_dialog.py:1396
 msgid "Height"
 msgstr "Hauteur"
 
-#: src/video_cut/overlay_dialog.py:1396
+#: src/video_cut/overlay_dialog.py:1402
 msgid "Keep proportions"
 msgstr "Conserver les proportions"
 
-#: src/video_cut/overlay_dialog.py:1403
+#: src/video_cut/overlay_dialog.py:1409
 msgid "Rotation:"
 msgstr "Rotation :"
 
-#: src/video_cut/overlay_dialog.py:1425
+#: src/video_cut/overlay_dialog.py:1431
 msgid "Opacity:"
 msgstr "Opacité :"
 
-#: src/video_cut/overlay_dialog.py:1444
+#: src/video_cut/overlay_dialog.py:1450
 msgid "Layer:"
 msgstr "Calque :"
 
-#: src/video_cut/overlay_dialog.py:1452
+#: src/video_cut/overlay_dialog.py:1458
 msgid "Bring to Front (Home / Ctrl+Shift+])"
 msgstr "Mettre au premier plan (Home / Ctrl+Shift+])"
 
-#: src/video_cut/overlay_dialog.py:1457
+#: src/video_cut/overlay_dialog.py:1463
 msgid "Bring Forward (Page Up / Ctrl+])"
 msgstr "Avancer (Page Up / Ctrl+])"
 
-#: src/video_cut/overlay_dialog.py:1462
+#: src/video_cut/overlay_dialog.py:1468
 msgid "Send Backward (Page Down / Ctrl+[)"
 msgstr "Reculer (Page Down / Ctrl+[)"
 
-#: src/video_cut/overlay_dialog.py:1467
+#: src/video_cut/overlay_dialog.py:1473
 msgid "Send to Back (End / Ctrl+Shift+[)"
 msgstr "Mettre à l'arrière-plan (End / Ctrl+Shift+[)"
 
-#: src/video_cut/overlay_dialog.py:1774
+#: src/video_cut/overlay_dialog.py:1780
 msgid "Alignment & Distribution:"
 msgstr "Alignement et distribution :"
 
-#: src/video_cut/overlay_dialog.py:1802
+#: src/video_cut/overlay_dialog.py:1808
 msgid "Distribute Horizontally"
 msgstr "Distribuer horizontalement"
 
-#: src/video_cut/overlay_dialog.py:1834
+#: src/video_cut/overlay_dialog.py:1840
 msgid "Distribute Vertically"
 msgstr "Distribuer verticalement"
 
-#: src/video_cut/overlay_dialog.py:1969
+#: src/video_cut/overlay_dialog.py:1975
 msgid "Sample Text"
 msgstr "Exemple de texte"
 
-#: src/video_cut/overlay_dialog.py:2015
+#: src/video_cut/overlay_dialog.py:2021
 msgid "Choose Overlay Image, SVG, GIF or Video"
 msgstr "Choisir une image, SVG, GIF ou vidéo de superposition"
 
-#: src/video_cut/overlay_dialog.py:2019
+#: src/video_cut/overlay_dialog.py:2025
 msgid "All Supported Overlays"
 msgstr "Toutes les superpositions prises en charge"
 
-#: src/video_cut/overlay_dialog.py:2103
+#: src/video_cut/overlay_dialog.py:2109
 msgid "Choose Audio Track"
 msgstr "Choisir la piste audio"
 
-#: src/video_cut/overlay_dialog.py:2107
+#: src/video_cut/overlay_dialog.py:2113
 msgid "Audio Files (*.mp3, *.wav, *.aac, *.m4a, *.flac, *.ogg)"
 msgstr "Fichiers audio (*.mp3, *.wav, *.aac, *.m4a, *.flac, *.ogg)"
 
-#: src/video_cut/overlay_dialog.py:3397 src/video_cut/segment_card.py:311
+#: src/video_cut/overlay_dialog.py:3410 src/video_cut/segment_card.py:311
 msgid "Cut"
 msgstr "Couper"
 
-#: src/video_cut/overlay_dialog.py:3398 src/video_cut/segment_card.py:314
+#: src/video_cut/overlay_dialog.py:3411 src/video_cut/segment_card.py:314
 msgid "Copy"
 msgstr "Copier"
 
-#: src/video_cut/overlay_dialog.py:3399 src/video_cut/segment_card.py:317
+#: src/video_cut/overlay_dialog.py:3412 src/video_cut/segment_card.py:317
 msgid "Paste"
 msgstr "Coller"
 
-#: src/video_cut/overlay_dialog.py:3400
+#: src/video_cut/overlay_dialog.py:3413
 msgid "Duplicate"
 msgstr "Dupliquer"
 
-#: src/video_cut/overlay_dialog.py:3401 src/video_cut/segment_card.py:299
+#: src/video_cut/overlay_dialog.py:3414 src/video_cut/segment_card.py:299
 #: src/video_cut/segment_card.py:435
 msgid "Select All"
 msgstr "Tout sélectionner"
 
-#: src/video_cut/overlay_dialog.py:3408 src/video_cut/overlay_dialog.py:3413
+#: src/video_cut/overlay_dialog.py:3421 src/video_cut/overlay_dialog.py:3426
 msgid "Bring Forward"
 msgstr "Avancer d'un plan"
 
-#: src/video_cut/overlay_dialog.py:3409 src/video_cut/overlay_dialog.py:3414
+#: src/video_cut/overlay_dialog.py:3422 src/video_cut/overlay_dialog.py:3427
 msgid "Send Backward"
 msgstr "Reculer d'un plan"
 
-#: src/video_cut/overlay_dialog.py:3410 src/video_cut/overlay_dialog.py:3415
+#: src/video_cut/overlay_dialog.py:3423 src/video_cut/overlay_dialog.py:3428
 msgid "Bring to Front"
 msgstr "Mettre au premier plan"
 
-#: src/video_cut/overlay_dialog.py:3411 src/video_cut/overlay_dialog.py:3416
+#: src/video_cut/overlay_dialog.py:3424 src/video_cut/overlay_dialog.py:3429
 msgid "Send to Back"
 msgstr "Mettre à l'arrière-plan"
 
-#: src/video_cut/overlay_dialog.py:3419 src/video_cut/segment_card.py:338
+#: src/video_cut/overlay_dialog.py:3432 src/video_cut/segment_card.py:338
 msgid "Delete"
 msgstr "Supprimer"
 
-#: src/video_cut/overlay_dialog.py:3886
+#: src/video_cut/overlay_dialog.py:3899
 msgid "Pause (Space)"
 msgstr "Pause (Espace)"
 
-#: src/video_cut/overlay_dialog.py:4019 src/video_cut/overlay_dialog.py:4044
+#: src/video_cut/overlay_dialog.py:4032 src/video_cut/overlay_dialog.py:4057
 msgid "Remove All Overlays?"
 msgstr "Supprimer toutes les superpositions ?"
 
-#: src/video_cut/overlay_dialog.py:4020 src/video_cut/overlay_dialog.py:4045
+#: src/video_cut/overlay_dialog.py:4033 src/video_cut/overlay_dialog.py:4058
 msgid "All overlay items on this segment will be permanently deleted."
 msgstr ""
 "Tous les éléments de superposition de ce segment seront définitivement "
 "supprimés."
 
-#: src/video_cut/overlay_dialog.py:4023 src/video_cut/overlay_dialog.py:4048
+#: src/video_cut/overlay_dialog.py:4036 src/video_cut/overlay_dialog.py:4061
 msgid "Delete All"
 msgstr "Tout supprimer"
 
@@ -894,11 +954,11 @@ msgstr "Déplacer le clip vers la gauche (Alt+Gauche)"
 msgid "Move clip right (Alt+Right)"
 msgstr "Déplacer le clip vers la droite (Alt+Droite)"
 
-#: src/video_cut/segment_card.py:192 src/video_cut/timeline_widget.py:452
+#: src/video_cut/segment_card.py:192 src/video_cut/timeline_widget.py:486
 msgid "Split clip at cursor"
 msgstr "Diviser le clip au curseur"
 
-#: src/video_cut/segment_card.py:201 src/video_cut/timeline_widget.py:463
+#: src/video_cut/segment_card.py:201 src/video_cut/timeline_widget.py:497
 msgid "Split"
 msgstr "Diviser"
 
@@ -934,173 +994,176 @@ msgstr "Désélectionner"
 msgid "Deselect All"
 msgstr "Tout désélectionner"
 
-#: src/video_cut/services/export_service.py:73
-#: src/video_cut/services/export_service.py:79
+#: src/video_cut/services/export_service.py:74
+#: src/video_cut/services/export_service.py:80
 msgid "MP4 (.mp4)"
 msgstr "MP4 (.mp4)"
 
-#: src/video_cut/services/export_service.py:74
+#: src/video_cut/services/export_service.py:75
 msgid "Matroska (.mkv)"
 msgstr "Matroska (.mkv)"
 
-#: src/video_cut/services/export_service.py:75
+#: src/video_cut/services/export_service.py:76
 msgid "WebM (.webm)"
 msgstr "WebM (.webm)"
 
-#: src/video_cut/services/export_service.py:76
+#: src/video_cut/services/export_service.py:77
 msgid "QuickTime (.mov)"
 msgstr "QuickTime (.mov)"
 
-#: src/video_cut/services/export_service.py:86
+#: src/video_cut/services/export_service.py:87
 msgid "H.264 / AVC (Most Compatible)"
 msgstr "H.264 / AVC (Le Plus Compatible)"
 
-#: src/video_cut/services/export_service.py:87
+#: src/video_cut/services/export_service.py:88
 msgid "H.265 / HEVC (High Efficiency)"
 msgstr "H.265 / HEVC (Haute Efficacité)"
 
-#: src/video_cut/services/export_service.py:88
+#: src/video_cut/services/export_service.py:89
 msgid "VP9 (Web Open Standard)"
 msgstr "VP9 (Standard Ouvert Web)"
 
-#: src/video_cut/services/export_service.py:89
+#: src/video_cut/services/export_service.py:90
 msgid "AV1 (Next-Gen Open Standard)"
 msgstr "AV1 (Standard Ouvert Nouvelle Génération)"
 
-#: src/video_cut/services/export_service.py:90
+#: src/video_cut/services/export_service.py:91
 msgid "Apple ProRes (Editing Master)"
 msgstr "Apple ProRes (Master de Montage)"
 
-#: src/video_cut/services/export_service.py:100
+#: src/video_cut/services/export_service.py:101
 msgid "H.264 / AVC"
 msgstr "H.264 / AVC"
 
-#: src/video_cut/services/export_service.py:108
+#: src/video_cut/services/export_service.py:109
 msgid "AAC (Universal Default)"
 msgstr "AAC (Défaut Universel)"
 
-#: src/video_cut/services/export_service.py:109
+#: src/video_cut/services/export_service.py:110
 msgid "Opus (High Quality Voice & Music)"
 msgstr "Opus (Haute Qualité Voix & Musique)"
 
-#: src/video_cut/services/export_service.py:111
+#: src/video_cut/services/export_service.py:112
 msgid "FLAC (Lossless Audio)"
 msgstr "FLAC (Audio Sans Perte)"
 
-#: src/video_cut/services/export_service.py:118
+#: src/video_cut/services/export_service.py:119
 msgid "AAC"
 msgstr "AAC"
 
-#: src/video_cut/services/export_service.py:145
+#: src/video_cut/services/export_service.py:146
 msgid "No segments to export"
 msgstr "Aucun segment à exporter"
 
-#: src/video_cut/services/export_service.py:149
+#: src/video_cut/services/export_service.py:150
 msgid "Rotation and flip transformations require re-encoding"
-msgstr "Les transformations de rotation et retournement nécessitent un réencodage"
+msgstr ""
+"Les transformations de rotation et retournement nécessitent un réencodage"
 
-#: src/video_cut/services/export_service.py:153
+#: src/video_cut/services/export_service.py:154
 msgid "Crop transformations require re-encoding"
 msgstr "Les transformations de rognage nécessitent un réencodage"
 
-#: src/video_cut/services/export_service.py:155
+#: src/video_cut/services/export_service.py:156
 msgid "Graphic and text overlays require re-encoding"
 msgstr "Les superpositions graphiques et textuelles nécessitent un réencodage"
 
-#: src/video_cut/services/export_service.py:159
-#: src/video_cut/services/export_service.py:164
+#: src/video_cut/services/export_service.py:160
+#: src/video_cut/services/export_service.py:165
 msgid "Could not inspect source video codec"
 msgstr "Impossible d'inspecter le codec de la vidéo source"
 
-#: src/video_cut/services/export_service.py:172
+#: src/video_cut/services/export_service.py:173
 msgid "Segments have different video codecs or dimensions"
 msgstr "Les segments ont des codecs vidéo ou des dimensions différents"
 
-#: src/video_cut/services/export_service.py:174
+#: src/video_cut/services/export_service.py:176
 msgid "Segments have different audio codecs"
 msgstr "Les segments ont des codecs audio différents"
 
-#: src/video_cut/timeline_widget.py:206 src/video_cut/window.py:115
+#: src/video_cut/services/export_service.py:178
+msgid "Segments have different audio channels or sample rates"
+msgstr "Les segments ont des canaux audio ou des taux d'échantillonnage différents"
+
+#: src/video_cut/timeline_widget.py:225 src/video_cut/window.py:117
 msgid "Redo (Ctrl+Shift+Z or Ctrl+Y)"
 msgstr "Rétablir (Ctrl+Shift+Z ou Ctrl+Y)"
 
-#: src/video_cut/timeline_widget.py:220
+#: src/video_cut/timeline_widget.py:239
 msgid "Cut clip (Ctrl+X)"
 msgstr "Couper le clip (Ctrl+X)"
 
-#: src/video_cut/timeline_widget.py:228
+#: src/video_cut/timeline_widget.py:247
 msgid "Copy clip (Ctrl+C)"
 msgstr "Copier le clip (Ctrl+C)"
 
-#: src/video_cut/timeline_widget.py:236 src/video_cut/window.py:122
+#: src/video_cut/timeline_widget.py:255 src/video_cut/window.py:124
 msgid "Paste clip (Ctrl+V)"
 msgstr "Coller le clip (Ctrl+V)"
 
-#: src/video_cut/timeline_widget.py:244
+#: src/video_cut/timeline_widget.py:263
 msgid "Crop & Rotate (C)"
 msgstr "Rogner et Pivoter (C)"
 
-#: src/video_cut/timeline_widget.py:252
+#: src/video_cut/timeline_widget.py:271
 msgid "Overlays & Drawings (O)"
 msgstr "Superpositions et Dessins (O)"
 
-#: src/video_cut/timeline_widget.py:260
+#: src/video_cut/timeline_widget.py:279
 msgid "Delete clip (Delete)"
 msgstr "Supprimer le clip (Suppr)"
 
-#: src/video_cut/timeline_widget.py:280
+#: src/video_cut/timeline_widget.py:299
 msgid "Previous segment (Home)"
 msgstr "Segment précédent (Début)"
 
-#: src/video_cut/timeline_widget.py:289
+#: src/video_cut/timeline_widget.py:308
 msgid "Step back 1s (Left Arrow)"
 msgstr "Reculer d'une 1s (Flèche Gauche)"
 
-#: src/video_cut/timeline_widget.py:298 src/video_cut/timeline_widget.py:391
+#: src/video_cut/timeline_widget.py:317 src/video_cut/timeline_widget.py:408
+#: src/video_cut/timeline_widget.py:435
 msgid "Previous frame (,)"
 msgstr "Image précédente (,)"
 
-#: src/video_cut/timeline_widget.py:307
+#: src/video_cut/timeline_widget.py:326
 msgid "Play / Pause (Space)"
 msgstr "Lecture / Pause (Espace)"
 
-#: src/video_cut/timeline_widget.py:316 src/video_cut/timeline_widget.py:392
+#: src/video_cut/timeline_widget.py:335 src/video_cut/timeline_widget.py:409
+#: src/video_cut/timeline_widget.py:436
 msgid "Next frame (.)"
 msgstr "Image suivante (.)"
 
-#: src/video_cut/timeline_widget.py:325
+#: src/video_cut/timeline_widget.py:344
 msgid "Step forward 1s (Right Arrow)"
 msgstr "Avancer d'une 1s (Flèche Droite)"
 
-#: src/video_cut/timeline_widget.py:334
+#: src/video_cut/timeline_widget.py:353
 msgid "Next segment (End)"
 msgstr "Segment suivant (Fin)"
 
-#: src/video_cut/timeline_widget.py:350 src/video_cut/window.py:2170
-msgid "Generating thumbnails..."
-msgstr "Génération des vignettes..."
-
-#: src/video_cut/timeline_widget.py:358
+#: src/video_cut/timeline_widget.py:373
 msgid "Stick cuts & cursor to Keyframes (Lossless Mode)"
 msgstr "Ajuster les coupes et le curseur sur les images clés (Mode sans perte)"
 
-#: src/video_cut/timeline_widget.py:364
+#: src/video_cut/timeline_widget.py:379
 msgid "What are Keyframes? (Lossless Guide)"
 msgstr "Que sont les images clés ? (Guide sans perte)"
 
-#: src/video_cut/timeline_widget.py:387
+#: src/video_cut/timeline_widget.py:404 src/video_cut/timeline_widget.py:431
 msgid "Previous keyframe (,)"
 msgstr "Image clé précédente (,)"
 
-#: src/video_cut/timeline_widget.py:388
+#: src/video_cut/timeline_widget.py:405 src/video_cut/timeline_widget.py:432
 msgid "Next keyframe (.)"
 msgstr "Image clé suivante (.)"
 
-#: src/video_cut/timeline_widget.py:604 src/video_cut/window.py:1282
+#: src/video_cut/timeline_widget.py:638 src/video_cut/window.py:1318
 msgid "Add Video or Image as Segment"
 msgstr "Ajouter Vidéo ou Image comme Segment"
 
-#: src/video_cut/timeline_widget.py:617
+#: src/video_cut/timeline_widget.py:651
 msgid ""
 "Add Video\n"
 "or Image"
@@ -1108,65 +1171,65 @@ msgstr ""
 "Ajouter Vidéo\n"
 "ou Image"
 
-#: src/video_cut/window.py:89 src/video_cut/window.py:810
-#: src/video_cut/window.py:887 src/video_cut/window.py:2128
+#: src/video_cut/window.py:91 src/video_cut/window.py:833
+#: src/video_cut/window.py:909 src/video_cut/window.py:2199
 msgid "Video Cut"
 msgstr "Video Cut"
 
-#: src/video_cut/window.py:89 src/video_cut/window.py:811
-#: src/video_cut/window.py:888
+#: src/video_cut/window.py:91 src/video_cut/window.py:834
+#: src/video_cut/window.py:910
 msgid "Video Editor"
 msgstr "Éditeur Vidéo"
 
-#: src/video_cut/window.py:95 src/video_cut/window.py:2122
+#: src/video_cut/window.py:97 src/video_cut/window.py:2193
 msgid "Toggle Fullscreen (F11)"
 msgstr "Basculer en plein écran (F11)"
 
-#: src/video_cut/window.py:167
+#: src/video_cut/window.py:169
 msgid "New Window"
 msgstr "Nouvelle fenêtre"
 
-#: src/video_cut/window.py:168
+#: src/video_cut/window.py:170
 msgid "Open..."
 msgstr "Ouvrir..."
 
-#: src/video_cut/window.py:172 src/video_cut/window.py:984
+#: src/video_cut/window.py:174 src/video_cut/window.py:1006
 msgid "Save Project"
 msgstr "Enregistrer le projet"
 
-#: src/video_cut/window.py:173
+#: src/video_cut/window.py:175
 msgid "Save Project As..."
 msgstr "Enregistrer le projet sous..."
 
-#: src/video_cut/window.py:175 src/video_cut/window.py:248
+#: src/video_cut/window.py:177 src/video_cut/window.py:250
 msgid "Recent Projects"
 msgstr "Projets récents"
 
-#: src/video_cut/window.py:179
+#: src/video_cut/window.py:181
 msgid "Export Options..."
 msgstr "Options d'exportation..."
 
-#: src/video_cut/window.py:183
+#: src/video_cut/window.py:185
 msgid "About Video Cut"
 msgstr "À propos de Video Cut"
 
-#: src/video_cut/window.py:188
+#: src/video_cut/window.py:190
 msgid "Main Menu"
 msgstr "Menu principal"
 
-#: src/video_cut/window.py:195
+#: src/video_cut/window.py:197
 msgid "Export..."
 msgstr "Exporter..."
 
-#: src/video_cut/window.py:196
+#: src/video_cut/window.py:198
 msgid "Export with default options (Ctrl+E)"
 msgstr "Exporter avec les options par défaut (Ctrl+E)"
 
-#: src/video_cut/window.py:227
+#: src/video_cut/window.py:229
 msgid "No Media Loaded"
 msgstr "Aucun média chargé"
 
-#: src/video_cut/window.py:229
+#: src/video_cut/window.py:231
 msgid ""
 "Drag and drop videos or images here, paste from clipboard (Ctrl+V), or click "
 "to open"
@@ -1174,86 +1237,88 @@ msgstr ""
 "Glissez-déposez des vidéos ou des images ici, collez depuis le presse-"
 "papiers (Ctrl+V) ou cliquez pour ouvrir"
 
-#: src/video_cut/window.py:231 src/video_cut/window.py:1262
+#: src/video_cut/window.py:233 src/video_cut/window.py:1298
 msgid "Open Video or Image"
 msgstr "Ouvrir Vidéo ou Image"
 
-#: src/video_cut/window.py:608
+#: src/video_cut/window.py:620
 msgid "Indexing Keyframes"
 msgstr "Indexation des images clés"
 
-#: src/video_cut/window.py:609
+#: src/video_cut/window.py:621
 msgid "Indexing keyframes..."
 msgstr "Indexation des images clés..."
 
-#: src/video_cut/window.py:610
+#: src/video_cut/window.py:622
 msgid "Scanning media for keyframes..."
 msgstr "Analyse du média pour les images clés..."
 
-#: src/video_cut/window.py:631
+#: src/video_cut/window.py:649
+#, python-brace-format
 msgid "Indexing keyframes ({percent}%)..."
 msgstr "Indexation des images clés ({percent}%)..."
 
-#: src/video_cut/window.py:632
+#: src/video_cut/window.py:650
 #, python-brace-format
 msgid "{name} ({cur} / {total})"
 msgstr "{name} ({cur} / {total})"
 
-#: src/video_cut/window.py:677
+#: src/video_cut/window.py:699
 msgid "Keyframe indexing cancelled"
 msgstr "Indexation des images clés annulée"
 
-#: src/video_cut/window.py:716
+#: src/video_cut/window.py:739
 msgid "Cuts moved to nearest keyframes (Undo with Ctrl+Z)"
-msgstr "Coupes déplacées vers les images clés les plus proches (Annuler avec Ctrl+Z)"
+msgstr ""
+"Coupes déplacées vers les images clés les plus proches (Annuler avec Ctrl+Z)"
 
-#: src/video_cut/window.py:818 src/video_cut/window.py:864
+#: src/video_cut/window.py:840 src/video_cut/window.py:886
 msgid "Video Cut Projects (*.vcut)"
 msgstr "Projets Video Cut (*.vcut)"
 
-#: src/video_cut/window.py:833
+#: src/video_cut/window.py:855
 msgid "All Supported Media (Videos, Images & Projects)"
 msgstr "Tous les médias pris en charge (vidéos, images et projets)"
 
-#: src/video_cut/window.py:847
+#: src/video_cut/window.py:869
 msgid "Video Files"
 msgstr "Fichiers Vidéo"
 
-#: src/video_cut/window.py:855
+#: src/video_cut/window.py:877
 msgid "Image Files"
 msgstr "Fichiers Image"
 
-#: src/video_cut/window.py:875
+#: src/video_cut/window.py:897
 msgid "Untitled Project"
 msgstr "Projet sans titre"
 
-#: src/video_cut/window.py:902
+#: src/video_cut/window.py:924
 msgid "(No Recent Projects)"
 msgstr "(Aucun projet récent)"
 
-#: src/video_cut/window.py:968
+#: src/video_cut/window.py:990
 msgid "Save Changes?"
 msgstr "Enregistrer les modifications ?"
 
-#: src/video_cut/window.py:969
+#: src/video_cut/window.py:991
 msgid "Do you want to save changes to the current project before proceeding?"
 msgstr ""
 "Voulez-vous enregistrer les modifications apportées au projet actuel avant "
 "de continuer ?"
 
-#: src/video_cut/window.py:970
+#: src/video_cut/window.py:992
 msgid "Save"
 msgstr "Enregistrer"
 
-#: src/video_cut/window.py:971 src/video_cut/window.py:985
+#: src/video_cut/window.py:993 src/video_cut/window.py:1007
 msgid "Discard"
 msgstr "Ignorer"
 
-#: src/video_cut/window.py:974
+#: src/video_cut/window.py:996
 msgid "Work on this video again in the future?"
 msgstr "Souhaitez-vous retravailler sur cette vidéo à l'avenir ?"
 
-#: src/video_cut/window.py:976
+#: src/video_cut/window.py:998
 msgid ""
 "Creating a project allows you to return to Video Cut anytime and resume with "
 "all your segments, cuts, rotations, and overlays."
@@ -1261,55 +1326,55 @@ msgstr ""
 "Créer un projet vous permet de revenir à Video Cut à tout moment et de "
 "reprendre avec tous vos segments, coupes, rotations et superpositions."
 
-#: src/video_cut/window.py:980
+#: src/video_cut/window.py:1002
 msgid "Create project and close"
 msgstr "Créer un projet et fermer"
 
-#: src/video_cut/window.py:981
+#: src/video_cut/window.py:1003
 msgid "Close without creating a project"
 msgstr "Fermer sans créer de projet"
 
-#: src/video_cut/window.py:982
+#: src/video_cut/window.py:1004
 msgid "Cancel and return to app"
 msgstr "Annuler et revenir à l'application"
 
-#: src/video_cut/window.py:1016 src/video_cut/window.py:1049
+#: src/video_cut/window.py:1038 src/video_cut/window.py:1071
 msgid "Save Project As"
 msgstr "Enregistrer le projet sous"
 
-#: src/video_cut/window.py:1069
+#: src/video_cut/window.py:1091
 #, python-brace-format
 msgid "Failed to save project: {error}"
 msgstr "Échec de l'enregistrement du projet : {error}"
 
-#: src/video_cut/window.py:1085
+#: src/video_cut/window.py:1107
 msgid "Project saved successfully"
 msgstr "Projet enregistré avec succès"
 
-#: src/video_cut/window.py:1087
+#: src/video_cut/window.py:1109
 #, python-brace-format
 msgid "Error saving project: {error}"
 msgstr "Erreur lors de l'enregistrement du projet : {error}"
 
-#: src/video_cut/window.py:1098
+#: src/video_cut/window.py:1120
 msgid "Open Project"
 msgstr "Ouvrir un projet"
 
-#: src/video_cut/window.py:1108
+#: src/video_cut/window.py:1130
 #, python-brace-format
 msgid "Error opening project: {error}"
 msgstr "Erreur lors de l'ouverture du projet : {error}"
 
-#: src/video_cut/window.py:1135
+#: src/video_cut/window.py:1164
 #, python-brace-format
 msgid "Failed to load project: {error}"
 msgstr "Échec du chargement du projet : {error}"
 
-#: src/video_cut/window.py:1146
+#: src/video_cut/window.py:1176
 msgid "Missing Media Files"
 msgstr "Fichiers multimédias manquants"
 
-#: src/video_cut/window.py:1147
+#: src/video_cut/window.py:1177
 #, python-brace-format
 msgid ""
 "The following referenced files could not be found:\n"
@@ -1325,193 +1390,222 @@ msgstr ""
 "Souhaitez-vous localiser les fichiers manquants ou charger le projet quand "
 "même ?"
 
-#: src/video_cut/window.py:1151
+#: src/video_cut/window.py:1181
 msgid "Load Anyway"
 msgstr "Charger quand même"
 
-#: src/video_cut/window.py:1152
+#: src/video_cut/window.py:1182
 msgid "Locate Missing File..."
 msgstr "Localiser le fichier manquant..."
 
-#: src/video_cut/window.py:1172
+#: src/video_cut/window.py:1202
 #, python-brace-format
 msgid "Locate '{filename}'"
 msgstr "Localiser '{filename}'"
 
-#: src/video_cut/window.py:1224
+#: src/video_cut/window.py:1264
 #, python-brace-format
 msgid "Loaded project '{name}'"
 msgstr "Projet '{name}' chargé"
 
-#: src/video_cut/window.py:1311
+#: src/video_cut/window.py:1347
 msgid "No valid media files found"
 msgstr "Aucun fichier multimédia valide trouvé"
 
-#: src/video_cut/window.py:1341
+#: src/video_cut/window.py:1377
 #, python-brace-format
 msgid "Added '{name}' to timeline"
 msgstr "'{name}' ajouté à la timeline"
 
-#: src/video_cut/window.py:1343
+#: src/video_cut/window.py:1379
 #, python-brace-format
 msgid "Added {count} media clips to timeline"
 msgstr "{count} clips multimédias ajoutés à la timeline"
 
-#: src/video_cut/window.py:1511 src/video_cut/window.py:1554
+#: src/video_cut/window.py:1547
 #, python-brace-format
 msgid "Failed to convert image: {error}"
 msgstr "Échec de la conversion de l'image : {error}"
 
-#: src/video_cut/window.py:1520
+#: src/video_cut/window.py:1556
 msgid "Importing Image"
 msgstr "Importation de l'image"
 
-#: src/video_cut/window.py:1521
+#: src/video_cut/window.py:1557
 msgid "Importing image..."
 msgstr "Importation de l'image..."
 
-#: src/video_cut/window.py:1522
+#: src/video_cut/window.py:1558
 #, python-brace-format
 msgid "Converting '{name}' into video segment..."
 msgstr "Conversion de '{name}' en segment vidéo..."
 
-#: src/video_cut/window.py:1532 src/video_cut/window.py:1561
+#: src/video_cut/window.py:1568 src/video_cut/window.py:1605
 msgid "Finalizing clip..."
 msgstr "Finalisation du clip..."
 
-#: src/video_cut/window.py:1533 src/video_cut/window.py:1562
+#: src/video_cut/window.py:1569 src/video_cut/window.py:1606
 msgid "Preparing timeline and media player..."
 msgstr "Préparation de la timeline et du lecteur multimédia..."
 
-#: src/video_cut/window.py:1538
+#: src/video_cut/window.py:1574
 #, python-brace-format
 msgid "Importing image ({percent}%)..."
 msgstr "Importation de l'image ({percent}%)..."
 
-#: src/video_cut/window.py:1539
+#: src/video_cut/window.py:1575
 #, python-brace-format
 msgid "Converting frame: {processed} / {total}"
 msgstr "Conversion de l'image : {processed} / {total}"
 
-#: src/video_cut/window.py:1554 src/video_cut/window.py:2042
+#: src/video_cut/window.py:1591
+msgid "Image Conversion Failed"
+msgstr "Échec de la conversion de l'image"
+
+#: src/video_cut/window.py:1592
+msgid "Failed to Import Image"
+msgstr "Échec de l'importation de l'image"
+
+#: src/video_cut/window.py:1594
+msgid ""
+"An error occurred while converting the image to video. The complete command "
+"output is shown below:"
+msgstr "Une erreur est survenue lors de la conversion de l'image en vidéo. La sortie complète de la commande est affichée ci-dessous :"
+
+#: src/video_cut/window.py:1597
 msgid "Unknown error"
 msgstr "Erreur inconnue"
 
-#: src/video_cut/window.py:1605
+#: src/video_cut/window.py:1649
 msgid "Failed to load media: invalid or unsupported file"
 msgstr "Échec du chargement du média : fichier invalide ou non pris en charge"
 
-#: src/video_cut/window.py:1693
+#: src/video_cut/window.py:1735
 msgid "Cannot split too close to clip boundary"
 msgstr "Impossible de diviser trop près de la limite du clip"
 
-#: src/video_cut/window.py:1735
+#: src/video_cut/window.py:1778
 #, python-brace-format
 msgid "Deleted {count} clips"
 msgstr "{count} clips supprimés"
 
-#: src/video_cut/window.py:1814
+#: src/video_cut/window.py:1862
 #, python-brace-format
 msgid "Crop & Rotate applied to {count} clips"
 msgstr "Rogner et pivoter appliqué à {count} clips"
 
-#: src/video_cut/window.py:1816
+#: src/video_cut/window.py:1864
 #, python-brace-format
 msgid "Crop & Rotate applied to {name}"
 msgstr "Rogner et Pivoter appliqué à {name}"
 
-#: src/video_cut/window.py:1869
+#: src/video_cut/window.py:1929
 #, python-brace-format
 msgid "Overlays applied to {count} clips"
 msgstr "Superpositions appliquées à {count} clips"
 
-#: src/video_cut/window.py:1871
+#: src/video_cut/window.py:1931
 #, python-brace-format
 msgid "Overlays applied to {name}"
 msgstr "Superpositions appliquées à {name}"
 
-#: src/video_cut/window.py:1928
+#: src/video_cut/window.py:1988
 msgid "Export Video (Lossless)"
 msgstr "Exporter la vidéo (Sans perte)"
 
-#: src/video_cut/window.py:1930
+#: src/video_cut/window.py:1990
 msgid "Export Video"
 msgstr "Exporter la vidéo"
 
-#: src/video_cut/window.py:1932
+#: src/video_cut/window.py:1992
 msgid "Export with Default Options"
 msgstr "Exporter avec les options par défaut"
 
-#: src/video_cut/window.py:1948
+#: src/video_cut/window.py:2008
 msgid "MP4 Video (*.mp4)"
 msgstr "Vidéo MP4 (*.mp4)"
 
-#: src/video_cut/window.py:1951
+#: src/video_cut/window.py:2011
 msgid "Matroska Video (*.mkv)"
 msgstr "Vidéo Matroska (*.mkv)"
 
-#: src/video_cut/window.py:1954
+#: src/video_cut/window.py:2014
 msgid "WebM Video (*.webm)"
 msgstr "Vidéo WebM (*.webm)"
 
-#: src/video_cut/window.py:1957
+#: src/video_cut/window.py:2017
 msgid "QuickTime Video (*.mov)"
 msgstr "Vidéo QuickTime (*.mov)"
 
-#: src/video_cut/window.py:2003
+#: src/video_cut/window.py:2063
 msgid "Exporting Video (Lossless)"
 msgstr "Exportation de la vidéo (Sans perte)"
 
-#: src/video_cut/window.py:2003
+#: src/video_cut/window.py:2063
 msgid "Exporting Video"
 msgstr "Exportation de la Vidéo"
 
-#: src/video_cut/window.py:2004
+#: src/video_cut/window.py:2064
 msgid "Stream copying video (lossless)..."
 msgstr "Copie du flux vidéo (sans perte)..."
 
-#: src/video_cut/window.py:2004
+#: src/video_cut/window.py:2064
 msgid "Rendering video..."
 msgstr "Rendu de la vidéo..."
 
-#: src/video_cut/window.py:2010
+#: src/video_cut/window.py:2070
 #, python-brace-format
 msgid "Exporting to {name}..."
 msgstr "Exportation vers {name}..."
 
-#: src/video_cut/window.py:2018
+#: src/video_cut/window.py:2078
+#, python-brace-format
 msgid "Stream copying ({percent}%)..."
 msgstr "Copie du flux ({percent}%)..."
 
-#: src/video_cut/window.py:2020
+#: src/video_cut/window.py:2080
 #, python-brace-format
 msgid "Rendering video ({percent}%)..."
 msgstr "Rendu de la vidéo ({percent}%)..."
 
-#: src/video_cut/window.py:2025
+#: src/video_cut/window.py:2085
 #, python-brace-format
 msgid "Processed: {processed} / {total}"
 msgstr "Traité : {processed} / {total}"
 
-#: src/video_cut/window.py:2035
+#: src/video_cut/window.py:2095
+#, python-brace-format
 msgid "Lossless export complete: {name}"
 msgstr "Exportation sans perte terminée : {name}"
 
-#: src/video_cut/window.py:2037
+#: src/video_cut/window.py:2097
 #, python-brace-format
 msgid "Export complete: {name}"
 msgstr "Exportation terminée : {name}"
 
-#: src/video_cut/window.py:2042
-#, python-brace-format
-msgid "Export failed: {error}"
-msgstr "Échec de l'exportation : {error}"
+#: src/video_cut/window.py:2103
+msgid "Export cancelled"
+msgstr "Exportation annulée"
 
-#: src/video_cut/window.py:2119
+#: src/video_cut/window.py:2107
+msgid "Export Operation Failed"
+msgstr "Échec de l'opération d'exportation"
+
+#: src/video_cut/window.py:2109
+msgid ""
+"FFmpeg encountered an error while exporting the video. The complete command "
+"output is shown below:"
+msgstr "FFmpeg a rencontré une erreur lors de l'exportation de la vidéo. La sortie complète de la commande est affichée ci-dessous :"
+
+#: src/video_cut/window.py:2112
+msgid "Unknown error occurred during export."
+msgstr "Une erreur inconnue est survenue lors de l'exportation."
+
+#: src/video_cut/window.py:2190
 msgid "Exit Fullscreen (F11 or Esc)"
 msgstr "Quitter le plein écran (F11 ou Échap)"
 
-#: src/video_cut/window.py:2133
+#: src/video_cut/window.py:2204
 msgid ""
 "An easy-to-use video editor to cut and merge videos, add images, crop, and "
 "rotate"
@@ -1519,10 +1613,16 @@ msgstr ""
 "Un éditeur vidéo facile à utiliser pour couper et fusionner des vidéos, "
 "ajouter des images, rogner et faire pivoter"
 
-#: src/video_cut/window.py:2168
+#~ msgid "Generating thumbnails..."
+#~ msgstr "Génération des vignettes..."
+
 #, python-brace-format
-msgid "Generating thumbnails ({completed}/{total})..."
-msgstr "Génération des vignettes ({completed}/{total})..."
+#~ msgid "Export failed: {error}"
+#~ msgstr "Échec de l'exportation : {error}"
+
+#, python-brace-format
+#~ msgid "Generating thumbnails ({completed}/{total})..."
+#~ msgstr "Génération des vignettes ({completed}/{total})..."
 
 #~ msgid "Open Project..."
 #~ msgstr "Ouvrir un projet..."
@@ -1656,9 +1756,6 @@ msgstr "Génération des vignettes ({completed}/{total})..."
 
 #~ msgid "Remove All"
 #~ msgstr "Tout supprimer"
-
-#~ msgid "Copied to clipboard"
-#~ msgstr "Copié dans le presse-papiers"
 
 #~ msgid "Cut to clipboard"
 #~ msgstr "Coupé dans le presse-papiers"

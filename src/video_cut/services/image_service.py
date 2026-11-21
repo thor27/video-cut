@@ -386,11 +386,25 @@ class ImageService:
                 process = subprocess.Popen(
                     cmd,
                     stdout=subprocess.PIPE,
-                    stderr=subprocess.DEVNULL,
+                    stderr=subprocess.PIPE,
                     text=True,
                     bufsize=1,
                     creationflags=SUBPROCESS_FLAGS,
                 )
+
+                stderr_lines: list[str] = []
+                def drain_stderr():
+                    if process and process.stderr:
+                        try:
+                            for line in process.stderr:
+                                stderr_lines.append(line)
+                                if len(stderr_lines) > 200:
+                                    stderr_lines.pop(0)
+                        except Exception:
+                            pass
+
+                stderr_thread = threading.Thread(target=drain_stderr, daemon=True)
+                stderr_thread.start()
 
                 time_pattern = re.compile(r"out_time_us=(\d+)")
 
@@ -419,6 +433,7 @@ class ImageService:
                         GLib.idle_add(on_progress, fraction, cur_s)
 
                 rc = process.wait()
+                stderr_thread.join(timeout=1.0)
                 if cancelled:
                     if out_path.exists():
                         try:
@@ -442,11 +457,13 @@ class ImageService:
                             out_path.unlink()
                         except OSError:
                             pass
+                    stderr_msg = "".join(stderr_lines).strip()
+                    err_text = f"FFmpeg conversion failed (code {rc}): {stderr_msg}" if stderr_msg else f"FFmpeg conversion failed with code {rc}"
                     if on_done:
                         GLib.idle_add(
                             _notify_done,
                             None,
-                            RuntimeError(f"FFmpeg conversion failed with code {rc}"),
+                            RuntimeError(err_text),
                             None,
                             None,
                         )

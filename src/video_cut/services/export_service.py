@@ -688,7 +688,7 @@ class ExportService:
                             GLib.idle_add(on_progress, 1.0, total_duration)
                             GLib.idle_add(on_done, True, None)
                         else:
-                            stderr_msg = "".join(stderr_lines)[-500:]
+                            stderr_msg = "".join(stderr_lines).strip()
                             GLib.idle_add(on_done, False, f"FFmpeg failed (code {rc}): {stderr_msg}")
                     else:
                         with tempfile.TemporaryDirectory(prefix="video_cut_lossless_") as tmp_dir_str:
@@ -720,7 +720,7 @@ class ExportService:
                                 ])
                                 res = subprocess.run(cmd_cut, capture_output=True, text=True)
                                 if res.returncode != 0:
-                                    GLib.idle_add(on_done, False, f"FFmpeg cut failed on segment {idx + 1}: {res.stderr[-300:]}")
+                                    GLib.idle_add(on_done, False, f"FFmpeg cut failed on segment {idx + 1}: {res.stderr.strip()}")
                                     return
                                 manifest_lines.append(f"file '{part_seg.resolve()}'")
 
@@ -779,7 +779,7 @@ class ExportService:
                                 GLib.idle_add(on_progress, 1.0, total_duration)
                                 GLib.idle_add(on_done, True, None)
                             else:
-                                stderr_msg = "".join(stderr_lines)[-500:]
+                                stderr_msg = "".join(stderr_lines).strip()
                                 GLib.idle_add(on_done, False, f"FFmpeg concat failed (code {rc}): {stderr_msg}")
                 except Exception as e:
                     GLib.idle_add(on_done, False, str(e))
@@ -864,7 +864,7 @@ class ExportService:
                         GLib.idle_add(on_progress, 1.0, total_duration)
                         GLib.idle_add(on_done, True, None)
                     else:
-                        stderr_msg = "".join(stderr_lines)[-500:]
+                        stderr_msg = "".join(stderr_lines).strip()
                         GLib.idle_add(on_done, False, f"FFmpeg failed (code {rc}): {stderr_msg}")
                 except Exception as e:
                     GLib.idle_add(on_done, False, str(e))
