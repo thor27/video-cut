@@ -10,6 +10,7 @@ gi.require_version("Adw", "1")
 from gi.repository import Adw
 
 from video_cut.health_dialog import HealthCheckDialog
+from video_cut.i18n import _
 from video_cut.services.health_service import HealthCheckItem
 
 
@@ -22,7 +23,7 @@ def init_gtk():
 def test_health_dialog_init():
     """Test dialog initialization, widgets creation, and layout."""
     dialog = HealthCheckDialog()
-    assert dialog.get_title() == "System Health & Setup"
+    assert dialog.get_title() == _("System Health & Setup")
     assert dialog.get_modal() is True
     assert dialog.row_overall is not None
     assert dialog.row_ffmpeg is not None
@@ -42,7 +43,7 @@ def test_health_dialog_apply_all_ok():
     ]
 
     dialog._apply_results(items)
-    assert dialog.row_overall.get_title() == "All Systems Operational"
+    assert dialog.row_overall.get_title() == _("All Systems Operational")
     assert dialog.row_ffmpeg.get_subtitle() == "Working"
     assert dialog.row_association.get_subtitle() == "Registered"
     assert dialog.row_codecs.get_subtitle() == "All codecs ready"
@@ -84,9 +85,27 @@ def test_health_dialog_apply_warning_and_error():
     ]
 
     dialog._apply_results(items_err)
-    assert dialog.row_overall.get_title() == "Action Required"
+    assert dialog.row_overall.get_title() == _("Action Required")
     assert dialog.row_ffmpeg.get_subtitle() == "FFmpeg missing"
     assert dialog.row_association.get_subtitle() == "Not registered"
+    assert dialog._row_ffmpeg_cmd is not None
+    assert dialog._row_ffmpeg_web is not None
+    assert dialog._row_codecs_cmd is not None
+    dialog.destroy()
+
+
+def test_health_dialog_info_button_popover():
+    """Test that info MenuButton creates a Popover with details."""
+    dialog = HealthCheckDialog()
+    item = HealthCheckItem(
+        id="ffmpeg",
+        title="FFmpeg Multimedia Engine",
+        status="ok",
+        summary="Working",
+        details="ffmpeg version 6.1.1\nBinary: /usr/bin/ffmpeg",
+    )
+    btn_info = dialog._create_info_button(item)
+    assert btn_info.get_popover() is not None
     dialog.destroy()
 
 

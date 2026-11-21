@@ -228,19 +228,25 @@ class HealthService:
         is_associated = False
         current_handler = ""
 
-        # 1. Check via Gio
+        # 1. Check if the MIME database recognizes *.vcut files
+        content_type, _uncertain = Gio.content_type_guess("project.vcut", None)
+        mime_registered = (content_type == mime_type)
+
+        # 2. Check if an active, installed Video Cut handler is default
+        handler_valid = False
         try:
             app_info = Gio.AppInfo.get_default_for_type(mime_type, False)
             if app_info:
                 app_id = app_info.get_id() or ""
                 current_handler = app_id
-                if APP_ID in app_id or "video-cut" in app_id.lower():
-                    is_associated = True
+                executable = app_info.get_executable() or ""
+                executable_exists = bool(shutil.which(executable) or (executable and Path(executable).exists()))
+                if (APP_ID in app_id or "video-cut" in app_id.lower()) and executable_exists:
+                    handler_valid = True
         except Exception:
             pass
 
-        # 2. Check via xdg-mime
-        if not is_associated and shutil.which("xdg-mime"):
+        if not handler_valid and shutil.which("xdg-mime"):
             try:
                 res = subprocess.run(
                     ["xdg-mime", "query", "default", mime_type],
@@ -252,9 +258,11 @@ class HealthService:
                 if out:
                     current_handler = out
                     if APP_ID in out or "video-cut" in out.lower():
-                        is_associated = True
+                        handler_valid = True
             except Exception:
                 pass
+
+        is_associated = mime_registered and handler_valid
 
         if is_associated:
             return HealthCheckItem(
@@ -262,17 +270,36 @@ class HealthService:
                 title=_(".vcut Project Association"),
                 status="ok",
                 summary=_(".vcut projects are registered to open with Video Cut."),
-                details=f"MIME Type: {mime_type}\nDefault Handler: {current_handler or APP_ID}",
+                details=(
+                    f"MIME Type: {mime_type}\n"
+                    f"MIME Recognition: {content_type} (OK)\n"
+                    f"Default Handler: {current_handler or APP_ID}"
+                ),
                 can_fix=False,
             )
+
+        summary_reasons = []
+        if not mime_registered:
+            summary_reasons.append(_("MIME type for .vcut is not registered"))
+        if not handler_valid:
+            summary_reasons.append(_("Video Cut is not set as default handler"))
 
         return HealthCheckItem(
             id="file_association",
             title=_(".vcut Project Association"),
             status="warning",
-            summary=_(".vcut project files are not associated with Video Cut."),
+            summary=_(".vcut project files are not associated with Video Cut ({reasons}).").format(
+                reasons=", ".join(summary_reasons)
+            ),
             details=_(
+                "MIME Type: {mime_type}\n"
+                "Current detected type for .vcut: {content_type}\n"
+                "Current default handler: {handler}\n\n"
                 "Associating .vcut files allows you to open saved projects directly by double-clicking them in your file manager."
+            ).format(
+                mime_type=mime_type,
+                content_type=content_type,
+                handler=current_handler or _("None"),
             ),
             can_fix=True,
             fix_type="automated",
@@ -282,6 +309,8 @@ class HealthService:
     @classmethod
     def fix_file_association(cls) -> tuple[bool, str]:
         """Automated repair of .vcut file association in user-space."""
+        import sys
+
         mime_xml_source = RESOURCES_DIR / "io.github.thor27.video-cut.xml"
         desktop_source = RESOURCES_DIR / "io.github.thor27.video-cut.desktop"
 
@@ -302,16 +331,30 @@ class HealthService:
                     timeout=5.0,
                 )
 
-            # 2. Install desktop entry if needed
+            # 2. Install desktop entry with appropriate executable path
             user_apps_dir = Path.home() / ".local" / "share" / "applications"
             user_apps_dir.mkdir(parents=True, exist_ok=True)
             target_desktop = user_apps_dir / "io.github.thor27.video-cut.desktop"
 
-            system_desktop = Path("/usr/share/applications/io.github.thor27.video-cut.desktop")
-            snap_desktop = Path("/var/lib/snapd/desktop/applications/io.github.thor27.video-cut.desktop")
-            if not target_desktop.exists() and not system_desktop.exists() and not snap_desktop.exists():
-                if desktop_source.exists():
-                    shutil.copy(desktop_source, target_desktop)
+            if desktop_source.exists():
+                desktop_content = desktop_source.read_text(encoding="utf-8")
+                appimage_path = os.environ.get("APPIMAGE")
+                if appimage_path and Path(appimage_path).exists():
+                    desktop_content = desktop_content.replace("Exec=video-cut %U", f"Exec={appimage_path} %U")
+                elif not shutil.which("video-cut"):
+                    venv_bin = Path(sys.executable).parent / "video-cut"
+                    if venv_bin.exists():
+                        desktop_content = desktop_content.replace("Exec=video-cut %U", f"Exec={venv_bin} %U")
+                    else:
+                        desktop_content = desktop_content.replace("Exec=video-cut %U", f"Exec={sys.executable} -m video_cut %U")
+                target_desktop.write_text(desktop_content, encoding="utf-8")
+
+            # 3. Install icon if available
+            icon_source = RESOURCES_DIR / "icon_512.png"
+            if icon_source.exists():
+                icon_target_dir = Path.home() / ".local" / "share" / "icons" / "hicolor" / "512x512" / "apps"
+                icon_target_dir.mkdir(parents=True, exist_ok=True)
+                shutil.copy(icon_source, icon_target_dir / "io.github.thor27.video-cut.png")
 
             if shutil.which("update-desktop-database"):
                 subprocess.run(
@@ -320,7 +363,7 @@ class HealthService:
                     timeout=5.0,
                 )
 
-            # 3. Associate MIME with desktop file
+            # 4. Associate MIME with desktop file
             desktop_name = "io.github.thor27.video-cut.desktop"
             if shutil.which("xdg-mime"):
                 subprocess.run(
@@ -328,6 +371,22 @@ class HealthService:
                     capture_output=True,
                     timeout=5.0,
                 )
+
+            # 5. Also register via GioUnix/Gio DesktopAppInfo
+            try:
+                from gi.repository import GioUnix
+                app_info = GioUnix.DesktopAppInfo.new_from_filename(str(target_desktop))
+                if app_info:
+                    app_info.set_as_default_for_type("application/x-video-cut")
+            except Exception:
+                try:
+                    from gi.repository import Gio
+                    if hasattr(Gio, "DesktopAppInfo"):
+                        app_info = Gio.DesktopAppInfo.new_from_filename(str(target_desktop))
+                        if app_info:
+                            app_info.set_as_default_for_type("application/x-video-cut")
+                except Exception:
+                    pass
 
             return (True, _("Successfully registered .vcut file association!"))
         except Exception as e:

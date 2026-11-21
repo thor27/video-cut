@@ -74,11 +74,23 @@ def test_check_file_association_registered():
     """Test check_file_association when registered."""
     mock_app_info = MagicMock()
     mock_app_info.get_id.return_value = "io.github.thor27.video-cut.desktop"
+    mock_app_info.get_executable.return_value = "video-cut"
 
-    with patch("gi.repository.Gio.AppInfo.get_default_for_type", return_value=mock_app_info):
+    with patch("gi.repository.Gio.content_type_guess", return_value=("application/x-video-cut", False)), \
+         patch("gi.repository.Gio.AppInfo.get_default_for_type", return_value=mock_app_info), \
+         patch("shutil.which", return_value="/usr/bin/video-cut"):
         item = HealthService.check_file_association()
         assert item.status == "ok"
         assert item.can_fix is False
+
+
+def test_check_file_association_mime_unregistered():
+    """Test check_file_association when MIME type is not recognized for .vcut."""
+    with patch("gi.repository.Gio.content_type_guess", return_value=("application/octet-stream", True)):
+        item = HealthService.check_file_association()
+        assert item.status == "warning"
+        assert item.can_fix is True
+        assert item.fix_type == "automated"
 
 
 def test_check_file_association_missing():
