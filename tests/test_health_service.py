@@ -181,8 +181,12 @@ def test_initial_check_persistence(tmp_path: Path):
 
 def test_check_hardware_acceleration_detected():
     """Test check_hardware_acceleration when VA-API hardware acceleration is detected."""
+    dummy_render = MagicMock()
+    dummy_render.name = "renderD128"
+
     with patch("shutil.which", return_value="/usr/bin/ffmpeg"), \
          patch("pathlib.Path.exists", return_value=True), \
+         patch("pathlib.Path.glob", return_value=[dummy_render]), \
          patch("video_cut.services.export_service.FFmpegCapabilities.get_encoders", return_value={"h264_vaapi"}):
         item = HealthService.check_hardware_acceleration()
         assert item.status == "ok"

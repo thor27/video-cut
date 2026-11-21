@@ -11,6 +11,11 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+import gi
+
+with contextlib.suppress(ValueError):
+    gi.require_version("GioUnix", "2.0")
+
 from gi.repository import Gio, GLib
 
 from ..i18n import _
