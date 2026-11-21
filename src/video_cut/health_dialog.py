@@ -342,6 +342,29 @@ class HealthCheckDialog(Adw.Window):
         if assoc_item:
             self._update_association_row(assoc_item)
 
+        # Show first the ones with problems (error, warning), then the ones that are all green (ok)
+        def status_priority(item: HealthCheckItem | None) -> int:
+            if not item:
+                return 2
+            if item.status == "error":
+                return 0
+            if item.status == "warning":
+                return 1
+            return 2
+
+        check_groups = [
+            (self.grp_ffmpeg, ffmpeg_item),
+            (self.grp_hwaccel, hwaccel_item),
+            (self.grp_codecs, codecs_item),
+            (self.grp_association, assoc_item),
+        ]
+        sorted_groups = sorted(check_groups, key=lambda pair: status_priority(pair[1]))
+
+        for grp, _it in check_groups:
+            self.pref_page.remove(grp)
+        for grp, _it in sorted_groups:
+            self.pref_page.add(grp)
+
         if self._on_status_changed:
             self._on_status_changed()
 
@@ -546,11 +569,12 @@ class HealthCheckDialog(Adw.Window):
             st_icon = Gtk.Image.new_from_icon_name(
                 "object-select-symbolic" if c.is_available else "window-close-symbolic"
             )
-            st_icon.add_css_class("success" if c.is_available else ("error" if c.is_essential else "dim-label"))
+            st_color = "success" if c.is_available else ("error" if c.is_essential else "warning")
+            st_icon.add_css_class(st_color)
             st_box.append(st_icon)
 
             lbl_st = Gtk.Label(label=_("Available") if c.is_available else _("Not Available"))
-            lbl_st.add_css_class("success" if c.is_available else ("error" if c.is_essential else "dim-label"))
+            lbl_st.add_css_class(st_color)
             st_box.append(lbl_st)
             grid.attach(st_box, 2, r, 1, 1)
 

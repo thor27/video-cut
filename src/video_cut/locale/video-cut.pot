@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: video-cut\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-11-20 23:46-0500\n"
+"POT-Creation-Date: 2026-11-20 23:54-0500\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -355,9 +355,9 @@ msgid "FFmpeg Tools"
 msgstr ""
 
 #: src/video_cut/health_dialog.py:87
-#: src/video_cut/services/health_service.py:643
-#: src/video_cut/services/health_service.py:656
-#: src/video_cut/services/health_service.py:670
+#: src/video_cut/services/health_service.py:645
+#: src/video_cut/services/health_service.py:658
+#: src/video_cut/services/health_service.py:672
 msgid "Hardware Acceleration"
 msgstr ""
 
@@ -370,10 +370,10 @@ msgid "GPU Acceleration"
 msgstr ""
 
 #: src/video_cut/health_dialog.py:97
-#: src/video_cut/services/health_service.py:511
-#: src/video_cut/services/health_service.py:525
-#: src/video_cut/services/health_service.py:549
-#: src/video_cut/services/health_service.py:572
+#: src/video_cut/services/health_service.py:513
+#: src/video_cut/services/health_service.py:527
+#: src/video_cut/services/health_service.py:551
+#: src/video_cut/services/health_service.py:574
 msgid "Multimedia Codecs"
 msgstr ""
 
@@ -414,7 +414,7 @@ msgstr ""
 msgid "Command copied to clipboard"
 msgstr ""
 
-#: src/video_cut/health_dialog.py:274 src/video_cut/health_dialog.py:390
+#: src/video_cut/health_dialog.py:274 src/video_cut/health_dialog.py:413
 msgid "FFmpeg Website"
 msgstr ""
 
@@ -452,102 +452,102 @@ msgstr ""
 msgid "FFmpeg, hardware acceleration, and file associations are ready."
 msgstr ""
 
-#: src/video_cut/health_dialog.py:379
+#: src/video_cut/health_dialog.py:402
 msgid "Install Command"
 msgstr ""
 
-#: src/video_cut/health_dialog.py:380 src/video_cut/health_dialog.py:564
+#: src/video_cut/health_dialog.py:403 src/video_cut/health_dialog.py:588
 msgid "Run this command in your terminal:"
 msgstr ""
 
-#: src/video_cut/health_dialog.py:387
+#: src/video_cut/health_dialog.py:410
 msgid "Official Website"
 msgstr ""
 
-#: src/video_cut/health_dialog.py:388
+#: src/video_cut/health_dialog.py:411
 msgid "Download binaries or source:"
 msgstr ""
 
-#: src/video_cut/health_dialog.py:401
+#: src/video_cut/health_dialog.py:424
 msgid "Install FFmpeg to inspect and enable GPU hardware acceleration."
 msgstr ""
 
-#: src/video_cut/health_dialog.py:413
+#: src/video_cut/health_dialog.py:436
 #, python-brace-format
 msgid "GPU hardware acceleration active ({active})."
 msgstr ""
 
-#: src/video_cut/health_dialog.py:418
-#: src/video_cut/services/health_service.py:672
+#: src/video_cut/health_dialog.py:441
+#: src/video_cut/services/health_service.py:674
 msgid "Software encoding active (CPU). No compatible GPU encoder detected."
 msgstr ""
 
-#: src/video_cut/health_dialog.py:434
+#: src/video_cut/health_dialog.py:457
 msgid "Framework"
 msgstr ""
 
-#: src/video_cut/health_dialog.py:434
+#: src/video_cut/health_dialog.py:457
 msgid "Hardware Encoders"
 msgstr ""
 
-#: src/video_cut/health_dialog.py:434 src/video_cut/health_dialog.py:519
+#: src/video_cut/health_dialog.py:457 src/video_cut/health_dialog.py:542
 msgid "Status"
 msgstr ""
 
-#: src/video_cut/health_dialog.py:454
+#: src/video_cut/health_dialog.py:477
 #: src/video_cut/services/health_service.py:323
-#: src/video_cut/services/health_service.py:535
+#: src/video_cut/services/health_service.py:537
 msgid "None"
 msgstr ""
 
-#: src/video_cut/health_dialog.py:468 src/video_cut/health_dialog.py:552
+#: src/video_cut/health_dialog.py:491 src/video_cut/health_dialog.py:576
 msgid "Available"
 msgstr ""
 
-#: src/video_cut/health_dialog.py:468
+#: src/video_cut/health_dialog.py:491
 msgid "Not Detected"
 msgstr ""
 
-#: src/video_cut/health_dialog.py:487
+#: src/video_cut/health_dialog.py:510
 msgid "Install FFmpeg to inspect and enable multimedia codecs."
 msgstr ""
 
-#: src/video_cut/health_dialog.py:498
+#: src/video_cut/health_dialog.py:521
 #, python-brace-format
 msgid "{available} of {total} important codecs available."
 msgstr ""
 
-#: src/video_cut/health_dialog.py:519
+#: src/video_cut/health_dialog.py:542
 msgid "Codec"
 msgstr ""
 
-#: src/video_cut/health_dialog.py:519
+#: src/video_cut/health_dialog.py:542
 msgid "Encoder"
 msgstr ""
 
-#: src/video_cut/health_dialog.py:552
+#: src/video_cut/health_dialog.py:576
 msgid "Not Available"
 msgstr ""
 
-#: src/video_cut/health_dialog.py:563
-#: src/video_cut/services/health_service.py:565
+#: src/video_cut/health_dialog.py:587
+#: src/video_cut/services/health_service.py:567
 msgid "Install Extra Codecs"
 msgstr ""
 
-#: src/video_cut/health_dialog.py:584
+#: src/video_cut/health_dialog.py:608
 #: src/video_cut/services/health_service.py:327
 msgid "Register Association"
 msgstr ""
 
-#: src/video_cut/health_dialog.py:589
+#: src/video_cut/health_dialog.py:613
 msgid "Remove Association"
 msgstr ""
 
-#: src/video_cut/health_dialog.py:601
+#: src/video_cut/health_dialog.py:625
 msgid "Registering..."
 msgstr ""
 
-#: src/video_cut/health_dialog.py:616
+#: src/video_cut/health_dialog.py:640
 msgid "Removing..."
 msgstr ""
 
@@ -1365,20 +1365,20 @@ msgstr ""
 msgid "Failed to remove file association: {error}"
 msgstr ""
 
-#: src/video_cut/services/health_service.py:513
+#: src/video_cut/services/health_service.py:515
 msgid "FFmpeg is missing; multimedia codecs cannot be probed."
 msgstr ""
 
-#: src/video_cut/services/health_service.py:514
+#: src/video_cut/services/health_service.py:516
 msgid "Install FFmpeg to enable codec diagnostics and hardware acceleration."
 msgstr ""
 
-#: src/video_cut/services/health_service.py:527
+#: src/video_cut/services/health_service.py:529
 #, python-brace-format
 msgid "Essential codecs ({missing}) are missing from FFmpeg."
 msgstr ""
 
-#: src/video_cut/services/health_service.py:531
+#: src/video_cut/services/health_service.py:533
 #, python-brace-format
 msgid ""
 "Installed encoders: {installed}\n"
@@ -1386,16 +1386,16 @@ msgid ""
 "Install recommended package: {pkg}"
 msgstr ""
 
-#: src/video_cut/services/health_service.py:541
+#: src/video_cut/services/health_service.py:543
 msgid "Install Codecs"
 msgstr ""
 
-#: src/video_cut/services/health_service.py:551
+#: src/video_cut/services/health_service.py:553
 #, python-brace-format
 msgid "Standard codecs available; some optional codecs missing ({missing})."
 msgstr ""
 
-#: src/video_cut/services/health_service.py:555
+#: src/video_cut/services/health_service.py:557
 #, python-brace-format
 msgid ""
 "Available codecs: {installed}\n"
@@ -1403,24 +1403,24 @@ msgid ""
 "To enable them, install: {pkg}"
 msgstr ""
 
-#: src/video_cut/services/health_service.py:574
+#: src/video_cut/services/health_service.py:576
 msgid "All recommended video and audio codecs are available."
 msgstr ""
 
-#: src/video_cut/services/health_service.py:645
+#: src/video_cut/services/health_service.py:647
 msgid "FFmpeg is missing; hardware acceleration cannot be probed."
 msgstr ""
 
-#: src/video_cut/services/health_service.py:646
+#: src/video_cut/services/health_service.py:648
 msgid "Install FFmpeg to enable GPU hardware acceleration diagnostics."
 msgstr ""
 
-#: src/video_cut/services/health_service.py:658
+#: src/video_cut/services/health_service.py:660
 #, python-brace-format
 msgid "Hardware acceleration supported ({methods})."
 msgstr ""
 
-#: src/video_cut/services/health_service.py:673
+#: src/video_cut/services/health_service.py:675
 msgid ""
 "Video Cut will process and export videos using multi-threaded CPU encoding."
 msgstr ""

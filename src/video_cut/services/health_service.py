@@ -498,6 +498,8 @@ class HealthService:
                     is_available=avail,
                 )
             )
+        # Show codecs with problems first, then the ones that are all green
+        result.sort(key=lambda c: (c.is_available, not c.is_essential, c.name))
         return result
 
     @classmethod

@@ -267,3 +267,38 @@ def test_health_dialog_copy_details_button_click():
         mock_clipboard.set.assert_called_once_with("Diagnosed detail message")
 
     dialog.destroy()
+
+
+def test_health_dialog_groups_ordered_problems_first():
+    """Test that groups with problems (error/warning) are ordered before all-green groups."""
+    dialog = HealthCheckDialog()
+    items = [
+        HealthCheckItem(id="ffmpeg", title="FFmpeg", status="ok", summary="Working", details="ok"),
+        HealthCheckItem(id="hwaccel", title="Hardware Acceleration", status="ok", summary="ok", details="ok"),
+        HealthCheckItem(id="codecs", title="Codecs", status="ok", summary="ok", details="ok"),
+        HealthCheckItem(id="file_association", title="Association", status="warning", summary="Missing", details="warning"),
+    ]
+    dialog._apply_results(items)
+
+    def find_groups(widget):
+        res = []
+        child = widget.get_first_child()
+        while child is not None:
+            if isinstance(child, Adw.PreferencesGroup):
+                res.append(child)
+            else:
+                res.extend(find_groups(child))
+            child = child.get_next_sibling()
+        return res
+
+    groups = find_groups(dialog.pref_page)
+    # The first group is overall banner
+    assert groups[0] == dialog.grp_status
+    # The second group must be the problem group (association), NOT ffmpeg!
+    assert groups[1] == dialog.grp_association
+    # The remaining groups are the all-green groups
+    assert dialog.grp_ffmpeg in groups[2:]
+    assert dialog.grp_hwaccel in groups[2:]
+    assert dialog.grp_codecs in groups[2:]
+    dialog.destroy()
+

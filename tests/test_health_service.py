@@ -199,3 +199,17 @@ def test_check_hardware_acceleration_missing_ffmpeg():
         assert item.status == "warning"
         assert item.id == "hwaccel"
 
+
+def test_get_codecs_overview_problems_first():
+    """Test that get_codecs_overview puts missing codecs first, then available codecs."""
+    with patch("video_cut.services.export_service.FFmpegCapabilities.get_encoders", return_value={"libx264", "aac"}):
+        codecs = HealthService.get_codecs_overview()
+        missing = [c for c in codecs if not c.is_available]
+        available = [c for c in codecs if c.is_available]
+        assert len(missing) > 0
+        assert len(available) > 0
+        first_available_idx = next(i for i, c in enumerate(codecs) if c.is_available)
+        last_missing_idx = max(i for i, c in enumerate(codecs) if not c.is_available)
+        assert last_missing_idx < first_available_idx
+
+
