@@ -9,7 +9,7 @@ gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
 from gi.repository import Adw, Gtk
 
-from video_cut.health_dialog import HealthCheckDialog
+from video_cut.health_dialog import HealthCheckDialog, StartupHealthAlertModal
 from video_cut.i18n import _
 from video_cut.services.health_service import HealthCheckItem
 
@@ -34,6 +34,8 @@ def test_health_dialog_init():
     assert dialog.row_codecs_summary is not None
     assert dialog.grp_association is not None
     assert dialog.row_association is not None
+    assert dialog.grp_preferences is not None
+    assert dialog.row_startup_check is not None
     dialog.destroy()
 
 
@@ -300,5 +302,50 @@ def test_health_dialog_groups_ordered_problems_first():
     assert dialog.grp_ffmpeg in groups[2:]
     assert dialog.grp_hwaccel in groups[2:]
     assert dialog.grp_codecs in groups[2:]
+    assert dialog.grp_preferences in groups
     dialog.destroy()
+
+
+def test_health_dialog_startup_check_toggle():
+    """Test toggling row_startup_check updates HealthService setting."""
+    dialog = HealthCheckDialog()
+    with patch("video_cut.services.health_service.HealthService.set_check_on_startup_enabled") as mock_set:
+        dialog.row_startup_check.set_active(False)
+        mock_set.assert_called_with(False)
+        dialog.row_startup_check.set_active(True)
+        mock_set.assert_called_with(True)
+    dialog.destroy()
+
+
+def test_startup_health_alert_modal_dismiss():
+    """Test dismissing StartupHealthAlertModal saves preference if checkbox is checked."""
+    items = [
+        HealthCheckItem(id="ffmpeg", title="FFmpeg", status="error", summary="Missing", details="Not found"),
+    ]
+    modal = StartupHealthAlertModal(items=items)
+    modal.chk_dont_show.set_active(True)
+
+    with patch("video_cut.services.health_service.HealthService.set_check_on_startup_enabled") as mock_set:
+        modal._on_dismiss_clicked(MagicMock())
+        mock_set.assert_called_once_with(False)
+
+    modal.destroy()
+
+
+def test_startup_health_alert_modal_review_and_fix():
+    """Test clicking Review & Fix invokes callback and saves preference if checked."""
+    items = [
+        HealthCheckItem(id="file_association", title="Association", status="warning", summary="Missing", details="Not registered"),
+    ]
+    on_setup = MagicMock()
+    modal = StartupHealthAlertModal(items=items, on_open_setup=on_setup)
+    modal.chk_dont_show.set_active(True)
+
+    with patch("video_cut.services.health_service.HealthService.set_check_on_startup_enabled") as mock_set:
+        modal._on_review_clicked(MagicMock())
+        mock_set.assert_called_once_with(False)
+        on_setup.assert_called_once()
+
+    modal.destroy()
+
 

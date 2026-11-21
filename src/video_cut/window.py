@@ -18,7 +18,7 @@ from .advanced_export_dialog import AdvancedExportDialog
 from .clipboard_controller import ClipboardController, parse_uri_list
 from .crop_rotate_dialog import CropRotateDialog
 from .ffmpeg_error_dialog import FFmpegErrorDialog
-from .health_dialog import HealthCheckDialog
+from .health_dialog import HealthCheckDialog, StartupHealthAlertModal
 from .i18n import _
 from .image_import_dialog import ImageImportDialog
 from .keyframe_help_dialog import KeyframeHelpDialog
@@ -28,7 +28,7 @@ from .paths import APP_ID, load_application_css, register_resource_icons
 from .player import VideoPlayerController
 from .progress_modal import ProgressModal
 from .services.export_service import ExportService
-from .services.health_service import HealthService
+from .services.health_service import HealthCheckItem, HealthService
 from .services.image_service import ImageService
 from .services.probe_service import ProbeService, VideoMetadata
 from .services.project_service import ProjectService
@@ -2253,16 +2253,26 @@ class MainWindow(Adw.ApplicationWindow):
         dialog.present()
 
     def _check_initial_system_health(self) -> None:
-        """Run initial health check in background on first run and alert if fixes are needed."""
+        """Run health check in background on startup if enabled and alert in modal if fixes are needed."""
+        if not HealthService.is_check_on_startup_enabled():
+            return
+
         def worker() -> None:
-            if not HealthService.has_run_initial_check():
-                items = HealthService.run_all_checks()
-                HealthService.mark_initial_check_done()
-                has_issues = any(it.status in ("error", "warning") for it in items)
-                if has_issues:
-                    GLib.idle_add(lambda: self.health_banner.set_revealed(True))
+            items = HealthService.run_all_checks()
+            has_issues = any(it.status in ("error", "warning") for it in items)
+            if has_issues:
+                GLib.idle_add(lambda: self._show_startup_health_alert(items))
 
         threading.Thread(target=worker, daemon=True).start()
+
+    def _show_startup_health_alert(self, items: list[HealthCheckItem]) -> None:
+        """Present startup modal alert if any actionable issues were detected."""
+        modal = StartupHealthAlertModal(
+            parent=self,
+            items=items,
+            on_open_setup=self._show_health_dialog,
+        )
+        modal.present()
 
     def _show_health_dialog(self) -> None:
         """Open the System Health and Setup dialog."""

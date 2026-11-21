@@ -179,6 +179,17 @@ def test_initial_check_persistence(tmp_path: Path):
         assert HealthService.has_run_initial_check() is True
 
 
+def test_startup_check_preference_persistence(tmp_path: Path):
+    """Test is_check_on_startup_enabled and set_check_on_startup_enabled persistence."""
+    fake_cfg = tmp_path / "healthcheck.json"
+    with patch.object(HealthService, "get_config_file", return_value=fake_cfg):
+        assert HealthService.is_check_on_startup_enabled() is True
+        HealthService.set_check_on_startup_enabled(False)
+        assert HealthService.is_check_on_startup_enabled() is False
+        HealthService.set_check_on_startup_enabled(True)
+        assert HealthService.is_check_on_startup_enabled() is True
+
+
 def test_check_hardware_acceleration_detected():
     """Test check_hardware_acceleration when VA-API hardware acceleration is detected."""
     dummy_render = MagicMock()

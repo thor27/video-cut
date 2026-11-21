@@ -95,6 +95,32 @@ class HealthService:
             pass
 
     @classmethod
+    def is_check_on_startup_enabled(cls) -> bool:
+        """Return True if health check should be executed in background during startup."""
+        cfg = cls.get_config_file()
+        if not cfg.exists():
+            return True
+        try:
+            data = json.loads(cfg.read_text(encoding="utf-8"))
+            return bool(data.get("check_on_startup", True))
+        except Exception:
+            return True
+
+    @classmethod
+    def set_check_on_startup_enabled(cls, enabled: bool) -> None:
+        """Enable or disable health check execution during app startup."""
+        cfg = cls.get_config_file()
+        try:
+            data: dict[str, Any] = {}
+            if cfg.exists():
+                with contextlib.suppress(Exception):
+                    data = json.loads(cfg.read_text(encoding="utf-8"))
+            data["check_on_startup"] = bool(enabled)
+            cfg.write_text(json.dumps(data, indent=2), encoding="utf-8")
+        except Exception:
+            pass
+
+    @classmethod
     def detect_os_info(cls) -> dict[str, str]:
         """Read and parse /etc/os-release."""
         info = {"id": "linux", "name": "Linux", "version": ""}

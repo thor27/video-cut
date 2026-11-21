@@ -8,8 +8,9 @@ from collections.abc import Callable
 import gi
 
 gi.require_version("Gtk", "4.0")
+gi.require_version("Gdk", "4.0")
 gi.require_version("Adw", "1")
-from gi.repository import Adw, Gio, GLib, Gtk
+from gi.repository import Adw, Gdk, Gio, GLib, Gtk
 
 from .i18n import _
 from .services.health_service import HealthCheckItem, HealthService
@@ -108,6 +109,21 @@ class HealthCheckDialog(Adw.Window):
 
         self.row_association = Adw.ActionRow(title=_("Desktop File Association"))
         self.grp_association.add(self.row_association)
+
+        # 6. Preferences Group
+        self.grp_preferences = Adw.PreferencesGroup(title=_("Startup Diagnostics"))
+        self.pref_page.add(self.grp_preferences)
+
+        self.row_startup_check = Adw.SwitchRow(
+            title=_("Run health check during app startup"),
+            subtitle=_("Automatically check for required tools and associations when launching Video Cut"),
+        )
+        self.row_startup_check.set_active(HealthService.is_check_on_startup_enabled())
+        self.row_startup_check.connect("notify::active", self._on_startup_check_toggled)
+        self.grp_preferences.add(self.row_startup_check)
+
+    def _on_startup_check_toggled(self, row: Adw.SwitchRow, _param: object) -> None:
+        HealthService.set_check_on_startup_enabled(row.get_active())
 
     def _show_toast(self, text: str, timeout: int = 2) -> None:
         toast = Adw.Toast.new(text)
@@ -360,10 +376,12 @@ class HealthCheckDialog(Adw.Window):
         ]
         sorted_groups = sorted(check_groups, key=lambda pair: status_priority(pair[1]))
 
+        self.pref_page.remove(self.grp_preferences)
         for grp, _it in check_groups:
             self.pref_page.remove(grp)
         for grp, _it in sorted_groups:
             self.pref_page.add(grp)
+        self.pref_page.add(self.grp_preferences)
 
         if self._on_status_changed:
             self._on_status_changed()
@@ -649,3 +667,145 @@ class HealthCheckDialog(Adw.Window):
             GLib.idle_add(done)
 
         threading.Thread(target=worker, daemon=True).start()
+
+
+class StartupHealthAlertModal(Adw.Window):
+    """Modal dialog alerting user when system issues are detected on startup."""
+
+    def __init__(
+        self,
+        parent: Gtk.Window | None = None,
+        items: list[HealthCheckItem] | None = None,
+        on_open_setup: Callable[[], None] | None = None,
+    ) -> None:
+        super().__init__(transient_for=parent, modal=True)
+        self.set_title(_("System Setup Recommended"))
+        self.set_default_size(520, -1)
+        self.set_resizable(False)
+
+        self._on_open_setup = on_open_setup
+        self._items = items or []
+
+        self._build_ui()
+
+    def _build_ui(self) -> None:
+        toolbar_view = Adw.ToolbarView()
+        self.set_content(toolbar_view)
+
+        header_bar = Adw.HeaderBar()
+        header_bar.set_show_title(True)
+        header_bar.set_show_end_title_buttons(False)
+        header_bar.set_show_start_title_buttons(False)
+        toolbar_view.add_top_bar(header_bar)
+
+        # Allow dismissing with Escape key
+        key_controller = Gtk.EventControllerKey()
+        key_controller.connect("key-pressed", self._on_key_pressed)
+        self.add_controller(key_controller)
+        self.connect("close-request", self._on_close_request)
+
+        main_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=16)
+        main_box.set_margin_start(24)
+        main_box.set_margin_end(24)
+        main_box.set_margin_top(16)
+        main_box.set_margin_bottom(20)
+
+        # Icon and Header
+        has_error = any(it.status == "error" for it in self._items)
+        icon_name = "dialog-error-symbolic" if has_error else "dialog-warning-symbolic"
+        icon_color = "error" if has_error else "warning"
+
+        icon = Gtk.Image.new_from_icon_name(icon_name)
+        icon.set_pixel_size(48)
+        icon.add_css_class(icon_color)
+        icon.set_halign(Gtk.Align.CENTER)
+        main_box.append(icon)
+
+        title_label = Gtk.Label(label=_("System Setup Recommended"))
+        title_label.add_css_class("title-2")
+        title_label.set_halign(Gtk.Align.CENTER)
+        main_box.append(title_label)
+
+        desc_label = Gtk.Label(
+            label=_(
+                "Video Cut detected setup recommendations that may affect video processing or file associations:"
+            )
+        )
+        desc_label.add_css_class("body")
+        desc_label.add_css_class("dim-label")
+        desc_label.set_wrap(True)
+        desc_label.set_justify(Gtk.Justification.CENTER)
+        desc_label.set_halign(Gtk.Align.CENTER)
+        main_box.append(desc_label)
+
+        # List of detected issues
+        issues = [it for it in self._items if it.status in ("error", "warning")]
+        if issues:
+            pref_group = Adw.PreferencesGroup()
+            for it in issues:
+                row = Adw.ActionRow(title=it.title, subtitle=it.summary)
+                row_icon = Gtk.Image.new_from_icon_name(
+                    "dialog-error-symbolic" if it.status == "error" else "dialog-warning-symbolic"
+                )
+                row_icon.add_css_class("error" if it.status == "error" else "warning")
+                row.add_prefix(row_icon)
+                pref_group.add(row)
+            main_box.append(pref_group)
+
+        # "Do not show this message again in the future" CheckBox
+        self.chk_dont_show = Gtk.CheckButton(
+            label=_("Do not show this message again in the future")
+        )
+        self.chk_dont_show.set_halign(Gtk.Align.CENTER)
+        self.chk_dont_show.set_margin_top(8)
+        self.chk_dont_show.set_margin_bottom(4)
+        main_box.append(self.chk_dont_show)
+
+        # Action Buttons
+        btn_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
+        btn_box.set_halign(Gtk.Align.END)
+        btn_box.set_margin_top(8)
+
+        btn_dismiss = Gtk.Button(label=_("Dismiss"))
+        btn_dismiss.connect("clicked", self._on_dismiss_clicked)
+        btn_box.append(btn_dismiss)
+
+        btn_review = Gtk.Button(label=_("Review & Fix..."))
+        btn_review.add_css_class("suggested-action")
+        btn_review.connect("clicked", self._on_review_clicked)
+        btn_box.append(btn_review)
+
+        main_box.append(btn_box)
+        toolbar_view.set_content(main_box)
+
+    def _save_preference_if_checked(self) -> None:
+        if self.chk_dont_show.get_active():
+            HealthService.set_check_on_startup_enabled(False)
+
+    def _on_close_request(self, _win: Gtk.Window) -> bool:
+        self._save_preference_if_checked()
+        return False
+
+    def _on_key_pressed(
+        self,
+        _controller: Gtk.EventControllerKey,
+        keyval: int,
+        _keycode: int,
+        _state: Gdk.ModifierType,
+    ) -> bool:
+        if keyval == Gdk.KEY_Escape:
+            self._save_preference_if_checked()
+            self.destroy()
+            return True
+        return False
+
+    def _on_dismiss_clicked(self, _btn: Gtk.Button) -> None:
+        self._save_preference_if_checked()
+        self.destroy()
+
+    def _on_review_clicked(self, _btn: Gtk.Button) -> None:
+        self._save_preference_if_checked()
+        self.destroy()
+        if self._on_open_setup:
+            self._on_open_setup()
+
