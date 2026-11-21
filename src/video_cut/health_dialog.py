@@ -25,9 +25,15 @@ class HealthCheckDialog(Adw.Window):
     ) -> None:
         super().__init__(transient_for=parent, modal=True)
         self.set_title(_("System Health & Setup"))
-        self.set_default_size(780, 500)
+        self.set_default_size(780, 580)
         self._on_status_changed = on_status_changed
         self._items: list[HealthCheckItem] = []
+
+        # Dynamic subrow references
+        self._row_ffmpeg_cmd: Adw.ActionRow | None = None
+        self._row_ffmpeg_web: Adw.ActionRow | None = None
+        self._row_codecs_table: Adw.PreferencesRow | None = None
+        self._row_codecs_cmd: Adw.ActionRow | None = None
 
         self._build_ui()
         self.refresh_checks()
@@ -61,21 +67,31 @@ class HealthCheckDialog(Adw.Window):
         self.toast_overlay.set_child(self.pref_page)
         toolbar_view.set_content(self.toast_overlay)
 
-        # Overall Status Group
+        # 1. Overall Status Group
         self.grp_status = Adw.PreferencesGroup()
         self.pref_page.add(self.grp_status)
 
         self.row_overall = Adw.ActionRow()
         self.grp_status.add(self.row_overall)
 
-        # Group 1: FFmpeg Multimedia Engine
+        # 2. FFmpeg Group
         self.grp_ffmpeg = Adw.PreferencesGroup(title=_("FFmpeg Multimedia Engine"))
         self.pref_page.add(self.grp_ffmpeg)
 
         self.row_ffmpeg = Adw.ActionRow(title=_("FFmpeg Tools"))
         self.grp_ffmpeg.add(self.row_ffmpeg)
 
-        # Group 2: .vcut Project File Association
+        # 3. Codecs Group
+        self.grp_codecs = Adw.PreferencesGroup(
+            title=_("Multimedia Codecs"),
+            description=_("Status of important video and audio encoders in FFmpeg:"),
+        )
+        self.pref_page.add(self.grp_codecs)
+
+        self.row_codecs_summary = Adw.ActionRow(title=_("Codec Support"))
+        self.grp_codecs.add(self.row_codecs_summary)
+
+        # 4. File Association Group
         self.grp_association = Adw.PreferencesGroup(title=_(".vcut Project File Association"))
         self.pref_page.add(self.grp_association)
 
@@ -191,10 +207,79 @@ class HealthCheckDialog(Adw.Window):
         btn_info.set_popover(popover)
         return btn_info
 
+    def _create_command_row(
+        self,
+        title: str,
+        subtitle: str,
+        command_text: str,
+    ) -> Adw.ActionRow:
+        """Create a dedicated ActionRow containing a monospace entry and copy button."""
+        row = Adw.ActionRow(title=title, subtitle=subtitle)
+        box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
+        box.set_valign(Gtk.Align.CENTER)
+
+        entry = Gtk.Entry()
+        entry.set_text(command_text)
+        entry.set_editable(False)
+        entry.set_can_focus(True)
+        entry.add_css_class("monospace")
+        entry.set_width_chars(28)
+        entry.set_hexpand(True)
+        box.append(entry)
+
+        btn_copy = Gtk.Button()
+        content = Adw.ButtonContent(
+            icon_name="edit-copy-symbolic",
+            label=_("Copy"),
+        )
+        btn_copy.set_child(content)
+        btn_copy.set_tooltip_text(_("Copy command to clipboard"))
+
+        def on_copy_cmd(_btn: Gtk.Button) -> None:
+            self._copy_to_clipboard(command_text)
+            content.set_icon_name("object-select-symbolic")
+            content.set_label(_("Copied!"))
+            btn_copy.add_css_class("suggested-action")
+            GLib.timeout_add(2000, lambda: (
+                content.set_icon_name("edit-copy-symbolic"),
+                content.set_label(_("Copy")),
+                btn_copy.remove_css_class("suggested-action")
+            ) and False)
+            self._show_toast(_("Command copied to clipboard"))
+
+        btn_copy.connect("clicked", on_copy_cmd)
+        box.append(btn_copy)
+
+        row._btn_copy = btn_copy
+        row._entry = entry
+        row.add_suffix(box)
+        return row
+
+    def _create_website_row(
+        self,
+        title: str,
+        subtitle: str,
+        url: str,
+        button_label: str = _("FFmpeg Website"),
+    ) -> Adw.ActionRow:
+        """Create a dedicated ActionRow with an external website link."""
+        row = Adw.ActionRow(title=title, subtitle=subtitle)
+        btn_web = Gtk.Button()
+        content = Adw.ButtonContent(
+            icon_name="web-browser-symbolic",
+            label=button_label,
+        )
+        btn_web.set_child(content)
+        btn_web.set_valign(Gtk.Align.CENTER)
+        btn_web.set_tooltip_text(url)
+        btn_web.connect("clicked", lambda _btn: Gio.AppInfo.launch_default_for_uri(url, None))
+        row.add_suffix(btn_web)
+        return row
+
     def refresh_checks(self) -> None:
         """Run diagnostics in background thread and update UI on completion."""
         self.row_overall.set_title(_("Running system health check..."))
-        self.row_overall.set_subtitle(_("Probing FFmpeg and file associations..."))
+        self.row_overall.set_subtitle(_("Probing FFmpeg, file associations, and multimedia codecs..."))
         icon_spin = Gtk.Spinner()
         icon_spin.start()
         self._set_overall_prefix(icon_spin)
@@ -207,6 +292,10 @@ class HealthCheckDialog(Adw.Window):
 
     def _apply_results(self, items: list[HealthCheckItem]) -> None:
         self._items = items
+        ffmpeg_item = next((it for it in items if it.id == "ffmpeg"), None)
+        assoc_item = next((it for it in items if it.id == "file_association"), None)
+        codecs_item = next((it for it in items if it.id == "codecs"), None)
+
         has_error = any(it.status == "error" for it in items)
         has_warning = any(it.status == "warning" for it in items)
 
@@ -219,23 +308,23 @@ class HealthCheckDialog(Adw.Window):
             self._set_overall_prefix(icon)
         elif has_warning:
             self.row_overall.set_title(_("Configuration Recommended"))
-            self.row_overall.set_subtitle(_("Video Cut is operational, but file associations can be improved."))
+            self.row_overall.set_subtitle(_("Video Cut is operational, but optional features or associations can be improved."))
             icon = Gtk.Image.new_from_icon_name("dialog-warning-symbolic")
             icon.add_css_class("warning")
             self._set_overall_prefix(icon)
         else:
             self.row_overall.set_title(_("All Systems Operational"))
-            self.row_overall.set_subtitle(_("FFmpeg and .vcut file associations are ready."))
+            self.row_overall.set_subtitle(_("FFmpeg, .vcut file associations, and multimedia codecs are ready."))
             icon = Gtk.Image.new_from_icon_name("object-select-symbolic")
             icon.add_css_class("success")
             self._set_overall_prefix(icon)
 
-        # Update individual component rows
-        for item in items:
-            if item.id == "ffmpeg":
-                self._update_ffmpeg_row(item)
-            elif item.id == "file_association":
-                self._update_association_row(item)
+        if ffmpeg_item:
+            self._update_ffmpeg_row(ffmpeg_item)
+        if assoc_item:
+            self._update_association_row(assoc_item)
+        if codecs_item:
+            self._update_codecs_group(codecs_item, ffmpeg_ok=(ffmpeg_item.status == "ok" if ffmpeg_item else False))
 
         if self._on_status_changed:
             self._on_status_changed()
@@ -253,60 +342,38 @@ class HealthCheckDialog(Adw.Window):
 
         suffix_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
         suffix_box.set_valign(Gtk.Align.CENTER)
-
-        if item.status != "ok":
-            if item.fix_command:
-                entry = Gtk.Entry()
-                entry.set_text(item.fix_command)
-                entry.set_editable(False)
-                entry.set_can_focus(True)
-                entry.add_css_class("monospace")
-                entry.set_width_chars(24)
-                entry.set_tooltip_text(_("Terminal install command"))
-                suffix_box.append(entry)
-
-                btn_copy = Gtk.Button()
-                content_copy = Adw.ButtonContent(
-                    icon_name="edit-copy-symbolic",
-                    label=_("Copy"),
-                )
-                btn_copy.set_child(content_copy)
-                btn_copy.set_tooltip_text(_("Copy command to clipboard"))
-
-                cmd_text = item.fix_command
-
-                def on_copy_cmd(_btn: Gtk.Button, cmd: str = cmd_text) -> None:
-                    self._copy_to_clipboard(cmd)
-                    content_copy.set_icon_name("object-select-symbolic")
-                    content_copy.set_label(_("Copied!"))
-                    btn_copy.add_css_class("suggested-action")
-                    GLib.timeout_add(2000, lambda: (
-                        content_copy.set_icon_name("edit-copy-symbolic"),
-                        content_copy.set_label(_("Copy")),
-                        btn_copy.remove_css_class("suggested-action")
-                    ) and False)
-                    self._show_toast(_("Command copied to clipboard"))
-
-                btn_copy.connect("clicked", on_copy_cmd)
-                suffix_box.append(btn_copy)
-
-            if item.fix_url:
-                btn_web = Gtk.Button()
-                content_web = Adw.ButtonContent(
-                    icon_name="web-browser-symbolic",
-                    label=_("FFmpeg Website"),
-                )
-                btn_web.set_child(content_web)
-                btn_web.set_tooltip_text(item.fix_url)
-                target_url = item.fix_url
-                btn_web.connect("clicked", lambda _btn: Gio.AppInfo.launch_default_for_uri(target_url, None))
-                suffix_box.append(btn_web)
-
         btn_info = self._create_info_button(item)
         suffix_box.append(btn_info)
 
         self._suffix_ffmpeg = suffix_box
         self.row_ffmpeg.add_suffix(suffix_box)
+
+        # Clear old dynamic action rows bellow
+        if self._row_ffmpeg_cmd:
+            self.grp_ffmpeg.remove(self._row_ffmpeg_cmd)
+            self._row_ffmpeg_cmd = None
+        if self._row_ffmpeg_web:
+            self.grp_ffmpeg.remove(self._row_ffmpeg_web)
+            self._row_ffmpeg_web = None
+
+        # When FFmpeg is missing, place the actions below in separate, spacious rows
+        if item.status != "ok":
+            if item.fix_command:
+                self._row_ffmpeg_cmd = self._create_command_row(
+                    title=_("Install Command"),
+                    subtitle=_("Run this command in your terminal:"),
+                    command_text=item.fix_command,
+                )
+                self.grp_ffmpeg.add(self._row_ffmpeg_cmd)
+
+            if item.fix_url:
+                self._row_ffmpeg_web = self._create_website_row(
+                    title=_("Official Website"),
+                    subtitle=_("Download binaries or source:"),
+                    url=item.fix_url,
+                    button_label=_("FFmpeg Website"),
+                )
+                self.grp_ffmpeg.add(self._row_ffmpeg_web)
 
     def _update_association_row(self, item: HealthCheckItem) -> None:
         self.row_association.set_subtitle(item.summary)
@@ -337,6 +404,107 @@ class HealthCheckDialog(Adw.Window):
 
         self._suffix_association = suffix_box
         self.row_association.add_suffix(suffix_box)
+
+    def _update_codecs_group(self, item: HealthCheckItem, ffmpeg_ok: bool) -> None:
+        """Populate the codecs group with a clean status row and small table."""
+        # Clear existing dynamic table and command row
+        if self._row_codecs_table:
+            self.grp_codecs.remove(self._row_codecs_table)
+            self._row_codecs_table = None
+        if self._row_codecs_cmd:
+            self.grp_codecs.remove(self._row_codecs_cmd)
+            self._row_codecs_cmd = None
+
+        if not ffmpeg_ok:
+            self.row_codecs_summary.set_subtitle(_("Install FFmpeg to inspect and enable multimedia codecs."))
+            icon = Gtk.Image.new_from_icon_name("dialog-warning-symbolic")
+            icon.add_css_class("warning")
+            self._set_row_prefix(self.row_codecs_summary, "_prefix_codecs", icon)
+            return
+
+        codecs = HealthService.get_codecs_overview()
+        available_count = sum(1 for c in codecs if c.is_available)
+        total_count = len(codecs)
+
+        self.row_codecs_summary.set_subtitle(
+            _("{available} of {total} important codecs available.").format(
+                available=available_count,
+                total=total_count,
+            )
+        )
+        icon_name = "object-select-symbolic" if item.status == "ok" else "dialog-warning-symbolic"
+        icon = Gtk.Image.new_from_icon_name(icon_name)
+        icon.add_css_class("success" if item.status == "ok" else "warning")
+        self._set_row_prefix(self.row_codecs_summary, "_prefix_codecs", icon)
+
+        # Build small table in an Adw.PreferencesRow
+        pref_row = Adw.PreferencesRow()
+        grid = Gtk.Grid()
+        grid.set_column_spacing(20)
+        grid.set_row_spacing(8)
+        grid.set_margin_top(12)
+        grid.set_margin_bottom(12)
+        grid.set_margin_start(16)
+        grid.set_margin_end(16)
+        grid.set_hexpand(True)
+
+        # Table Column Headers
+        headers = [_("Status"), _("Codec"), _("Type"), _("Encoder"), _("State")]
+        for col_idx, h in enumerate(headers):
+            lbl = Gtk.Label(label=h)
+            lbl.add_css_class("heading")
+            lbl.add_css_class("dim-label")
+            lbl.set_xalign(0.0)
+            grid.attach(lbl, col_idx, 0, 1, 1)
+
+        sep = Gtk.Separator(orientation=Gtk.Orientation.HORIZONTAL)
+        sep.set_hexpand(True)
+        grid.attach(sep, 0, 1, 5, 1)
+
+        # Table Rows for each codec
+        for i, c in enumerate(codecs):
+            r = i + 2
+            # Col 0: Icon
+            st_icon_name = "object-select-symbolic" if c.is_available else "window-close-symbolic"
+            st_icon = Gtk.Image.new_from_icon_name(st_icon_name)
+            st_icon.add_css_class("success" if c.is_available else ("error" if c.is_essential else "dim-label"))
+            grid.attach(st_icon, 0, r, 1, 1)
+
+            # Col 1: Codec Name
+            lbl_name = Gtk.Label(label=c.name)
+            lbl_name.set_xalign(0.0)
+            grid.attach(lbl_name, 1, r, 1, 1)
+
+            # Col 2: Type
+            lbl_type = Gtk.Label(label=_("Video") if c.codec_type == "Video" else _("Audio"))
+            lbl_type.add_css_class("dim-label")
+            lbl_type.set_xalign(0.0)
+            grid.attach(lbl_type, 2, r, 1, 1)
+
+            # Col 3: Encoder name
+            lbl_enc = Gtk.Label(label=c.encoder)
+            lbl_enc.add_css_class("monospace")
+            lbl_enc.set_xalign(0.0)
+            grid.attach(lbl_enc, 3, r, 1, 1)
+
+            # Col 4: State
+            lbl_state = Gtk.Label(label=_("Available") if c.is_available else _("Not Available"))
+            lbl_state.add_css_class("success" if c.is_available else ("error" if c.is_essential else "dim-label"))
+            lbl_state.set_xalign(0.0)
+            grid.attach(lbl_state, 4, r, 1, 1)
+
+        pref_row.set_child(grid)
+        self._row_codecs_table = pref_row
+        self.grp_codecs.add(pref_row)
+
+        # If any codecs are missing and there is a fix command, add row below table
+        if item.fix_command and item.status != "ok":
+            self._row_codecs_cmd = self._create_command_row(
+                title=_("Install Extra Codecs"),
+                subtitle=_("Run this command in your terminal:"),
+                command_text=item.fix_command,
+            )
+            self.grp_codecs.add(self._row_codecs_cmd)
 
     def _on_fix_association_clicked(self, btn: Gtk.Button) -> None:
         btn.set_sensitive(False)

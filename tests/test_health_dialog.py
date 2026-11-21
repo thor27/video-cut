@@ -28,6 +28,8 @@ def test_health_dialog_init():
     assert dialog.row_overall is not None
     assert dialog.grp_ffmpeg is not None
     assert dialog.row_ffmpeg is not None
+    assert dialog.grp_codecs is not None
+    assert dialog.row_codecs_summary is not None
     assert dialog.grp_association is not None
     assert dialog.row_association is not None
     dialog.destroy()
@@ -40,6 +42,7 @@ def test_health_dialog_apply_all_ok():
     items = [
         HealthCheckItem(id="ffmpeg", title="FFmpeg", status="ok", summary="Working", details="ffmpeg v6.1"),
         HealthCheckItem(id="file_association", title="Association", status="ok", summary="Registered", details="Default"),
+        HealthCheckItem(id="codecs", title="Codecs", status="ok", summary="All codecs ready", details="h264, aac"),
     ]
 
     dialog._apply_results(items)
@@ -48,6 +51,7 @@ def test_health_dialog_apply_all_ok():
     assert dialog.row_association.get_subtitle() == "Registered"
     assert dialog._suffix_ffmpeg is not None
     assert dialog._suffix_association is not None
+    assert dialog._row_codecs_table is not None
 
     # Verify Remove Association button is present when status is ok
     btn_remove = None
@@ -87,7 +91,7 @@ def test_health_dialog_remove_association_button_click():
 
 
 def test_health_dialog_apply_warning_and_error():
-    """Test dialog UI when errors and warnings are present with inline fix widgets."""
+    """Test dialog UI when errors and warnings are present with spacious action rows bellow."""
     dialog = HealthCheckDialog()
 
     items_err = [
@@ -110,6 +114,13 @@ def test_health_dialog_apply_warning_and_error():
             can_fix=True,
             fix_type="automated",
         ),
+        HealthCheckItem(
+            id="codecs",
+            title="Codecs",
+            status="warning",
+            summary="FFmpeg is missing",
+            details="Codecs cannot be probed",
+        ),
     ]
 
     dialog._apply_results(items_err)
@@ -117,20 +128,11 @@ def test_health_dialog_apply_warning_and_error():
     assert dialog.row_ffmpeg.get_subtitle() == "FFmpeg missing"
     assert dialog.row_association.get_subtitle() == "Not registered"
 
-    # Verify inline fix controls in FFmpeg row suffix
-    assert dialog._suffix_ffmpeg is not None
-    ffmpeg_children: list[Gtk.Widget] = []
-    child = dialog._suffix_ffmpeg.get_first_child()
-    while child is not None:
-        ffmpeg_children.append(child)
-        child = child.get_next_sibling()
+    # Action rows are bellow in grp_ffmpeg
+    assert dialog._row_ffmpeg_cmd is not None
+    assert dialog._row_ffmpeg_web is not None
 
-    # Should contain Entry, Copy button, Website button, and Info MenuButton
-    assert any(isinstance(w, Gtk.Entry) for w in ffmpeg_children)
-    assert any(isinstance(w, Gtk.Button) and not isinstance(w, Gtk.MenuButton) for w in ffmpeg_children)
-    assert any(isinstance(w, Gtk.MenuButton) for w in ffmpeg_children)
-
-    # Verify inline fix controls in Association row suffix
+    # Association row has fix button in suffix
     assert dialog._suffix_association is not None
     assoc_children: list[Gtk.Widget] = []
     child = dialog._suffix_association.get_first_child()
@@ -138,9 +140,24 @@ def test_health_dialog_apply_warning_and_error():
         assoc_children.append(child)
         child = child.get_next_sibling()
 
-    # Should contain Fix Button and Info MenuButton
     assert any(isinstance(w, Gtk.Button) and not isinstance(w, Gtk.MenuButton) for w in assoc_children)
     assert any(isinstance(w, Gtk.MenuButton) for w in assoc_children)
+
+    dialog.destroy()
+
+
+def test_health_dialog_codecs_table():
+    """Test that codecs table is created with headers and entries when FFmpeg is OK."""
+    dialog = HealthCheckDialog()
+    items = [
+        HealthCheckItem(id="ffmpeg", title="FFmpeg", status="ok", summary="Working", details="ffmpeg v6.1"),
+        HealthCheckItem(id="codecs", title="Codecs", status="ok", summary="All codecs ready", details="h264"),
+    ]
+    dialog._apply_results(items)
+
+    assert dialog._row_codecs_table is not None
+    grid = dialog._row_codecs_table.get_child()
+    assert isinstance(grid, Gtk.Grid)
 
     dialog.destroy()
 
@@ -193,15 +210,8 @@ def test_health_dialog_copy_command_button_click():
     mock_display.get_clipboard.return_value = mock_clipboard
 
     with patch.object(dialog, "get_display", return_value=mock_display):
-        # Locate copy button in suffix
-        child = dialog._suffix_ffmpeg.get_first_child()
-        btn_copy = None
-        while child is not None:
-            if isinstance(child, Gtk.Button) and not isinstance(child, Gtk.MenuButton):
-                btn_copy = child
-                break
-            child = child.get_next_sibling()
-
+        assert dialog._row_ffmpeg_cmd is not None
+        btn_copy = getattr(dialog._row_ffmpeg_cmd, "_btn_copy", None)
         assert btn_copy is not None
         btn_copy.emit("clicked")
         mock_clipboard.set.assert_called_once_with("sudo apt install ffmpeg")
@@ -228,7 +238,6 @@ def test_health_dialog_copy_details_button_click():
     mock_display.get_clipboard.return_value = mock_clipboard
 
     with patch.object(dialog, "get_display", return_value=mock_display):
-        # Locate btn_copy in popover child box
         popover_box = popover.get_child()
         child = popover_box.get_first_child()
         btn_copy_details = None
@@ -242,4 +251,3 @@ def test_health_dialog_copy_details_button_click():
         mock_clipboard.set.assert_called_once_with("Diagnosed detail message")
 
     dialog.destroy()
-

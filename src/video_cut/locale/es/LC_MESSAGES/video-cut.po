@@ -3,7 +3,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: video-cut 0.1.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-11-20 23:29-0500\n"
+"POT-Creation-Date: 2026-11-20 23:35-0500\n"
 "Language: es\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
@@ -34,8 +34,8 @@ msgid "Error Details & Command Output"
 msgstr "Detalles del error y salida del comando"
 
 #: src/video_cut/ffmpeg_error_dialog.py:120
-#: src/video_cut/ffmpeg_error_dialog.py:149 src/video_cut/health_dialog.py:170
-#: src/video_cut/health_dialog.py:182
+#: src/video_cut/ffmpeg_error_dialog.py:149 src/video_cut/health_dialog.py:186
+#: src/video_cut/health_dialog.py:198
 msgid "Copy Details"
 msgstr "Copiar detalles"
 
@@ -43,13 +43,13 @@ msgstr "Copiar detalles"
 msgid "Copy full error details to clipboard"
 msgstr "Copiar todos los detalles del error al portapapeles"
 
-#: src/video_cut/ffmpeg_error_dialog.py:127 src/video_cut/health_dialog.py:53
+#: src/video_cut/ffmpeg_error_dialog.py:127 src/video_cut/health_dialog.py:59
 #: src/video_cut/keyframe_help_dialog.py:32
 msgid "Close"
 msgstr "Cerrar"
 
-#: src/video_cut/ffmpeg_error_dialog.py:144 src/video_cut/health_dialog.py:178
-#: src/video_cut/health_dialog.py:281
+#: src/video_cut/ffmpeg_error_dialog.py:144 src/video_cut/health_dialog.py:194
+#: src/video_cut/health_dialog.py:241
 msgid "Copied!"
 msgstr "¡Copiado!"
 
@@ -255,6 +255,7 @@ msgid "GIF"
 msgstr "GIF"
 
 #: src/video_cut/overlay_dialog.py:656 src/video_cut/overlay_dialog.py:659
+#: src/video_cut/health_dialog.py:479
 msgid "Video"
 msgstr "Vídeo"
 
@@ -504,8 +505,8 @@ msgstr "Archivos de audio (*.mp3, *.wav, *.aac, *.m4a, *.flac, *.ogg)"
 msgid "Cut"
 msgstr "Cortar"
 
-#: src/video_cut/overlay_dialog.py:3395 src/video_cut/health_dialog.py:271
-#: src/video_cut/health_dialog.py:285 src/video_cut/segment_card.py:314
+#: src/video_cut/overlay_dialog.py:3395 src/video_cut/health_dialog.py:233
+#: src/video_cut/health_dialog.py:245 src/video_cut/segment_card.py:314
 msgid "Copy"
 msgstr "Copiar"
 
@@ -745,19 +746,19 @@ msgid "Segments have different audio channels or sample rates"
 msgstr ""
 "Los segmentos tienen diferentes canales de audio o frecuencias de muestreo"
 
-#: src/video_cut/services/health_service.py:174
-#: src/video_cut/services/health_service.py:205
-#: src/video_cut/services/health_service.py:217
-#: src/video_cut/health_dialog.py:72
+#: src/video_cut/services/health_service.py:185
+#: src/video_cut/services/health_service.py:216
+#: src/video_cut/services/health_service.py:228
+#: src/video_cut/health_dialog.py:78
 msgid "FFmpeg Multimedia Engine"
 msgstr "Motor Multimedia FFmpeg"
 
-#: src/video_cut/services/health_service.py:176
+#: src/video_cut/services/health_service.py:187
 #, python-brace-format
 msgid "FFmpeg multimedia tools are missing ({missing})."
 msgstr "Faltan las herramientas multimedia de FFmpeg ({missing})."
 
-#: src/video_cut/services/health_service.py:180
+#: src/video_cut/services/health_service.py:191
 msgid ""
 "Video Cut requires FFmpeg and FFprobe to analyze, preview, and export videos.\n"
 "You can install FFmpeg using your system package manager or download it from the official site."
@@ -765,46 +766,46 @@ msgstr ""
 "Video Cut requiere FFmpeg y FFprobe para analizar, previsualizar y exportar vídeos.\n"
 "Puede instalar FFmpeg usando el administrador de paquetes de su sistema o descargarlo desde el sitio oficial."
 
-#: src/video_cut/services/health_service.py:185
+#: src/video_cut/services/health_service.py:196
 msgid "Install FFmpeg"
 msgstr "Instalar FFmpeg"
 
-#: src/video_cut/services/health_service.py:207
+#: src/video_cut/services/health_service.py:218
 msgid "FFmpeg was found but failed to execute."
 msgstr "Se encontró FFmpeg pero no se pudo ejecutar."
 
-#: src/video_cut/services/health_service.py:211
+#: src/video_cut/services/health_service.py:222
 msgid "Reinstall FFmpeg"
 msgstr "Reinstalar FFmpeg"
 
-#: src/video_cut/services/health_service.py:219
+#: src/video_cut/services/health_service.py:230
 msgid "FFmpeg and FFprobe are installed and working."
 msgstr "FFmpeg y FFprobe están instalados y funcionando."
 
-#: src/video_cut/services/health_service.py:270
-#: src/video_cut/services/health_service.py:289
+#: src/video_cut/services/health_service.py:281
+#: src/video_cut/services/health_service.py:300
 msgid ".vcut Project Association"
 msgstr "Asociación de Proyectos .vcut"
 
-#: src/video_cut/services/health_service.py:272
+#: src/video_cut/services/health_service.py:283
 msgid ".vcut projects are registered to open with Video Cut."
 msgstr "Los proyectos .vcut están registrados para abrirse con Video Cut."
 
-#: src/video_cut/services/health_service.py:283
+#: src/video_cut/services/health_service.py:294
 msgid "MIME type for .vcut is not registered"
 msgstr "El tipo MIME para .vcut no está registrado"
 
-#: src/video_cut/services/health_service.py:285
+#: src/video_cut/services/health_service.py:296
 msgid "Video Cut is not set as default handler"
 msgstr "Video Cut no está configurado como la aplicación predeterminada"
 
-#: src/video_cut/services/health_service.py:291
+#: src/video_cut/services/health_service.py:302
 #, python-brace-format
 msgid ".vcut project files are not associated with Video Cut ({reasons})."
 msgstr ""
 "Los archivos de proyecto .vcut no están asociados con Video Cut ({reasons})."
 
-#: src/video_cut/services/health_service.py:295
+#: src/video_cut/services/health_service.py:306
 #, python-brace-format
 msgid ""
 "MIME Type: {mime_type}\n"
@@ -819,50 +820,62 @@ msgstr ""
 "\n"
 "Asociar archivos .vcut le permite abrir proyectos guardados directamente haciendo doble clic en ellos en su administrador de archivos."
 
-#: src/video_cut/services/health_service.py:302
-#: src/video_cut/services/health_service.py:496
+#: src/video_cut/services/health_service.py:313
+#: src/video_cut/services/health_service.py:528
 msgid "None"
 msgstr "Ninguno"
 
-#: src/video_cut/services/health_service.py:306
-#: src/video_cut/health_dialog.py:326
+#: src/video_cut/services/health_service.py:317
+#: src/video_cut/health_dialog.py:393
 msgid "Register Association"
 msgstr "Registrar Asociación"
 
-#: src/video_cut/services/health_service.py:318
+#: src/video_cut/services/health_service.py:329
 msgid "MIME XML resource file not found."
 msgstr "No se encontró el archivo de recursos MIME XML."
 
-#: src/video_cut/services/health_service.py:391
+#: src/video_cut/services/health_service.py:402
 msgid "Successfully registered .vcut file association!"
 msgstr "¡Asociación de archivos .vcut registrada con éxito!"
 
-#: src/video_cut/services/health_service.py:393
+#: src/video_cut/services/health_service.py:404
 #, python-brace-format
 msgid "Failed to register file association: {error}"
 msgstr "Error al registrar la asociación de archivos: {error}"
 
-#: src/video_cut/services/health_service.py:446
+#: src/video_cut/services/health_service.py:457
 msgid "Successfully removed .vcut file association."
 msgstr "Asociación de archivos .vcut eliminada con éxito."
 
-#: src/video_cut/services/health_service.py:448
+#: src/video_cut/services/health_service.py:459
 #, python-brace-format
 msgid "Failed to remove file association: {error}"
 msgstr "Error al eliminar la asociación de archivos: {error}"
 
-#: src/video_cut/services/health_service.py:486
-#: src/video_cut/services/health_service.py:510
-#: src/video_cut/services/health_service.py:533
+#: src/video_cut/services/health_service.py:504
+#: src/video_cut/services/health_service.py:518
+#: src/video_cut/services/health_service.py:542
+#: src/video_cut/services/health_service.py:565
+#: src/video_cut/health_dialog.py:86
 msgid "Multimedia Codecs"
 msgstr "Códecs Multimedia"
 
-#: src/video_cut/services/health_service.py:488
+#: src/video_cut/services/health_service.py:506
+msgid "FFmpeg is missing; multimedia codecs cannot be probed."
+msgstr "Falta FFmpeg; no se pueden comprobar los códecs multimedia."
+
+#: src/video_cut/services/health_service.py:507
+msgid "Install FFmpeg to enable codec diagnostics and hardware acceleration."
+msgstr ""
+"Instale FFmpeg para habilitar diagnósticos de códecs y aceleración por "
+"hardware."
+
+#: src/video_cut/services/health_service.py:520
 #, python-brace-format
 msgid "Essential codecs ({missing}) are missing from FFmpeg."
 msgstr "Faltan códecs esenciales ({missing}) en FFmpeg."
 
-#: src/video_cut/services/health_service.py:492
+#: src/video_cut/services/health_service.py:524
 #, python-brace-format
 msgid ""
 "Installed encoders: {installed}\n"
@@ -873,17 +886,17 @@ msgstr ""
 "Faltan códecs esenciales: {essential}\n"
 "Instale el paquete recomendado: {pkg}"
 
-#: src/video_cut/services/health_service.py:502
+#: src/video_cut/services/health_service.py:534
 msgid "Install Codecs"
 msgstr "Instalar Códecs"
 
-#: src/video_cut/services/health_service.py:512
+#: src/video_cut/services/health_service.py:544
 #, python-brace-format
 msgid "Standard codecs available; some optional codecs missing ({missing})."
 msgstr ""
 "Códecs estándar disponibles; faltan algunos códecs opcionales ({missing})."
 
-#: src/video_cut/services/health_service.py:516
+#: src/video_cut/services/health_service.py:548
 #, python-brace-format
 msgid ""
 "Available codecs: {installed}\n"
@@ -894,11 +907,12 @@ msgstr ""
 "Códecs opcionales faltantes: {optional}\n"
 "Para habilitarlos, instale: {pkg}"
 
-#: src/video_cut/services/health_service.py:526
+#: src/video_cut/services/health_service.py:558
+#: src/video_cut/health_dialog.py:503
 msgid "Install Extra Codecs"
 msgstr "Instalar Códecs Adicionales"
 
-#: src/video_cut/services/health_service.py:535
+#: src/video_cut/services/health_service.py:567
 msgid "All recommended video and audio codecs are available."
 msgstr "Todos los códecs de vídeo y audio recomendados están disponibles."
 
@@ -1493,6 +1507,7 @@ msgid "Slow"
 msgstr "Lento"
 
 #: src/video_cut/advanced_export_dialog.py:215
+#: src/video_cut/health_dialog.py:479
 msgid "Audio"
 msgstr "Audio"
 
@@ -1524,89 +1539,150 @@ msgstr "320 kbps"
 msgid "System Health & Setup"
 msgstr "Estado del Sistema y Configuración"
 
-#: src/video_cut/health_dialog.py:47
+#: src/video_cut/health_dialog.py:53
 msgid "Re-check"
 msgstr "Volver a Comprobar"
 
-#: src/video_cut/health_dialog.py:75
+#: src/video_cut/health_dialog.py:81
 msgid "FFmpeg Tools"
 msgstr "Herramientas FFmpeg"
 
-#: src/video_cut/health_dialog.py:79
+#: src/video_cut/health_dialog.py:87
+msgid "Status of important video and audio encoders in FFmpeg:"
+msgstr "Estado de los principales codificadores de vídeo y audio en FFmpeg:"
+
+#: src/video_cut/health_dialog.py:91
+msgid "Codec Support"
+msgstr "Soporte de Códecs"
+
+#: src/video_cut/health_dialog.py:95
 msgid ".vcut Project File Association"
 msgstr "Asociación de Archivos de Proyecto .vcut"
 
-#: src/video_cut/health_dialog.py:82
+#: src/video_cut/health_dialog.py:98
 msgid "Desktop File Association"
 msgstr "Asociación de Archivos del Escritorio"
 
-#: src/video_cut/health_dialog.py:117
+#: src/video_cut/health_dialog.py:133
 msgid "View component details"
 msgstr "Ver detalles del componente"
 
-#: src/video_cut/health_dialog.py:185
+#: src/video_cut/health_dialog.py:201
 msgid "Details copied to clipboard"
 msgstr "Detalles copiados al portapapeles"
 
-#: src/video_cut/health_dialog.py:196
-msgid "Running system health check..."
-msgstr "Comprobando el estado del sistema..."
-
-#: src/video_cut/health_dialog.py:197
-msgid "Probing FFmpeg and file associations..."
-msgstr "Comprobando FFmpeg y asociaciones de archivos..."
-
-#: src/video_cut/health_dialog.py:215
-msgid "Action Required"
-msgstr "Acción Requerida"
-
-#: src/video_cut/health_dialog.py:216
-msgid "Essential multimedia components are missing or misconfigured."
-msgstr "Faltan componentes multimedia esenciales o están mal configurados."
-
-#: src/video_cut/health_dialog.py:221
-msgid "Configuration Recommended"
-msgstr "Configuración Recomendada"
-
-#: src/video_cut/health_dialog.py:222
-msgid "Video Cut is operational, but file associations can be improved."
-msgstr ""
-"Video Cut está operativo, pero las asociaciones de archivos se pueden "
-"mejorar."
-
-#: src/video_cut/health_dialog.py:227
-msgid "All Systems Operational"
-msgstr "Todos los Sistemas Operativos"
-
-#: src/video_cut/health_dialog.py:228
-msgid "FFmpeg and .vcut file associations are ready."
-msgstr "FFmpeg y las asociaciones de archivos .vcut están listos."
-
-#: src/video_cut/health_dialog.py:265
-msgid "Terminal install command"
-msgstr "Comando de instalación en terminal"
-
-#: src/video_cut/health_dialog.py:274
+#: src/video_cut/health_dialog.py:236
 msgid "Copy command to clipboard"
 msgstr "Copiar comando al portapapeles"
 
-#: src/video_cut/health_dialog.py:288
+#: src/video_cut/health_dialog.py:248
 msgid "Command copied to clipboard"
 msgstr "Comando copiado al portapapeles"
 
-#: src/video_cut/health_dialog.py:297
+#: src/video_cut/health_dialog.py:263 src/video_cut/health_dialog.py:374
 msgid "FFmpeg Website"
 msgstr "Sitio Web de FFmpeg"
 
-#: src/video_cut/health_dialog.py:331
+#: src/video_cut/health_dialog.py:281
+msgid "Running system health check..."
+msgstr "Comprobando el estado del sistema..."
+
+#: src/video_cut/health_dialog.py:282
+msgid "Probing FFmpeg, file associations, and multimedia codecs..."
+msgstr "Comprobando FFmpeg, asociaciones de archivos y códecs multimedia..."
+
+#: src/video_cut/health_dialog.py:304
+msgid "Action Required"
+msgstr "Acción Requerida"
+
+#: src/video_cut/health_dialog.py:305
+msgid "Essential multimedia components are missing or misconfigured."
+msgstr "Faltan componentes multimedia esenciales o están mal configurados."
+
+#: src/video_cut/health_dialog.py:310
+msgid "Configuration Recommended"
+msgstr "Configuración Recomendada"
+
+#: src/video_cut/health_dialog.py:311
+msgid ""
+"Video Cut is operational, but optional features or associations can be "
+"improved."
+msgstr ""
+"Video Cut está operativo, pero las funciones opcionales o asociaciones se "
+"pueden mejorar."
+
+#: src/video_cut/health_dialog.py:316
+msgid "All Systems Operational"
+msgstr "Todos los Sistemas Operativos"
+
+#: src/video_cut/health_dialog.py:317
+msgid "FFmpeg, .vcut file associations, and multimedia codecs are ready."
+msgstr ""
+"FFmpeg, las asociaciones de archivos .vcut y los códecs multimedia están "
+"listos."
+
+#: src/video_cut/health_dialog.py:363
+msgid "Install Command"
+msgstr "Comando de Instalación"
+
+#: src/video_cut/health_dialog.py:364 src/video_cut/health_dialog.py:504
+msgid "Run this command in your terminal:"
+msgstr "Ejecute este comando en su terminal:"
+
+#: src/video_cut/health_dialog.py:371
+msgid "Official Website"
+msgstr "Sitio Web Oficial"
+
+#: src/video_cut/health_dialog.py:372
+msgid "Download binaries or source:"
+msgstr "Descargar binarios o código fuente:"
+
+#: src/video_cut/health_dialog.py:398
 msgid "Remove Association"
 msgstr "Eliminar Asociación"
 
-#: src/video_cut/health_dialog.py:343
+#: src/video_cut/health_dialog.py:419
+msgid "Install FFmpeg to inspect and enable multimedia codecs."
+msgstr "Instale FFmpeg para inspeccionar y habilitar códecs multimedia."
+
+#: src/video_cut/health_dialog.py:430
+#, python-brace-format
+msgid "{available} of {total} important codecs available."
+msgstr "{available} de {total} códecs importantes disponibles."
+
+#: src/video_cut/health_dialog.py:452
+msgid "Status"
+msgstr "Estado"
+
+#: src/video_cut/health_dialog.py:452
+msgid "Codec"
+msgstr "Códec"
+
+#: src/video_cut/health_dialog.py:452
+msgid "Type"
+msgstr "Tipo"
+
+#: src/video_cut/health_dialog.py:452
+msgid "Encoder"
+msgstr "Codificador"
+
+#: src/video_cut/health_dialog.py:452
+msgid "State"
+msgstr "Disponibilidad"
+
+#: src/video_cut/health_dialog.py:491
+msgid "Available"
+msgstr "Disponible"
+
+#: src/video_cut/health_dialog.py:491
+msgid "Not Available"
+msgstr "No Disponible"
+
+#: src/video_cut/health_dialog.py:511
 msgid "Registering..."
 msgstr "Registrando..."
 
-#: src/video_cut/health_dialog.py:358
+#: src/video_cut/health_dialog.py:526
 msgid "Removing..."
 msgstr "Eliminando..."
 
@@ -1884,37 +1960,31 @@ msgstr " • Volteo V"
 msgid "Crop: {crop_w} × {crop_h} px ({preset}){rot_str}{flip_str}"
 msgstr "Recorte: {crop_w} × {crop_h} px ({preset}){rot_str}{flip_str}"
 
+#~ msgid "Probing FFmpeg and file associations..."
+#~ msgstr "Comprobando FFmpeg y asociaciones de archivos..."
+
+#~ msgid "Video Cut is operational, but file associations can be improved."
+#~ msgstr ""
+#~ "Video Cut está operativo, pero las asociaciones de archivos se pueden "
+#~ "mejorar."
+
+#~ msgid "FFmpeg and .vcut file associations are ready."
+#~ msgstr "FFmpeg y las asociaciones de archivos .vcut están listos."
+
+#~ msgid "Terminal install command"
+#~ msgstr "Comando de instalación en terminal"
+
 #~ msgid "System Components and Configuration"
 #~ msgstr "Componentes y Configuración del Sistema"
 
 #~ msgid "Multimedia Video and Audio Codecs"
 #~ msgstr "Códecs Multimedia de Vídeo y Audio"
 
-#~ msgid "Probing FFmpeg, file associations, and multimedia codecs..."
-#~ msgstr "Comprobando FFmpeg, asociaciones de archivos y códecs multimedia..."
-
 #~ msgid ""
 #~ "Video Cut is operational, but some features or associations can be improved."
 #~ msgstr ""
 #~ "Video Cut está operativo, pero algunas funciones o asociaciones se pueden "
 #~ "mejorar."
-
-#~ msgid "FFmpeg, .vcut file associations, and multimedia codecs are ready."
-#~ msgstr ""
-#~ "FFmpeg, las asociaciones de archivos .vcut y los códecs multimedia están "
-#~ "listos."
-
-#~ msgid "Install Command"
-#~ msgstr "Comando de Instalación"
-
-#~ msgid "Run this command in your terminal:"
-#~ msgstr "Ejecute este comando en su terminal:"
-
-#~ msgid "Official Website"
-#~ msgstr "Sitio Web Oficial"
-
-#~ msgid "Download binaries or source:"
-#~ msgstr "Descargar binarios o código fuente:"
 
 #~ msgid "Generating thumbnails..."
 #~ msgstr "Generando miniaturas..."

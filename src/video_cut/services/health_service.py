@@ -35,6 +35,17 @@ class HealthCheckItem:
     fix_url: str | None = None
 
 
+@dataclass
+class CodecInfo:
+    """Represents availability and metadata of a video/audio codec."""
+
+    name: str
+    codec_type: str  # "Video" or "Audio"
+    encoder: str
+    is_essential: bool
+    is_available: bool
+
+
 class HealthService:
     """Handles system diagnostic checks, package manager detection, and automated repairs."""
 
@@ -448,36 +459,57 @@ class HealthService:
             return (False, _("Failed to remove file association: {error}").format(error=str(e)))
 
     @classmethod
+    def get_codecs_overview(cls) -> list[CodecInfo]:
+        """Return structured status for all important video and audio codecs."""
+        from .ffmpeg_service import FFmpegService
+        encoders = FFmpegService.query_available_encoders()
+        if not encoders:
+            encoders = FFmpegCapabilities.get_encoders()
+
+        codecs_def = [
+            ("H.264 / AVC", "Video", "libx264", True),
+            ("H.265 / HEVC", "Video", "libx265", False),
+            ("VP9", "Video", "libvpx-vp9", False),
+            ("AV1", "Video", "libsvtav1", False),
+            ("AAC", "Audio", "aac", True),
+            ("MP3", "Audio", "libmp3lame", False),
+            ("Opus", "Audio", "libopus", False),
+        ]
+
+        result = []
+        for name, ctype, enc, is_essential in codecs_def:
+            avail = enc in encoders
+            if enc == "libsvtav1" and not avail and "libaom-av1" in encoders:
+                avail = True
+                enc = "libaom-av1"
+            result.append(
+                CodecInfo(
+                    name=name,
+                    codec_type=ctype,
+                    encoder=enc,
+                    is_essential=is_essential,
+                    is_available=avail,
+                )
+            )
+        return result
+
+    @classmethod
     def check_codecs(cls) -> HealthCheckItem:
         """Check availability of key video and audio encoders."""
-        encoders = FFmpegCapabilities.get_encoders()
-
-        recommended_codecs = {
-            "libx264": ("H.264 / AVC", True),
-            "libx265": ("H.265 / HEVC", False),
-            "libvpx-vp9": ("VP9", False),
-            "libsvtav1": ("AV1", False),
-            "aac": ("AAC Audio", True),
-            "libmp3lame": ("MP3 Audio", False),
-            "libopus": ("Opus Audio", False),
-        }
-
-        if "libaom-av1" in encoders and "libsvtav1" not in encoders:
-            encoders = set(encoders)
-            encoders.add("libsvtav1")
-
-        available = []
-        missing_essential = []
-        missing_optional = []
-
-        for cid, (name, is_essential) in recommended_codecs.items():
-            if cid in encoders:
-                available.append(name)
-            else:
-                if is_essential:
-                    missing_essential.append(name)
-                else:
-                    missing_optional.append(name)
+        codecs_list = cls.get_codecs_overview()
+        encoders = {c.encoder for c in codecs_list if c.is_available}
+        if not encoders:
+            return HealthCheckItem(
+                id="codecs",
+                title=_("Multimedia Codecs"),
+                status="warning",
+                summary=_("FFmpeg is missing; multimedia codecs cannot be probed."),
+                details=_("Install FFmpeg to enable codec diagnostics and hardware acceleration."),
+                can_fix=False,
+            )
+        available = [c.name for c in codecs_list if c.is_available]
+        missing_essential = [c.name for c in codecs_list if not c.is_available and c.is_essential]
+        missing_optional = [c.name for c in codecs_list if not c.is_available and not c.is_essential]
 
         if missing_essential:
             _mgr, _cmd, _gui, extra_pkg = cls.detect_package_manager()
@@ -522,7 +554,7 @@ class HealthService:
                     pkg=extra_pkg or "ffmpeg",
                 ),
                 can_fix=bool(extra_pkg),
-                fix_type="link" if not extra_pkg else "command",
+                fix_type="command" if extra_pkg else "link",
                 fix_label=_("Install Extra Codecs"),
                 fix_command=f"sudo apt install -y {extra_pkg}" if extra_pkg == "ubuntu-restricted-extras" else None,
                 fix_url="https://ffmpeg.org/download.html",
@@ -538,7 +570,7 @@ class HealthService:
         )
 
     @classmethod
-    def run_all_checks(cls, include_codecs: bool = False) -> list[HealthCheckItem]:
+    def run_all_checks(cls, include_codecs: bool = True) -> list[HealthCheckItem]:
         """Execute all health probes."""
         items = [
             cls.check_ffmpeg(),
