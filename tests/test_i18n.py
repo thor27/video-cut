@@ -93,6 +93,9 @@ def test_translations_pt_br():
     assert _("What is Lossless Cutting?") == "O que é o Corte sem Perdas?"
     assert _("Disadvantages of Lossless Cutting") == "Desvantagens do Corte sem Perdas"
     assert _("Indexing Keyframes") == "Indexando quadros-chave"
+    assert _("Export Failed") == "Falha na exportação"
+    assert _("Copy Details") == "Copiar detalhes"
+    assert _("FFmpeg Operation Failed") == "Falha na operação do FFmpeg"
 
 
 def test_translations_es():
@@ -132,6 +135,9 @@ def test_translations_es():
     assert _("What is Lossless Cutting?") == "¿Qué es el Corte sin Pérdidas?"
     assert _("Disadvantages of Lossless Cutting") == "Desventajas del Corte sin Pérdidas"
     assert _("Indexing Keyframes") == "Indexando fotogramas clave"
+    assert _("Export Failed") == "Error al exportar"
+    assert _("Copy Details") == "Copiar detalles"
+    assert _("FFmpeg Operation Failed") == "Error en la operación de FFmpeg"
 
 
 def test_translations_fr():
@@ -172,6 +178,9 @@ def test_translations_fr():
     assert _("What is Lossless Cutting?") == "Qu'est-ce que le Découpage sans Perte ?"
     assert _("Disadvantages of Lossless Cutting") == "Inconvénients du Découpage sans Perte"
     assert _("Indexing Keyframes") == "Indexation des images clés"
+    assert _("Export Failed") == "Échec de l'exportation"
+    assert _("Copy Details") == "Copier les détails"
+    assert _("FFmpeg Operation Failed") == "Échec de l'opération FFmpeg"
 
 
 def test_translations_en_us():
@@ -202,6 +211,9 @@ def test_translations_en_us():
     assert _("What is Lossless Cutting?") == "What is Lossless Cutting?"
     assert _("Disadvantages of Lossless Cutting") == "Disadvantages of Lossless Cutting"
     assert _("Indexing Keyframes") == "Indexing Keyframes"
+    assert _("Export Failed") == "Export Failed"
+    assert _("Copy Details") == "Copy Details"
+    assert _("FFmpeg Operation Failed") == "FFmpeg Operation Failed"
 
 
 def test_fallback_unsupported_language():
