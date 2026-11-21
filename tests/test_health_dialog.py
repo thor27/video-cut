@@ -352,3 +352,44 @@ def test_startup_health_alert_modal_review_and_fix():
     modal.destroy()
 
 
+def test_health_dialog_ffmpeg_source_combo_selection():
+    """Test changing FFmpeg source combo updates preference and refreshes checks."""
+    dialog = HealthCheckDialog()
+    assert dialog.row_ffmpeg_source is not None
+    assert dialog.row_ffmpeg_manual is not None
+
+    with patch("video_cut.services.health_service.HealthService.set_ffmpeg_source") as mock_set, \
+         patch.object(dialog, "refresh_checks") as mock_refresh:
+        # Index 1 corresponds to "container"
+        dialog.row_ffmpeg_source.set_selected(1)
+        mock_set.assert_called_with("container")
+        mock_refresh.assert_called_once()
+        assert not dialog.row_ffmpeg_manual.get_visible()
+
+    with patch("video_cut.services.health_service.HealthService.set_ffmpeg_source") as mock_set, \
+         patch.object(dialog, "refresh_checks") as mock_refresh:
+        # Index 3 corresponds to "manual"
+        dialog.row_ffmpeg_source.set_selected(3)
+        mock_set.assert_called_with("manual")
+        mock_refresh.assert_called_once()
+        assert dialog.row_ffmpeg_manual.get_visible()
+
+    dialog.destroy()
+
+
+def test_health_dialog_ffmpeg_manual_entry():
+    """Test submitting custom manual FFmpeg path updates preference and refreshes."""
+    dialog = HealthCheckDialog()
+    assert dialog._entry_manual_path is not None
+
+    with patch("video_cut.services.health_service.HealthService.set_custom_ffmpeg_path") as mock_set, \
+         patch.object(dialog, "refresh_checks") as mock_refresh:
+        dialog._entry_manual_path.set_text("/opt/custom/bin/ffmpeg")
+        dialog._entry_manual_path.emit("activate")
+        mock_set.assert_called_with("/opt/custom/bin/ffmpeg")
+        mock_refresh.assert_called_once()
+
+    dialog.destroy()
+
+
+

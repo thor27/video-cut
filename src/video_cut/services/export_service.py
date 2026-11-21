@@ -51,6 +51,12 @@ class FFmpegCapabilities:
     _muxers: set[str] | None = None
 
     @classmethod
+    def clear_cache(cls) -> None:
+        """Clear cached encoders and muxers so subsequent queries re-probe the binary."""
+        cls._encoders = None
+        cls._muxers = None
+
+    @classmethod
     def get_encoders(cls) -> set[str]:
         if cls._encoders is None:
             cls._encoders = FFmpegService.query_available_encoders()

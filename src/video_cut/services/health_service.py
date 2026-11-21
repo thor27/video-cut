@@ -16,11 +16,23 @@ import gi
 with contextlib.suppress(ValueError):
     gi.require_version("GioUnix", "2.0")
 
-from gi.repository import Gio, GLib
+from gi.repository import Gio
 
 from ..i18n import _
 from ..paths import APP_ID, RESOURCES_DIR
-from ..utils import SUBPROCESS_FLAGS, get_ffmpeg_path, get_ffprobe_path
+from ..utils import (
+    MIN_FFMPEG_VERSION,
+    SUBPROCESS_FLAGS,
+    get_active_ffmpeg_source_info,
+    get_custom_ffmpeg_path_setting,
+    get_ffmpeg_path,
+    get_ffmpeg_source_setting,
+    get_ffprobe_path,
+    get_healthcheck_config_dir,
+    invalidate_ffmpeg_cache,
+    parse_ffmpeg_version,
+    set_healthcheck_config_keys,
+)
 from .export_service import FFmpegCapabilities
 
 
@@ -66,9 +78,7 @@ class HealthService:
 
     @classmethod
     def get_config_file(cls) -> Path:
-        config_dir = Path(GLib.get_user_config_dir()) / "video-cut"
-        config_dir.mkdir(parents=True, exist_ok=True)
-        return config_dir / "healthcheck.json"
+        return get_healthcheck_config_dir() / "healthcheck.json"
 
     @classmethod
     def has_run_initial_check(cls) -> bool:
@@ -119,6 +129,35 @@ class HealthService:
             cfg.write_text(json.dumps(data, indent=2), encoding="utf-8")
         except Exception:
             pass
+
+    @classmethod
+    def get_ffmpeg_source(cls) -> str:
+        """Return configured FFmpeg source mode ('auto', 'container', 'system', 'manual')."""
+        return get_ffmpeg_source_setting()
+
+    @classmethod
+    def set_ffmpeg_source(cls, source: str) -> None:
+        """Set configured FFmpeg source mode and clear binary/capabilities cache."""
+        set_healthcheck_config_keys(ffmpeg_source=source)
+        invalidate_ffmpeg_cache()
+        FFmpegCapabilities.clear_cache()
+
+    @classmethod
+    def get_custom_ffmpeg_path(cls) -> str:
+        """Return custom FFmpeg binary path."""
+        return get_custom_ffmpeg_path_setting()
+
+    @classmethod
+    def set_custom_ffmpeg_path(cls, path: str) -> None:
+        """Set custom FFmpeg binary path and clear binary/capabilities cache."""
+        set_healthcheck_config_keys(ffmpeg_custom_path=path)
+        invalidate_ffmpeg_cache()
+        FFmpegCapabilities.clear_cache()
+
+    @classmethod
+    def get_active_ffmpeg_info(cls) -> dict[str, Any]:
+        """Return metadata about resolved FFmpeg binary and source."""
+        return get_active_ffmpeg_source_info()
 
     @classmethod
     def detect_os_info(cls) -> dict[str, str]:
@@ -240,6 +279,7 @@ class HealthService:
             )
 
         version_str = ""
+        parsed_ver = None
         try:
             res = subprocess.run(
                 [ffmpeg_bin, "-version"],
@@ -251,6 +291,7 @@ class HealthService:
             if res.returncode == 0:
                 first_line = res.stdout.splitlines()[0] if res.stdout else ""
                 version_str = first_line.strip()
+                parsed_ver = parse_ffmpeg_version(first_line)
         except Exception as e:
             return HealthCheckItem(
                 id="ffmpeg",
@@ -264,12 +305,43 @@ class HealthService:
                 fix_url="https://ffmpeg.org/download.html",
             )
 
+        source_info = cls.get_active_ffmpeg_info()
+        source_desc = source_info.get("resolution_note") or source_info.get("effective_source", "system")
+
+        if parsed_ver is not None and parsed_ver < MIN_FFMPEG_VERSION:
+            ver_text = f"{parsed_ver[0]}.{parsed_ver[1]}"
+            return HealthCheckItem(
+                id="ffmpeg",
+                title=_("FFmpeg Multimedia Engine"),
+                status="warning",
+                summary=_("FFmpeg is installed, but version ({version}) is older than recommended (4.3+).").format(
+                    version=ver_text
+                ),
+                details=(
+                    f"{version_str}\n"
+                    f"FFmpeg Binary: {ffmpeg_bin}\n"
+                    f"FFprobe Binary: {ffprobe_bin}\n"
+                    f"Source: {source_desc}\n\n"
+                    f"Video Cut recommends FFmpeg 4.3 or newer for modern filter graphs, trimming, and audio mixing."
+                ),
+                can_fix=True,
+                fix_type="command",
+                fix_label=_("Upgrade FFmpeg"),
+                fix_command="sudo apt/dnf/pacman install ffmpeg",
+                fix_url="https://ffmpeg.org/download.html",
+            )
+
         return HealthCheckItem(
             id="ffmpeg",
             title=_("FFmpeg Multimedia Engine"),
             status="ok",
             summary=_("FFmpeg and FFprobe are installed and working."),
-            details=f"{version_str}\nFFmpeg: {ffmpeg_bin}\nFFprobe: {ffprobe_bin}",
+            details=(
+                f"{version_str}\n"
+                f"FFmpeg Binary: {ffmpeg_bin}\n"
+                f"FFprobe Binary: {ffprobe_bin}\n"
+                f"Source: {source_desc}"
+            ),
             can_fix=False,
         )
 

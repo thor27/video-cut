@@ -11,6 +11,18 @@ from video_cut.utils import get_ffmpeg_path
 os.environ.setdefault("GSK_RENDERER", "cairo")
 
 
+@pytest.fixture(autouse=True)
+def isolate_test_config(tmp_path_factory: pytest.TempPathFactory, monkeypatch: pytest.MonkeyPatch):
+    """Isolate configuration files and invalidate ffmpeg cache for every test."""
+    cfg_dir = tmp_path_factory.mktemp("videocut_cfg")
+    monkeypatch.setenv("VIDEOCUT_CONFIG_DIR", str(cfg_dir))
+    from video_cut.utils import invalidate_ffmpeg_cache
+
+    invalidate_ffmpeg_cache()
+    yield
+    invalidate_ffmpeg_cache()
+
+
 def _generate_sample_video(path: Path, duration: float) -> Path:
     subprocess.run(
         [

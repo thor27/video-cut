@@ -2,7 +2,12 @@
 
 from pathlib import Path
 
-from video_cut.utils import get_ffmpeg_path, get_ffprobe_path
+from video_cut.utils import (
+    get_container_ffmpeg_path,
+    get_container_ffprobe_path,
+    get_ffmpeg_path,
+    get_ffprobe_path,
+)
 
 
 def test_get_ffmpeg_path_snap(monkeypatch, tmp_path: Path):
@@ -14,6 +19,9 @@ def test_get_ffmpeg_path_snap(monkeypatch, tmp_path: Path):
 
     monkeypatch.setenv("SNAP", str(snap_dir))
     monkeypatch.delenv("APPDIR", raising=False)
+    assert get_container_ffmpeg_path() == str(snap_bin)
+
+    monkeypatch.setattr("video_cut.utils.get_system_ffmpeg_path", lambda: None)
     assert get_ffmpeg_path() == str(snap_bin)
 
 
@@ -26,6 +34,9 @@ def test_get_ffmpeg_path_appdir(monkeypatch, tmp_path: Path):
 
     monkeypatch.delenv("SNAP", raising=False)
     monkeypatch.setenv("APPDIR", str(appdir))
+    assert get_container_ffmpeg_path() == str(appdir_bin)
+
+    monkeypatch.setattr("video_cut.utils.get_system_ffmpeg_path", lambda: None)
     assert get_ffmpeg_path() == str(appdir_bin)
 
 
@@ -38,6 +49,9 @@ def test_get_ffprobe_path_snap(monkeypatch, tmp_path: Path):
 
     monkeypatch.setenv("SNAP", str(snap_dir))
     monkeypatch.delenv("APPDIR", raising=False)
+    assert get_container_ffprobe_path() == str(snap_bin)
+
+    monkeypatch.setattr("video_cut.utils.get_system_ffprobe_path", lambda: None)
     assert get_ffprobe_path() == str(snap_bin)
 
 
@@ -50,6 +64,9 @@ def test_get_ffprobe_path_appdir(monkeypatch, tmp_path: Path):
 
     monkeypatch.delenv("SNAP", raising=False)
     monkeypatch.setenv("APPDIR", str(appdir))
+    assert get_container_ffprobe_path() == str(appdir_bin)
+
+    monkeypatch.setattr("video_cut.utils.get_system_ffprobe_path", lambda: None)
     assert get_ffprobe_path() == str(appdir_bin)
 
 
