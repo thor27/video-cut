@@ -114,6 +114,36 @@ def test_fix_file_association(tmp_path: Path):
         assert mime_file.exists()
 
 
+def test_remove_file_association(tmp_path: Path):
+    """Test remove_file_association deletes user MIME, desktop, and icon files."""
+    # Setup dummy installed files in fake home
+    mime_file = tmp_path / ".local" / "share" / "mime" / "packages" / "io.github.thor27.video-cut.xml"
+    mime_file.parent.mkdir(parents=True, exist_ok=True)
+    mime_file.write_text("<xml/>", encoding="utf-8")
+
+    desktop_file = tmp_path / ".local" / "share" / "applications" / "io.github.thor27.video-cut.desktop"
+    desktop_file.parent.mkdir(parents=True, exist_ok=True)
+    desktop_file.write_text("[Desktop Entry]\n", encoding="utf-8")
+
+    icon_file = tmp_path / ".local" / "share" / "icons" / "hicolor" / "512x512" / "apps" / "io.github.thor27.video-cut.png"
+    icon_file.parent.mkdir(parents=True, exist_ok=True)
+    icon_file.write_text("fake png", encoding="utf-8")
+
+    mimeapps_file = tmp_path / ".config" / "mimeapps.list"
+    mimeapps_file.parent.mkdir(parents=True, exist_ok=True)
+    mimeapps_file.write_text("[Default Applications]\napplication/x-video-cut=io.github.thor27.video-cut.desktop\n", encoding="utf-8")
+
+    with patch("pathlib.Path.home", return_value=tmp_path), \
+         patch("shutil.which", return_value=None):
+        ok, msg = HealthService.remove_file_association()
+        assert ok is True
+        assert not mime_file.exists()
+        assert not desktop_file.exists()
+        assert not icon_file.exists()
+        assert "application/x-video-cut" not in mimeapps_file.read_text(encoding="utf-8")
+
+
+
 def test_check_codecs_all_present():
     """Test check_codecs when all recommended codecs are available."""
     all_encoders = {"libx264", "libx265", "libvpx-vp9", "libsvtav1", "aac", "libmp3lame", "libopus"}

@@ -327,6 +327,10 @@ class HealthCheckDialog(Adw.Window):
             btn_fix.add_css_class("suggested-action")
             btn_fix.connect("clicked", self._on_fix_association_clicked)
             suffix_box.append(btn_fix)
+        else:
+            btn_remove = Gtk.Button(label=_("Remove Association"))
+            btn_remove.connect("clicked", self._on_remove_association_clicked)
+            suffix_box.append(btn_remove)
 
         btn_info = self._create_info_button(item)
         suffix_box.append(btn_info)
@@ -340,6 +344,21 @@ class HealthCheckDialog(Adw.Window):
 
         def worker() -> None:
             ok, msg = HealthService.fix_file_association()
+
+            def done() -> None:
+                self._show_toast(msg)
+                self.refresh_checks()
+
+            GLib.idle_add(done)
+
+        threading.Thread(target=worker, daemon=True).start()
+
+    def _on_remove_association_clicked(self, btn: Gtk.Button) -> None:
+        btn.set_sensitive(False)
+        btn.set_label(_("Removing..."))
+
+        def worker() -> None:
+            ok, msg = HealthService.remove_file_association()
 
             def done() -> None:
                 self._show_toast(msg)

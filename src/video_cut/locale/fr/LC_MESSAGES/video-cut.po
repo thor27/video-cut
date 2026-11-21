@@ -3,7 +3,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: video-cut 0.1.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-11-20 23:21-0500\n"
+"POT-Creation-Date: 2026-11-20 23:29-0500\n"
 "Language: fr\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
@@ -822,7 +822,7 @@ msgstr ""
 "Associer les fichiers .vcut vous permet d'ouvrir directement les projets enregistrés en double-cliquant dessus dans votre gestionnaire de fichiers."
 
 #: src/video_cut/services/health_service.py:302
-#: src/video_cut/services/health_service.py:441
+#: src/video_cut/services/health_service.py:496
 msgid "None"
 msgstr "Aucun"
 
@@ -844,18 +844,27 @@ msgstr "Association des fichiers .vcut enregistrée avec succès !"
 msgid "Failed to register file association: {error}"
 msgstr "Échec de l'enregistrement de l'association de fichiers : {error}"
 
-#: src/video_cut/services/health_service.py:431
-#: src/video_cut/services/health_service.py:455
-#: src/video_cut/services/health_service.py:478
+#: src/video_cut/services/health_service.py:446
+msgid "Successfully removed .vcut file association."
+msgstr "Association de fichiers .vcut supprimée avec succès."
+
+#: src/video_cut/services/health_service.py:448
+#, python-brace-format
+msgid "Failed to remove file association: {error}"
+msgstr "Échec de la suppression de l'association de fichiers : {error}"
+
+#: src/video_cut/services/health_service.py:486
+#: src/video_cut/services/health_service.py:510
+#: src/video_cut/services/health_service.py:533
 msgid "Multimedia Codecs"
 msgstr "Codecs Multimédias"
 
-#: src/video_cut/services/health_service.py:433
+#: src/video_cut/services/health_service.py:488
 #, python-brace-format
 msgid "Essential codecs ({missing}) are missing from FFmpeg."
 msgstr "Des codecs essentiels ({missing}) sont manquants dans FFmpeg."
 
-#: src/video_cut/services/health_service.py:437
+#: src/video_cut/services/health_service.py:492
 #, python-brace-format
 msgid ""
 "Installed encoders: {installed}\n"
@@ -866,18 +875,18 @@ msgstr ""
 "Codecs essentiels manquants : {essential}\n"
 "Installez le paquet recommandé : {pkg}"
 
-#: src/video_cut/services/health_service.py:447
+#: src/video_cut/services/health_service.py:502
 msgid "Install Codecs"
 msgstr "Installer les Codecs"
 
-#: src/video_cut/services/health_service.py:457
+#: src/video_cut/services/health_service.py:512
 #, python-brace-format
 msgid "Standard codecs available; some optional codecs missing ({missing})."
 msgstr ""
 "Codecs standard disponibles ; certains codecs optionnels sont manquants "
 "({missing})."
 
-#: src/video_cut/services/health_service.py:461
+#: src/video_cut/services/health_service.py:516
 #, python-brace-format
 msgid ""
 "Available codecs: {installed}\n"
@@ -888,11 +897,11 @@ msgstr ""
 "Codecs optionnels manquants : {optional}\n"
 "Pour les activer, installez : {pkg}"
 
-#: src/video_cut/services/health_service.py:471
+#: src/video_cut/services/health_service.py:526
 msgid "Install Extra Codecs"
 msgstr "Installer des Codecs Supplémentaires"
 
-#: src/video_cut/services/health_service.py:480
+#: src/video_cut/services/health_service.py:535
 msgid "All recommended video and audio codecs are available."
 msgstr "Tous les codecs vidéo et audio recommandés sont disponibles."
 
@@ -1595,9 +1604,17 @@ msgstr "Commande copiée dans le presse-papiers"
 msgid "FFmpeg Website"
 msgstr "Site Web de FFmpeg"
 
-#: src/video_cut/health_dialog.py:339
+#: src/video_cut/health_dialog.py:331
+msgid "Remove Association"
+msgstr "Supprimer l'association"
+
+#: src/video_cut/health_dialog.py:343
 msgid "Registering..."
 msgstr "Enregistrement en cours..."
+
+#: src/video_cut/health_dialog.py:358
+msgid "Removing..."
+msgstr "Suppression..."
 
 #: src/video_cut/clipboard_controller.py:222
 #: src/video_cut/clipboard_controller.py:252

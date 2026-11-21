@@ -393,6 +393,61 @@ class HealthService:
             return (False, _("Failed to register file association: {error}").format(error=str(e)))
 
     @classmethod
+    def remove_file_association(cls) -> tuple[bool, str]:
+        """Remove .vcut file association and desktop file from user-space."""
+        try:
+            # 1. Remove user MIME package
+            user_mime_file = Path.home() / ".local" / "share" / "mime" / "packages" / "io.github.thor27.video-cut.xml"
+            if user_mime_file.exists():
+                user_mime_file.unlink()
+
+            user_mime_dir = Path.home() / ".local" / "share" / "mime"
+            if shutil.which("update-mime-database") and user_mime_dir.exists():
+                subprocess.run(
+                    ["update-mime-database", str(user_mime_dir)],
+                    capture_output=True,
+                    timeout=5.0,
+                )
+
+            # 2. Remove desktop entry
+            user_apps_dir = Path.home() / ".local" / "share" / "applications"
+            target_desktop = user_apps_dir / "io.github.thor27.video-cut.desktop"
+            if target_desktop.exists():
+                target_desktop.unlink()
+
+            if shutil.which("update-desktop-database") and user_apps_dir.exists():
+                subprocess.run(
+                    ["update-desktop-database", str(user_apps_dir)],
+                    capture_output=True,
+                    timeout=5.0,
+                )
+
+            # 3. Remove icon
+            target_icon = (
+                Path.home() / ".local" / "share" / "icons" / "hicolor" / "512x512" / "apps" / "io.github.thor27.video-cut.png"
+            )
+            if target_icon.exists():
+                target_icon.unlink()
+
+            # 4. Clean mimeapps.list files in user config and local share
+            mime_files = [
+                Path.home() / ".config" / "mimeapps.list",
+                Path.home() / ".local" / "share" / "applications" / "mimeapps.list",
+            ]
+            for mf in mime_files:
+                if mf.exists():
+                    try:
+                        lines = mf.read_text(encoding="utf-8").splitlines()
+                        new_lines = [line for line in lines if "application/x-video-cut" not in line]
+                        mf.write_text("\n".join(new_lines) + "\n", encoding="utf-8")
+                    except Exception:
+                        pass
+
+            return (True, _("Successfully removed .vcut file association."))
+        except Exception as e:
+            return (False, _("Failed to remove file association: {error}").format(error=str(e)))
+
+    @classmethod
     def check_codecs(cls) -> HealthCheckItem:
         """Check availability of key video and audio encoders."""
         encoders = FFmpegCapabilities.get_encoders()
