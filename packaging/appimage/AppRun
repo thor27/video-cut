@@ -114,10 +114,11 @@ if [ -n "$WAYLAND_DISPLAY" ]; then
 fi
 if [ -z "$WAYLAND_DISPLAY" ] && [ -n "$DISPLAY" ]; then
     export GDK_BACKEND=x11
-    # On headless/Xvfb or minimal environments without EGL drivers, prefer Cairo renderer
-    if [ -z "$GSK_RENDERER" ]; then
-        export GSK_RENDERER=cairo
-    fi
+fi
+
+# Prefer hardware-accelerated OpenGL renderer (gl) over CPU software (cairo) or incomplete Vulkan drivers
+if [ -z "$GSK_RENDERER" ]; then
+    export GSK_RENDERER=gl
 fi
 
 # Set up Python for fallback mode: prefer bundled Python 3
