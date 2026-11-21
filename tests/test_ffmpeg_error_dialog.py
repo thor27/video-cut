@@ -59,3 +59,22 @@ Unrecognized option 'invalid_flag'"""
         assert dialog._copy_btn_content.get_label() == "Copied!"
 
     dialog.destroy()
+
+
+def test_ffmpeg_error_dialog_escape_key():
+    """Test pressing Escape closes the dialog."""
+    from gi.repository import Gdk
+
+    dialog = FFmpegErrorDialog()
+    with patch.object(dialog, "close") as mock_close:
+        res = dialog._on_key_pressed(None, Gdk.KEY_Escape, 0, 0)
+        assert res is True
+        mock_close.assert_called_once()
+
+    # Non-escape key should return False and not close
+    with patch.object(dialog, "close") as mock_close:
+        res = dialog._on_key_pressed(None, Gdk.KEY_Return, 0, 0)
+        assert res is False
+        mock_close.assert_not_called()
+
+    dialog.destroy()
