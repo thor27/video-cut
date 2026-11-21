@@ -441,6 +441,9 @@ class VideoPlayerController:
             is_seeking = obj.get_property("seeking")
             if not is_seeking:
                 self._is_seeking = False
+                now = time.monotonic()
+                self._last_seek_time = now
+                self._last_tick_time = now
                 if self._play_on_seek_done:
                     self._play_on_seek_done = False
                     if self._is_playing and not obj.get_playing():
@@ -501,15 +504,13 @@ class VideoPlayerController:
                     cur_stream_ts = self.current_media_file.get_timestamp() / 1_000_000.0
                     is_ended = self.current_media_file.get_ended()
 
-                    # ONLY seek if position has drifted significantly (> 0.2s) or if stream hit EOS (ended)
-                    if is_ended or abs(cur_stream_ts - source_ts) > 0.2:
-                        if is_ended:
-                            self._play_on_seek_done = True
-                            self._seek_media_file(source_ts, force=True)
-                        else:
-                            self._seek_media_file(source_ts)
-                            _dbg("mf.play() [play, after drift seek]")
-                            self.current_media_file.play()
+                    is_seeking = self._is_seeking or self.current_media_file.get_property("seeking")
+                    if is_seeking:
+                        _dbg("play() while seeking -> queue play on seek done")
+                        self._play_on_seek_done = True
+                    elif is_ended or abs(cur_stream_ts - source_ts) > 0.2:
+                        self._play_on_seek_done = True
+                        self._seek_media_file(source_ts, force=True)
                     else:
                         if not self.current_media_file.get_playing():
                             _dbg("mf.play() [play]")
@@ -582,6 +583,21 @@ class VideoPlayerController:
             return False
 
         now = time.monotonic()
+
+        # Check if stream is currently seeking or buffering
+        is_stream_seeking = (
+            self._is_seeking
+            or (self.current_media_file is not None and self.current_media_file.get_property("seeking"))
+        )
+        if is_stream_seeking:
+            # Safety timeout: if seeking for > 2.0s, clear is_seeking flag
+            if now - self._last_seek_time > 2.0:
+                _dbg("Seek timed out after 2s, clearing _is_seeking flag")
+                self._is_seeking = False
+            else:
+                self._last_tick_time = now
+                return True
+
         dt = max(0.0, now - self._last_tick_time)
         self._last_tick_time = now
 
@@ -646,21 +662,23 @@ class VideoPlayerController:
             elif self.current_media_file and self.current_media_file.is_prepared():
                 self._apply_segment_transform(seg)
 
-                # Only monitor drift if not currently seeking and past seek cooldown
-                is_stream_seeking = (
-                    self._is_seeking
-                    or self.current_media_file.get_property("seeking")
-                )
-                if not is_stream_seeking and (now - self._last_seek_time > 0.35):
-                    if not self.current_media_file.get_playing() and not self.current_media_file.get_ended():
-                        _dbg("mf.play() [tick: stream was not playing]")
-                        self.current_media_file.play()
+                if (
+                    now - self._last_seek_time > 0.35
+                    and not self.current_media_file.get_playing()
+                    and not self.current_media_file.get_ended()
+                ):
+                    _dbg("mf.play() [tick: stream was not playing]")
+                    self.current_media_file.play()
 
-                    # Correct any drift > 0.4s
+                # Align global time smoothly with the actual stream playback position
+                if self.current_media_file.get_playing():
                     cur_stream_ts = self.current_media_file.get_timestamp() / 1_000_000.0
-                    if abs(cur_stream_ts - source_ts) > 0.4:
-                        _dbg(f"DRIFT stream={cur_stream_ts:.3f} expected={source_ts:.3f} -> reseek")
-                        self._seek_media_file(source_ts)
+                    seg_start_global = self.timeline.get_segment_global_start(idx)
+                    actual_global = seg_start_global + max(0.0, cur_stream_ts - seg.start_time)
+                    drift = actual_global - self.current_global_time
+                    if abs(drift) > 0.03:
+                        # Gently converge timeline time to actual video frame timestamp
+                        self.current_global_time += drift * 0.25
 
             if hasattr(self, "_overlay_audio_player") and self._overlay_audio_player:
                 rel_t = max(0.0, source_ts - seg.start_time)

@@ -37,8 +37,18 @@ done
 # 2. Copy Python Source Code and Resources
 cp -r "${REPO_ROOT}/src/video_cut/"* "${APPDIR}/usr/lib/python3/dist-packages/video_cut/"
 
-# Determine host python major.minor version
-HOST_PY_VER="$(python3 -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")' 2>/dev/null || echo "3.12")"
+# Determine build Python interpreter with PyGObject (gi)
+BUILD_PY_BIN=""
+for candidate in /usr/bin/python3 /bin/python3 $(command -v python3 2>/dev/null); do
+    if [ -x "$candidate" ] && "$candidate" -c "import gi" 2>/dev/null; then
+        BUILD_PY_BIN="$candidate"
+        break
+    fi
+done
+if [ -z "$BUILD_PY_BIN" ]; then
+    BUILD_PY_BIN="$(command -v python3 2>/dev/null || echo "python3")"
+fi
+HOST_PY_VER="$("$BUILD_PY_BIN" -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")' 2>/dev/null || echo "3.12")"
 
 # Bundle Pillow dependency for standard Python versions into version-specific directories
 PILLOW_REQ_DIR="${REPO_ROOT}/packaging/appimage"
@@ -61,6 +71,48 @@ if command -v pip >/dev/null 2>&1 || python3 -m pip --version >/dev/null 2>&1; t
         rm -rf "$wheel_tmp"
     done
 fi
+
+# Bundle Python 3 runtime and standard library for self-contained execution
+echo "==> Bundling Python runtime (${BUILD_PY_BIN})..."
+if [ -x "$BUILD_PY_BIN" ]; then
+    cp -L "$BUILD_PY_BIN" "${APPDIR}/usr/bin/python3"
+    chmod +x "${APPDIR}/usr/bin/python3"
+fi
+
+# Bundle standard library for the bundled Python
+if [ -d "/usr/lib/python${HOST_PY_VER}" ]; then
+    mkdir -p "${APPDIR}/usr/lib/python${HOST_PY_VER}"
+    cp -rL /usr/lib/python${HOST_PY_VER}/* "${APPDIR}/usr/lib/python${HOST_PY_VER}/" 2>/dev/null || true
+    # Remove large non-runtime modules (test suites, documentation, GUI tools)
+    rm -rf "${APPDIR}/usr/lib/python${HOST_PY_VER}/test" \
+           "${APPDIR}/usr/lib/python${HOST_PY_VER}/tests" \
+           "${APPDIR}/usr/lib/python${HOST_PY_VER}/idlelib" \
+           "${APPDIR}/usr/lib/python${HOST_PY_VER}/tkinter" \
+           "${APPDIR}/usr/lib/python${HOST_PY_VER}/turtle"* 2>/dev/null || true
+fi
+
+# Bundle host dist-packages (gi, cairo, PIL) into version-specific directory for the bundled Python
+for pkg in gi cairo PIL; do
+    for pdir in /usr/lib/python3/dist-packages /usr/local/lib/python3/dist-packages /usr/lib/python${HOST_PY_VER}/dist-packages; do
+        if [ -d "$pdir/$pkg" ] && [ ! -d "${APPDIR}/usr/lib/python${HOST_PY_VER}/dist-packages/$pkg" ]; then
+            mkdir -p "${APPDIR}/usr/lib/python${HOST_PY_VER}/dist-packages"
+            cp -rL "$pdir/$pkg" "${APPDIR}/usr/lib/python${HOST_PY_VER}/dist-packages/" 2>/dev/null || true
+        fi
+    done
+done
+
+# Bundle python3-cairo for Python 3.10 (Ubuntu 22.04 LTS catalog compatibility)
+CAIRO_DEB_URL="http://archive.ubuntu.com/ubuntu/pool/main/p/pycairo/python3-cairo_1.20.1-3build1_amd64.deb"
+cairo_tmp="$(mktemp -d)"
+if curl -fsSL "$CAIRO_DEB_URL" -o "$cairo_tmp/cairo.deb" 2>/dev/null; then
+    if dpkg-deb -x "$cairo_tmp/cairo.deb" "$cairo_tmp/extracted" 2>/dev/null; then
+        mkdir -p "${APPDIR}/usr/lib/python3.10/dist-packages"
+        if [ -d "$cairo_tmp/extracted/usr/lib/python3/dist-packages/cairo" ]; then
+            cp -r "$cairo_tmp/extracted/usr/lib/python3/dist-packages/cairo" "${APPDIR}/usr/lib/python3.10/dist-packages/"
+        fi
+    fi
+fi
+rm -rf "$cairo_tmp"
 
 # Also preserve host distribution PIL for a host python the pinned wheels do not cover
 if [ -d "/usr/lib/python3/dist-packages/PIL" ] && [ ! -d "${APPDIR}/usr/lib/python${HOST_PY_VER}/dist-packages/PIL" ]; then
@@ -123,16 +175,40 @@ done
 
 # Bundle essential GStreamer plugins for fallback mode
 mkdir -p "${APPDIR}/usr/lib/gstreamer-1.0"
+mkdir -p "${APPDIR}/usr/lib/gio/modules"
 for gst_dir in /usr/lib/x86_64-linux-gnu/gstreamer-1.0 /usr/lib64/gstreamer-1.0 /usr/lib/gstreamer-1.0; do
     if [ -d "$gst_dir" ]; then
-        for plugin in libgstcoreelements.so libgstplayback.so libgsttypefindfunctions.so \
-                      libgstautodetect.so libgstvideoconvertscale.so libgstvideoconvert.so \
-                      libgstvideoscale.so libgstaudioconvert.so libgstaudioresample.so \
-                      libgstapp.so libgstgtk4.so libgstpulse.so libgstalsa.so libgstvolume.so; do
+        for plugin in \
+            libgstcoreelements.so libgstplayback.so libgsttypefindfunctions.so \
+            libgstautodetect.so libgstgio.so libgstvideoconvertscale.so \
+            libgstvideoconvert.so libgstvideoscale.so libgstvideofilter.so \
+            libgstaudioconvert.so libgstaudioresample.so libgstaudiofx.so \
+            libgstvolume.so libgstaudiorate.so libgstvideorate.so \
+            libgstapp.so libgstgtk4.so libgstopengl.so \
+            libgstpulse.so libgstpulseaudio.so libgstpipewire.so libgstalsa.so \
+            libgstisomp4.so libgstmatroska.so libgstavi.so libgstflv.so \
+            libgstogg.so libgstwavparse.so libgstaudioparsers.so \
+            libgstvideoparsersbad.so libgstlibav.so libgstvpx.so \
+            libgstvorbis.so libgstopus.so libgstopusparse.so libgsttheora.so \
+            libgstmpg123.so libgsttaglib.so libgstid3demux.so libgstsubparse.so \
+            libgstwaylandsink.so libgstximagesink.so libgstxvimagesink.so \
+            libgstsoundtouch.so libgstscaletempo.so; do
             if [ -f "$gst_dir/$plugin" ]; then
                 cp -nL "$gst_dir/$plugin" "${APPDIR}/usr/lib/gstreamer-1.0/" 2>/dev/null || true
             fi
         done
+        break
+    fi
+done
+
+# Bundle gst-plugin-scanner helper binary for fallback mode
+for scanner in /usr/lib/x86_64-linux-gnu/gstreamer1.0/gstreamer-1.0/gst-plugin-scanner \
+               /usr/lib/gstreamer-1.0/gst-plugin-scanner \
+               /usr/libexec/gstreamer-1.0/gst-plugin-scanner; do
+    if [ -x "$scanner" ]; then
+        mkdir -p "${APPDIR}/usr/libexec/gstreamer-1.0"
+        cp -L "$scanner" "${APPDIR}/usr/libexec/gstreamer-1.0/" 2>/dev/null || true
+        chmod +x "${APPDIR}/usr/libexec/gstreamer-1.0/gst-plugin-scanner" 2>/dev/null || true
         break
     fi
 done
@@ -143,7 +219,7 @@ ORIG_LD_LIBRARY_PATH="${LD_LIBRARY_PATH:-}"
 export LD_LIBRARY_PATH="${APPDIR}/usr/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
 while true; do
     NEW_COPIED=0
-    find "${APPDIR}/usr/lib" -maxdepth 2 -type f -name '*.so*' -print0 | xargs -0 -n1 ldd 2>/dev/null | awk '/=> \//{print $3}' | sort -u > "$DEPS_FILE"
+    find "${APPDIR}/usr/lib" "${APPDIR}/usr/bin" -maxdepth 5 -type f \( -name '*.so*' -o -name 'python3*' \) -print0 | xargs -0 -n1 ldd 2>/dev/null | awk '/=> \//{print $3}' | sort -u > "$DEPS_FILE"
     while read -r lib; do
         [ -z "$lib" ] && continue
         case "$lib" in "${APPDIR}"/*) continue ;; esac
@@ -194,10 +270,26 @@ find "${APPDIR}" -type f -name "*.pyc" -delete 2>/dev/null || true
 # 3. Create Binary Executable Wrapper
 cat << 'EOF' > "${APPDIR}/usr/bin/video-cut"
 #!/usr/bin/env python3
+import os
 import sys
-for dist_pkg in ("/appdir/usr/lib/python3/dist-packages", "/usr/lib/python3/dist-packages", "/usr/local/lib/python3/dist-packages"):
-    if dist_pkg not in sys.path:
+
+here = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+# Pure-python application package directory
+appdir_dist = os.path.join(here, "lib", "python3", "dist-packages")
+if os.path.isdir(appdir_dist) and appdir_dist not in sys.path:
+    sys.path.insert(0, appdir_dist)
+
+# Version-specific bundled C-extension directory (matching the running Python)
+py_ver = f"python{sys.version_info.major}.{sys.version_info.minor}"
+ver_dist = os.path.join(here, "lib", py_ver, "dist-packages")
+if os.path.isdir(ver_dist) and ver_dist not in sys.path:
+    sys.path.insert(0, ver_dist)
+
+for dist_pkg in ("/usr/lib/python3/dist-packages", "/usr/local/lib/python3/dist-packages"):
+    if os.path.isdir(dist_pkg) and dist_pkg not in sys.path:
         sys.path.append(dist_pkg)
+
 from video_cut.__main__ import main
 
 if __name__ == "__main__":
