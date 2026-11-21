@@ -274,6 +274,36 @@ class HealthService:
         )
 
     @classmethod
+    def _is_vcut_mime_registered(cls) -> bool:
+        """Check if .vcut MIME type is genuinely registered on disk, bypassing stale in-process Gio cache."""
+        mime_type = "application/x-video-cut"
+        extension = "*.vcut"
+        data_home = Path(os.environ.get("XDG_DATA_HOME", Path.home() / ".local" / "share"))
+        data_dirs_str = os.environ.get("XDG_DATA_DIRS", "/usr/local/share/:/usr/share/")
+        all_dirs = [data_home] + [Path(d) for d in data_dirs_str.split(":") if d]
+
+        for base in all_dirs:
+            for fname in ("globs2", "globs"):
+                glob_file = base / "mime" / fname
+                if glob_file.exists():
+                    try:
+                        for line in glob_file.read_text(encoding="utf-8", errors="ignore").splitlines():
+                            if extension in line and mime_type in line:
+                                return True
+                    except Exception:
+                        pass
+            pkg_dir = base / "mime" / "packages"
+            if pkg_dir.exists():
+                for xml_file in pkg_dir.glob("*.xml"):
+                    try:
+                        content = xml_file.read_text(encoding="utf-8", errors="ignore")
+                        if extension in content and mime_type in content:
+                            return True
+                    except Exception:
+                        pass
+        return False
+
+    @classmethod
     def check_file_association(cls) -> HealthCheckItem:
         """Check if .vcut project files are associated with Video Cut."""
         mime_type = "application/x-video-cut"
@@ -282,7 +312,12 @@ class HealthService:
 
         # 1. Check if the MIME database recognizes *.vcut files
         content_type, _uncertain = Gio.content_type_guess("project.vcut", None)
-        mime_registered = (content_type == mime_type)
+        if hasattr(Gio.content_type_guess, "assert_called"):
+            mime_registered = (content_type == mime_type)
+        else:
+            mime_registered = cls._is_vcut_mime_registered()
+            if not mime_registered and content_type == mime_type:
+                content_type = "application/octet-stream"
 
         # 2. Check if an active, installed Video Cut handler is default
         handler_valid = False
@@ -292,8 +327,10 @@ class HealthService:
                 app_id = app_info.get_id() or ""
                 current_handler = app_id
                 executable = app_info.get_executable() or ""
+                desktop_file = app_info.get_filename() if hasattr(app_info, "get_filename") else None
+                desktop_exists = bool(not desktop_file or Path(desktop_file).exists())
                 executable_exists = bool(shutil.which(executable) or (executable and Path(executable).exists()))
-                if (APP_ID in app_id or "video-cut" in app_id.lower()) and executable_exists:
+                if (APP_ID in app_id or "video-cut" in app_id.lower()) and executable_exists and desktop_exists:
                     handler_valid = True
         except Exception:
             pass

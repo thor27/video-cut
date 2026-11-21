@@ -89,9 +89,11 @@ def test_health_dialog_remove_association_button_click():
 
     assert btn_remove is not None
 
-    with patch("video_cut.services.health_service.HealthService.remove_file_association", return_value=(True, "Removed")):
+    with patch("video_cut.services.health_service.HealthService.remove_file_association", return_value=(True, "Removed")) as mock_remove, \
+         patch.object(dialog, "refresh_checks") as mock_refresh:
         btn_remove.emit("clicked")
-        assert btn_remove.get_label() == _("Removing...")
+        mock_remove.assert_called_once()
+        mock_refresh.assert_called_once()
 
     dialog.destroy()
 
@@ -308,7 +310,8 @@ def test_health_dialog_groups_ordered_problems_first():
 
 def test_health_dialog_startup_check_toggle():
     """Test toggling row_startup_check updates HealthService setting."""
-    dialog = HealthCheckDialog()
+    with patch("video_cut.services.health_service.HealthService.is_check_on_startup_enabled", return_value=True):
+        dialog = HealthCheckDialog()
     with patch("video_cut.services.health_service.HealthService.set_check_on_startup_enabled") as mock_set:
         dialog.row_startup_check.set_active(False)
         mock_set.assert_called_with(False)
