@@ -28,6 +28,8 @@ def test_health_dialog_init():
     assert dialog.row_overall is not None
     assert dialog.grp_ffmpeg is not None
     assert dialog.row_ffmpeg is not None
+    assert dialog.grp_hwaccel is not None
+    assert dialog.row_hwaccel_summary is not None
     assert dialog.grp_codecs is not None
     assert dialog.row_codecs_summary is not None
     assert dialog.grp_association is not None
@@ -41,8 +43,9 @@ def test_health_dialog_apply_all_ok():
 
     items = [
         HealthCheckItem(id="ffmpeg", title="FFmpeg", status="ok", summary="Working", details="ffmpeg v6.1"),
-        HealthCheckItem(id="file_association", title="Association", status="ok", summary="Registered", details="Default"),
+        HealthCheckItem(id="hwaccel", title="Hardware Acceleration", status="ok", summary="VA-API active", details="VA-API"),
         HealthCheckItem(id="codecs", title="Codecs", status="ok", summary="All codecs ready", details="h264, aac"),
+        HealthCheckItem(id="file_association", title="Association", status="ok", summary="Registered", details="Default"),
     ]
 
     dialog._apply_results(items)
@@ -51,6 +54,7 @@ def test_health_dialog_apply_all_ok():
     assert dialog.row_association.get_subtitle() == "Registered"
     assert dialog._suffix_ffmpeg is not None
     assert dialog._suffix_association is not None
+    assert dialog._row_hwaccel_table is not None
     assert dialog._row_codecs_table is not None
 
     # Verify Remove Association button is present when status is ok
@@ -106,13 +110,11 @@ def test_health_dialog_apply_warning_and_error():
             fix_url="https://ffmpeg.org",
         ),
         HealthCheckItem(
-            id="file_association",
-            title="Association",
+            id="hwaccel",
+            title="Hardware Acceleration",
             status="warning",
-            summary="Not registered",
-            details="Needs association",
-            can_fix=True,
-            fix_type="automated",
+            summary="FFmpeg is missing",
+            details="Cannot probe hwaccel",
         ),
         HealthCheckItem(
             id="codecs",
@@ -120,6 +122,15 @@ def test_health_dialog_apply_warning_and_error():
             status="warning",
             summary="FFmpeg is missing",
             details="Codecs cannot be probed",
+        ),
+        HealthCheckItem(
+            id="file_association",
+            title="Association",
+            status="warning",
+            summary="Not registered",
+            details="Needs association",
+            can_fix=True,
+            fix_type="automated",
         ),
     ]
 
@@ -146,18 +157,23 @@ def test_health_dialog_apply_warning_and_error():
     dialog.destroy()
 
 
-def test_health_dialog_codecs_table():
-    """Test that codecs table is created with headers and entries when FFmpeg is OK."""
+def test_health_dialog_hwaccel_and_codecs_tables():
+    """Test that hardware acceleration and codecs tables are created when FFmpeg is OK."""
     dialog = HealthCheckDialog()
     items = [
         HealthCheckItem(id="ffmpeg", title="FFmpeg", status="ok", summary="Working", details="ffmpeg v6.1"),
+        HealthCheckItem(id="hwaccel", title="Hardware Acceleration", status="ok", summary="VA-API", details="hwaccel"),
         HealthCheckItem(id="codecs", title="Codecs", status="ok", summary="All codecs ready", details="h264"),
     ]
     dialog._apply_results(items)
 
+    assert dialog._row_hwaccel_table is not None
+    grid_hw = dialog._row_hwaccel_table.get_child()
+    assert isinstance(grid_hw, Gtk.Grid)
+
     assert dialog._row_codecs_table is not None
-    grid = dialog._row_codecs_table.get_child()
-    assert isinstance(grid, Gtk.Grid)
+    grid_codecs = dialog._row_codecs_table.get_child()
+    assert isinstance(grid_codecs, Gtk.Grid)
 
     dialog.destroy()
 

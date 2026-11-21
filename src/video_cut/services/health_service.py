@@ -46,6 +46,16 @@ class CodecInfo:
     is_available: bool
 
 
+@dataclass
+class HwAccelInfo:
+    """Represents a hardware acceleration method and its supported encoders."""
+
+    name: str
+    driver_key: str
+    encoders: list[str]
+    is_available: bool
+
+
 class HealthService:
     """Handles system diagnostic checks, package manager detection, and automated repairs."""
 
@@ -461,10 +471,7 @@ class HealthService:
     @classmethod
     def get_codecs_overview(cls) -> list[CodecInfo]:
         """Return structured status for all important video and audio codecs."""
-        from .ffmpeg_service import FFmpegService
-        encoders = FFmpegService.query_available_encoders()
-        if not encoders:
-            encoders = FFmpegCapabilities.get_encoders()
+        encoders = FFmpegCapabilities.get_encoders()
 
         codecs_def = [
             ("H.264 / AVC", "Video", "libx264", True),
@@ -570,6 +577,104 @@ class HealthService:
         )
 
     @classmethod
+    def get_hwaccel_overview(cls) -> list[HwAccelInfo]:
+        """Return structured status for GPU hardware acceleration frameworks."""
+        import sys
+        encoders = FFmpegCapabilities.get_encoders()
+
+        has_dri = Path("/dev/dri").exists() and any(p.name.startswith("renderD") for p in Path("/dev/dri").glob("renderD*"))
+        has_nvidia = bool(shutil.which("nvidia-smi") or list(Path("/dev").glob("nvidia*")))
+        is_macos = sys.platform == "darwin"
+
+        vaapi_enc = [e for e in ["h264_vaapi", "hevc_vaapi", "av1_vaapi", "vp9_vaapi"] if e in encoders]
+        nvenc_enc = [e for e in ["h264_nvenc", "hevc_nvenc", "av1_nvenc"] if e in encoders]
+        qsv_enc = [e for e in ["h264_qsv", "hevc_qsv", "av1_qsv"] if e in encoders]
+        vulkan_enc = [e for e in ["h264_vulkan", "hevc_vulkan", "av1_vulkan"] if e in encoders]
+        vtb_enc = [e for e in ["h264_videotoolbox", "hevc_videotoolbox", "prores_videotoolbox"] if e in encoders]
+
+        methods: list[HwAccelInfo] = []
+
+        if is_macos:
+            methods.append(
+                HwAccelInfo(
+                    name="Apple VideoToolbox",
+                    driver_key="videotoolbox",
+                    encoders=vtb_enc,
+                    is_available=bool(vtb_enc),
+                )
+            )
+
+        methods.extend([
+            HwAccelInfo(
+                name="VA-API (Intel / AMD)",
+                driver_key="vaapi",
+                encoders=vaapi_enc,
+                is_available=bool(has_dri and vaapi_enc),
+            ),
+            HwAccelInfo(
+                name="NVIDIA NVENC",
+                driver_key="nvenc",
+                encoders=nvenc_enc,
+                is_available=bool(has_nvidia and nvenc_enc),
+            ),
+            HwAccelInfo(
+                name="Intel Quick Sync (QSV)",
+                driver_key="qsv",
+                encoders=qsv_enc,
+                is_available=bool(has_dri and qsv_enc),
+            ),
+            HwAccelInfo(
+                name="Vulkan Video",
+                driver_key="vulkan",
+                encoders=vulkan_enc,
+                is_available=bool(has_dri and vulkan_enc),
+            ),
+        ])
+
+        return methods
+
+    @classmethod
+    def check_hardware_acceleration(cls) -> HealthCheckItem:
+        """Check availability of GPU hardware acceleration for video encoding."""
+        ffmpeg_bin = get_ffmpeg_path()
+        if not (shutil.which(ffmpeg_bin) or (Path(ffmpeg_bin).is_file() and os.access(ffmpeg_bin, os.X_OK))):
+            return HealthCheckItem(
+                id="hwaccel",
+                title=_("Hardware Acceleration"),
+                status="warning",
+                summary=_("FFmpeg is missing; hardware acceleration cannot be probed."),
+                details=_("Install FFmpeg to enable GPU hardware acceleration diagnostics."),
+                can_fix=False,
+            )
+
+        hw_list = cls.get_hwaccel_overview()
+        available_methods = [h.name for h in hw_list if h.is_available]
+
+        if available_methods:
+            return HealthCheckItem(
+                id="hwaccel",
+                title=_("Hardware Acceleration"),
+                status="ok",
+                summary=_("Hardware acceleration supported ({methods}).").format(
+                    methods=", ".join(available_methods)
+                ),
+                details="\n".join(
+                    f"{h.name}: {'Available (' + ', '.join(h.encoders) + ')' if h.is_available else 'Not detected'}"
+                    for h in hw_list
+                ),
+                can_fix=False,
+            )
+
+        return HealthCheckItem(
+            id="hwaccel",
+            title=_("Hardware Acceleration"),
+            status="ok",
+            summary=_("Software encoding active (CPU). No compatible GPU encoder detected."),
+            details=_("Video Cut will process and export videos using multi-threaded CPU encoding."),
+            can_fix=False,
+        )
+
+    @classmethod
     def run_all_checks(cls, include_codecs: bool = True) -> list[HealthCheckItem]:
         """Execute all health probes."""
         items = [
@@ -578,5 +683,6 @@ class HealthService:
         ]
         if include_codecs:
             items.append(cls.check_codecs())
+            items.append(cls.check_hardware_acceleration())
         return items
 

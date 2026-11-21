@@ -25,13 +25,14 @@ class HealthCheckDialog(Adw.Window):
     ) -> None:
         super().__init__(transient_for=parent, modal=True)
         self.set_title(_("System Health & Setup"))
-        self.set_default_size(780, 580)
+        self.set_default_size(780, 620)
         self._on_status_changed = on_status_changed
         self._items: list[HealthCheckItem] = []
 
         # Dynamic subrow references
         self._row_ffmpeg_cmd: Adw.ActionRow | None = None
         self._row_ffmpeg_web: Adw.ActionRow | None = None
+        self._row_hwaccel_table: Adw.PreferencesRow | None = None
         self._row_codecs_table: Adw.PreferencesRow | None = None
         self._row_codecs_cmd: Adw.ActionRow | None = None
 
@@ -74,14 +75,24 @@ class HealthCheckDialog(Adw.Window):
         self.row_overall = Adw.ActionRow()
         self.grp_status.add(self.row_overall)
 
-        # 2. FFmpeg Group
+        # 2. FFmpeg Engine Group
         self.grp_ffmpeg = Adw.PreferencesGroup(title=_("FFmpeg Multimedia Engine"))
         self.pref_page.add(self.grp_ffmpeg)
 
         self.row_ffmpeg = Adw.ActionRow(title=_("FFmpeg Tools"))
         self.grp_ffmpeg.add(self.row_ffmpeg)
 
-        # 3. Codecs Group
+        # 3. Hardware Acceleration Group
+        self.grp_hwaccel = Adw.PreferencesGroup(
+            title=_("Hardware Acceleration"),
+            description=_("GPU hardware encoding and decoding support in FFmpeg:"),
+        )
+        self.pref_page.add(self.grp_hwaccel)
+
+        self.row_hwaccel_summary = Adw.ActionRow(title=_("GPU Acceleration"))
+        self.grp_hwaccel.add(self.row_hwaccel_summary)
+
+        # 4. Multimedia Codecs Group
         self.grp_codecs = Adw.PreferencesGroup(
             title=_("Multimedia Codecs"),
             description=_("Status of important video and audio encoders in FFmpeg:"),
@@ -91,7 +102,7 @@ class HealthCheckDialog(Adw.Window):
         self.row_codecs_summary = Adw.ActionRow(title=_("Codec Support"))
         self.grp_codecs.add(self.row_codecs_summary)
 
-        # 4. File Association Group
+        # 5. File Association Group
         self.grp_association = Adw.PreferencesGroup(title=_(".vcut Project File Association"))
         self.pref_page.add(self.grp_association)
 
@@ -279,7 +290,7 @@ class HealthCheckDialog(Adw.Window):
     def refresh_checks(self) -> None:
         """Run diagnostics in background thread and update UI on completion."""
         self.row_overall.set_title(_("Running system health check..."))
-        self.row_overall.set_subtitle(_("Probing FFmpeg, file associations, and multimedia codecs..."))
+        self.row_overall.set_subtitle(_("Probing FFmpeg, hardware acceleration, and codecs..."))
         icon_spin = Gtk.Spinner()
         icon_spin.start()
         self._set_overall_prefix(icon_spin)
@@ -293,8 +304,9 @@ class HealthCheckDialog(Adw.Window):
     def _apply_results(self, items: list[HealthCheckItem]) -> None:
         self._items = items
         ffmpeg_item = next((it for it in items if it.id == "ffmpeg"), None)
-        assoc_item = next((it for it in items if it.id == "file_association"), None)
+        hwaccel_item = next((it for it in items if it.id == "hwaccel"), None)
         codecs_item = next((it for it in items if it.id == "codecs"), None)
+        assoc_item = next((it for it in items if it.id == "file_association"), None)
 
         has_error = any(it.status == "error" for it in items)
         has_warning = any(it.status == "warning" for it in items)
@@ -314,17 +326,21 @@ class HealthCheckDialog(Adw.Window):
             self._set_overall_prefix(icon)
         else:
             self.row_overall.set_title(_("All Systems Operational"))
-            self.row_overall.set_subtitle(_("FFmpeg, .vcut file associations, and multimedia codecs are ready."))
+            self.row_overall.set_subtitle(_("FFmpeg, hardware acceleration, and file associations are ready."))
             icon = Gtk.Image.new_from_icon_name("object-select-symbolic")
             icon.add_css_class("success")
             self._set_overall_prefix(icon)
 
+        ffmpeg_ok = bool(ffmpeg_item and ffmpeg_item.status == "ok")
+
         if ffmpeg_item:
             self._update_ffmpeg_row(ffmpeg_item)
+        if hwaccel_item:
+            self._update_hwaccel_group(hwaccel_item, ffmpeg_ok=ffmpeg_ok)
+        if codecs_item:
+            self._update_codecs_group(codecs_item, ffmpeg_ok=ffmpeg_ok)
         if assoc_item:
             self._update_association_row(assoc_item)
-        if codecs_item:
-            self._update_codecs_group(codecs_item, ffmpeg_ok=(ffmpeg_item.status == "ok" if ffmpeg_item else False))
 
         if self._on_status_changed:
             self._on_status_changed()
@@ -375,39 +391,91 @@ class HealthCheckDialog(Adw.Window):
                 )
                 self.grp_ffmpeg.add(self._row_ffmpeg_web)
 
-    def _update_association_row(self, item: HealthCheckItem) -> None:
-        self.row_association.set_subtitle(item.summary)
-        icon_name = "object-select-symbolic" if item.status == "ok" else "dialog-warning-symbolic"
-        icon = Gtk.Image.new_from_icon_name(icon_name)
-        icon.add_css_class("success" if item.status == "ok" else "warning")
-        self._set_row_prefix(self.row_association, "_prefix_association", icon)
+    def _update_hwaccel_group(self, item: HealthCheckItem, ffmpeg_ok: bool) -> None:
+        """Populate the hardware acceleration section with GPU framework details."""
+        if self._row_hwaccel_table:
+            self.grp_hwaccel.remove(self._row_hwaccel_table)
+            self._row_hwaccel_table = None
 
-        if hasattr(self, "_suffix_association") and self._suffix_association:
-            self.row_association.remove(self._suffix_association)
-            self._suffix_association = None
+        if not ffmpeg_ok:
+            self.row_hwaccel_summary.set_subtitle(_("Install FFmpeg to inspect and enable GPU hardware acceleration."))
+            icon = Gtk.Image.new_from_icon_name("dialog-warning-symbolic")
+            icon.add_css_class("warning")
+            self._set_row_prefix(self.row_hwaccel_summary, "_prefix_hwaccel", icon)
+            return
 
-        suffix_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
-        suffix_box.set_valign(Gtk.Align.CENTER)
+        methods = HealthService.get_hwaccel_overview()
+        available_count = sum(1 for m in methods if m.is_available)
 
-        if item.status != "ok":
-            btn_fix = Gtk.Button(label=item.fix_label or _("Register Association"))
-            btn_fix.add_css_class("suggested-action")
-            btn_fix.connect("clicked", self._on_fix_association_clicked)
-            suffix_box.append(btn_fix)
+        if available_count > 0:
+            active_names = [m.name.split(" ")[0] for m in methods if m.is_available]
+            self.row_hwaccel_summary.set_subtitle(
+                _("GPU hardware acceleration active ({active}).").format(active=", ".join(active_names))
+            )
+            icon = Gtk.Image.new_from_icon_name("object-select-symbolic")
+            icon.add_css_class("success")
         else:
-            btn_remove = Gtk.Button(label=_("Remove Association"))
-            btn_remove.connect("clicked", self._on_remove_association_clicked)
-            suffix_box.append(btn_remove)
+            self.row_hwaccel_summary.set_subtitle(_("Software encoding active (CPU). No compatible GPU encoder detected."))
+            icon = Gtk.Image.new_from_icon_name("dialog-information-symbolic")
+            icon.add_css_class("accent")
+        self._set_row_prefix(self.row_hwaccel_summary, "_prefix_hwaccel", icon)
 
-        btn_info = self._create_info_button(item)
-        suffix_box.append(btn_info)
+        # Build clean 3-column table
+        pref_row = Adw.PreferencesRow()
+        grid = Gtk.Grid()
+        grid.set_column_spacing(24)
+        grid.set_row_spacing(10)
+        grid.set_margin_top(12)
+        grid.set_margin_bottom(12)
+        grid.set_margin_start(16)
+        grid.set_margin_end(16)
+        grid.set_hexpand(True)
 
-        self._suffix_association = suffix_box
-        self.row_association.add_suffix(suffix_box)
+        headers = [_("Framework"), _("Hardware Encoders"), _("Status")]
+        for col_idx, h in enumerate(headers):
+            lbl = Gtk.Label(label=h)
+            lbl.add_css_class("heading")
+            lbl.add_css_class("dim-label")
+            lbl.set_xalign(0.0)
+            grid.attach(lbl, col_idx, 0, 1, 1)
+
+        sep = Gtk.Separator(orientation=Gtk.Orientation.HORIZONTAL)
+        sep.set_hexpand(True)
+        grid.attach(sep, 0, 1, 3, 1)
+
+        for i, m in enumerate(methods):
+            r = i + 2
+            # Col 0: Framework name
+            lbl_name = Gtk.Label(label=m.name)
+            lbl_name.set_xalign(0.0)
+            grid.attach(lbl_name, 0, r, 1, 1)
+
+            # Col 1: Hardware encoders
+            enc_text = ", ".join(m.encoders) if m.encoders else _("None")
+            lbl_enc = Gtk.Label(label=enc_text)
+            lbl_enc.add_css_class("monospace" if m.encoders else "dim-label")
+            lbl_enc.set_xalign(0.0)
+            grid.attach(lbl_enc, 1, r, 1, 1)
+
+            # Col 2: Status with icon and text
+            st_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
+            st_icon = Gtk.Image.new_from_icon_name(
+                "object-select-symbolic" if m.is_available else "window-close-symbolic"
+            )
+            st_icon.add_css_class("success" if m.is_available else "dim-label")
+            st_box.append(st_icon)
+
+            lbl_st = Gtk.Label(label=_("Available") if m.is_available else _("Not Detected"))
+            lbl_st.add_css_class("success" if m.is_available else "dim-label")
+            st_box.append(lbl_st)
+            grid.attach(st_box, 2, r, 1, 1)
+
+        pref_row.set_child(grid)
+        self._row_hwaccel_table = pref_row
+        self.grp_hwaccel.add(pref_row)
 
     def _update_codecs_group(self, item: HealthCheckItem, ffmpeg_ok: bool) -> None:
-        """Populate the codecs group with a clean status row and small table."""
-        # Clear existing dynamic table and command row
+        """Populate the codecs group with a concise 3-column table: Codec, Encoder, Status."""
         if self._row_codecs_table:
             self.grp_codecs.remove(self._row_codecs_table)
             self._row_codecs_table = None
@@ -437,19 +505,18 @@ class HealthCheckDialog(Adw.Window):
         icon.add_css_class("success" if item.status == "ok" else "warning")
         self._set_row_prefix(self.row_codecs_summary, "_prefix_codecs", icon)
 
-        # Build small table in an Adw.PreferencesRow
+        # Build clean 3-column table: Codec, Encoder, Status
         pref_row = Adw.PreferencesRow()
         grid = Gtk.Grid()
-        grid.set_column_spacing(20)
-        grid.set_row_spacing(8)
+        grid.set_column_spacing(24)
+        grid.set_row_spacing(10)
         grid.set_margin_top(12)
         grid.set_margin_bottom(12)
         grid.set_margin_start(16)
         grid.set_margin_end(16)
         grid.set_hexpand(True)
 
-        # Table Column Headers
-        headers = [_("Status"), _("Codec"), _("Type"), _("Encoder"), _("State")]
+        headers = [_("Codec"), _("Encoder"), _("Status")]
         for col_idx, h in enumerate(headers):
             lbl = Gtk.Label(label=h)
             lbl.add_css_class("heading")
@@ -459,45 +526,38 @@ class HealthCheckDialog(Adw.Window):
 
         sep = Gtk.Separator(orientation=Gtk.Orientation.HORIZONTAL)
         sep.set_hexpand(True)
-        grid.attach(sep, 0, 1, 5, 1)
+        grid.attach(sep, 0, 1, 3, 1)
 
-        # Table Rows for each codec
         for i, c in enumerate(codecs):
             r = i + 2
-            # Col 0: Icon
-            st_icon_name = "object-select-symbolic" if c.is_available else "window-close-symbolic"
-            st_icon = Gtk.Image.new_from_icon_name(st_icon_name)
-            st_icon.add_css_class("success" if c.is_available else ("error" if c.is_essential else "dim-label"))
-            grid.attach(st_icon, 0, r, 1, 1)
-
-            # Col 1: Codec Name
+            # Col 0: Codec Name
             lbl_name = Gtk.Label(label=c.name)
             lbl_name.set_xalign(0.0)
-            grid.attach(lbl_name, 1, r, 1, 1)
+            grid.attach(lbl_name, 0, r, 1, 1)
 
-            # Col 2: Type
-            lbl_type = Gtk.Label(label=_("Video") if c.codec_type == "Video" else _("Audio"))
-            lbl_type.add_css_class("dim-label")
-            lbl_type.set_xalign(0.0)
-            grid.attach(lbl_type, 2, r, 1, 1)
-
-            # Col 3: Encoder name
+            # Col 1: Encoder
             lbl_enc = Gtk.Label(label=c.encoder)
             lbl_enc.add_css_class("monospace")
             lbl_enc.set_xalign(0.0)
-            grid.attach(lbl_enc, 3, r, 1, 1)
+            grid.attach(lbl_enc, 1, r, 1, 1)
 
-            # Col 4: State
-            lbl_state = Gtk.Label(label=_("Available") if c.is_available else _("Not Available"))
-            lbl_state.add_css_class("success" if c.is_available else ("error" if c.is_essential else "dim-label"))
-            lbl_state.set_xalign(0.0)
-            grid.attach(lbl_state, 4, r, 1, 1)
+            # Col 2: Status with icon and text
+            st_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
+            st_icon = Gtk.Image.new_from_icon_name(
+                "object-select-symbolic" if c.is_available else "window-close-symbolic"
+            )
+            st_icon.add_css_class("success" if c.is_available else ("error" if c.is_essential else "dim-label"))
+            st_box.append(st_icon)
+
+            lbl_st = Gtk.Label(label=_("Available") if c.is_available else _("Not Available"))
+            lbl_st.add_css_class("success" if c.is_available else ("error" if c.is_essential else "dim-label"))
+            st_box.append(lbl_st)
+            grid.attach(st_box, 2, r, 1, 1)
 
         pref_row.set_child(grid)
         self._row_codecs_table = pref_row
         self.grp_codecs.add(pref_row)
 
-        # If any codecs are missing and there is a fix command, add row below table
         if item.fix_command and item.status != "ok":
             self._row_codecs_cmd = self._create_command_row(
                 title=_("Install Extra Codecs"),
@@ -505,6 +565,36 @@ class HealthCheckDialog(Adw.Window):
                 command_text=item.fix_command,
             )
             self.grp_codecs.add(self._row_codecs_cmd)
+
+    def _update_association_row(self, item: HealthCheckItem) -> None:
+        self.row_association.set_subtitle(item.summary)
+        icon_name = "object-select-symbolic" if item.status == "ok" else "dialog-warning-symbolic"
+        icon = Gtk.Image.new_from_icon_name(icon_name)
+        icon.add_css_class("success" if item.status == "ok" else "warning")
+        self._set_row_prefix(self.row_association, "_prefix_association", icon)
+
+        if hasattr(self, "_suffix_association") and self._suffix_association:
+            self.row_association.remove(self._suffix_association)
+            self._suffix_association = None
+
+        suffix_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
+        suffix_box.set_valign(Gtk.Align.CENTER)
+
+        if item.status != "ok":
+            btn_fix = Gtk.Button(label=item.fix_label or _("Register Association"))
+            btn_fix.add_css_class("suggested-action")
+            btn_fix.connect("clicked", self._on_fix_association_clicked)
+            suffix_box.append(btn_fix)
+        else:
+            btn_remove = Gtk.Button(label=_("Remove Association"))
+            btn_remove.connect("clicked", self._on_remove_association_clicked)
+            suffix_box.append(btn_remove)
+
+        btn_info = self._create_info_button(item)
+        suffix_box.append(btn_info)
+
+        self._suffix_association = suffix_box
+        self.row_association.add_suffix(suffix_box)
 
     def _on_fix_association_clicked(self, btn: Gtk.Button) -> None:
         btn.set_sensitive(False)

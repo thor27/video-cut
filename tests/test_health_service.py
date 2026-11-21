@@ -177,3 +177,25 @@ def test_initial_check_persistence(tmp_path: Path):
         assert HealthService.has_run_initial_check() is False
         HealthService.mark_initial_check_done()
         assert HealthService.has_run_initial_check() is True
+
+
+def test_check_hardware_acceleration_detected():
+    """Test check_hardware_acceleration when VA-API hardware acceleration is detected."""
+    with patch("shutil.which", return_value="/usr/bin/ffmpeg"), \
+         patch("pathlib.Path.exists", return_value=True), \
+         patch("video_cut.services.export_service.FFmpegCapabilities.get_encoders", return_value={"h264_vaapi"}):
+        item = HealthService.check_hardware_acceleration()
+        assert item.status == "ok"
+        assert item.id == "hwaccel"
+        overview = HealthService.get_hwaccel_overview()
+        assert any(m.driver_key == "vaapi" and m.is_available for m in overview)
+
+
+def test_check_hardware_acceleration_missing_ffmpeg():
+    """Test check_hardware_acceleration when ffmpeg is missing."""
+    with patch("shutil.which", return_value=None), \
+         patch("os.access", return_value=False):
+        item = HealthService.check_hardware_acceleration()
+        assert item.status == "warning"
+        assert item.id == "hwaccel"
+
