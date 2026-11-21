@@ -47,12 +47,12 @@ class HealthCheckDialog(Adw.Window):
             label=_("Re-check"),
         )
         btn_refresh.set_child(content_refresh)
-        btn_refresh.connect("clicked", lambda _: self.refresh_checks())
+        btn_refresh.connect("clicked", lambda _btn: self.refresh_checks())
         header_bar.pack_start(btn_refresh)
 
         btn_close = Gtk.Button(label=_("Close"))
         btn_close.add_css_class("suggested-action")
-        btn_close.connect("clicked", lambda _: self.close())
+        btn_close.connect("clicked", lambda _btn: self.close())
         header_bar.pack_end(btn_close)
         toolbar_view.add_top_bar(header_bar)
 
@@ -172,7 +172,7 @@ class HealthCheckDialog(Adw.Window):
         btn_copy.set_child(content)
         btn_copy.set_halign(Gtk.Align.END)
 
-        def on_copy_details(_: Gtk.Button) -> None:
+        def on_copy_details(_btn: Gtk.Button) -> None:
             self._copy_to_clipboard(item.details)
             content.set_icon_name("object-select-symbolic")
             content.set_label(_("Copied!"))
@@ -275,7 +275,7 @@ class HealthCheckDialog(Adw.Window):
 
                 cmd_text = item.fix_command
 
-                def on_copy_cmd(_: Gtk.Button, cmd: str = cmd_text) -> None:
+                def on_copy_cmd(_btn: Gtk.Button, cmd: str = cmd_text) -> None:
                     self._copy_to_clipboard(cmd)
                     content_copy.set_icon_name("object-select-symbolic")
                     content_copy.set_label(_("Copied!"))
@@ -299,7 +299,7 @@ class HealthCheckDialog(Adw.Window):
                 btn_web.set_child(content_web)
                 btn_web.set_tooltip_text(item.fix_url)
                 target_url = item.fix_url
-                btn_web.connect("clicked", lambda _: Gio.AppInfo.launch_default_for_uri(target_url, None))
+                btn_web.connect("clicked", lambda _btn: Gio.AppInfo.launch_default_for_uri(target_url, None))
                 suffix_box.append(btn_web)
 
         btn_info = self._create_info_button(item)

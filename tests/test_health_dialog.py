@@ -137,3 +137,74 @@ def test_health_dialog_clipboard_copy():
         mock_clipboard.set.assert_called_once_with("sudo apt install ffmpeg")
 
     dialog.destroy()
+
+
+def test_health_dialog_copy_command_button_click():
+    """Test clicking the copy command button executes on_copy_cmd without error."""
+    dialog = HealthCheckDialog()
+    item = HealthCheckItem(
+        id="ffmpeg",
+        title="FFmpeg",
+        status="error",
+        summary="Missing",
+        details="Not found",
+        can_fix=True,
+        fix_command="sudo apt install ffmpeg",
+    )
+    dialog._apply_results([item])
+
+    mock_display = MagicMock()
+    mock_clipboard = MagicMock()
+    mock_display.get_clipboard.return_value = mock_clipboard
+
+    with patch.object(dialog, "get_display", return_value=mock_display):
+        # Locate copy button in suffix
+        child = dialog._suffix_ffmpeg.get_first_child()
+        btn_copy = None
+        while child is not None:
+            if isinstance(child, Gtk.Button) and not isinstance(child, Gtk.MenuButton):
+                btn_copy = child
+                break
+            child = child.get_next_sibling()
+
+        assert btn_copy is not None
+        btn_copy.emit("clicked")
+        mock_clipboard.set.assert_called_once_with("sudo apt install ffmpeg")
+
+    dialog.destroy()
+
+
+def test_health_dialog_copy_details_button_click():
+    """Test clicking the copy details button in Popover executes on_copy_details without error."""
+    dialog = HealthCheckDialog()
+    item = HealthCheckItem(
+        id="ffmpeg",
+        title="FFmpeg",
+        status="error",
+        summary="Missing",
+        details="Diagnosed detail message",
+    )
+    btn_info = dialog._create_info_button(item)
+    popover = btn_info.get_popover()
+    assert popover is not None
+
+    mock_display = MagicMock()
+    mock_clipboard = MagicMock()
+    mock_display.get_clipboard.return_value = mock_clipboard
+
+    with patch.object(dialog, "get_display", return_value=mock_display):
+        # Locate btn_copy in popover child box
+        popover_box = popover.get_child()
+        child = popover_box.get_first_child()
+        btn_copy_details = None
+        while child is not None:
+            if isinstance(child, Gtk.Button):
+                btn_copy_details = child
+            child = child.get_next_sibling()
+
+        assert btn_copy_details is not None
+        btn_copy_details.emit("clicked")
+        mock_clipboard.set.assert_called_once_with("Diagnosed detail message")
+
+    dialog.destroy()
+
