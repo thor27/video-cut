@@ -41,6 +41,7 @@ jobs:
           appstreamcli validate --no-net io.github.thor27.video-cut.metainfo.xml
           ./scripts/build_flatpak.sh --validate-only
           ./scripts/build_appimage.sh
+          ./scripts/build_macos.sh --validate-only
 
       - name: Run Tests
         run: xvfb-run -a .venv/bin/python -m pytest -q

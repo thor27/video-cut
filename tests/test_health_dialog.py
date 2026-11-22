@@ -392,4 +392,27 @@ def test_health_dialog_ffmpeg_manual_entry():
     dialog.destroy()
 
 
+def test_health_dialog_macos_bundle_labels():
+    """Test health dialog uses App Bundle labels on macOS."""
+    with patch("sys.platform", "darwin"):
+        dialog = HealthCheckDialog()
+        model = dialog.row_ffmpeg_source.get_model()
+        assert model is not None
+        # Position 1 should be App Bundle (Bundled)
+        assert _("App Bundle (Bundled)") in model.get_string(1)
+
+        item = HealthCheckItem(id="ffmpeg", title="FFmpeg", status="ok", summary="Working", details="ffmpeg v6.1")
+        with patch("video_cut.services.health_service.HealthService.get_active_ffmpeg_info", return_value={
+            "ffmpeg_path": "/Applications/VideoCut.app/Contents/Resources/bin/ffmpeg",
+            "effective_source": "container",
+            "configured_source": "auto",
+        }):
+            dialog._update_ffmpeg_row(item)
+            assert "App Bundle" in dialog.row_ffmpeg_source.get_subtitle()
+
+        dialog.destroy()
+
+
+
+
 

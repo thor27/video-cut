@@ -352,4 +352,84 @@ def test_check_ffmpeg_outdated_warning():
         assert item.can_fix is True
 
 
+def test_detect_os_info_macos():
+    """Test detect_os_info on macOS platform."""
+    with patch("sys.platform", "darwin"), \
+         patch("platform.mac_ver", return_value=("14.5", ("", "", ""), "arm64")), \
+         patch("platform.machine", return_value="arm64"):
+        info = HealthService.detect_os_info()
+        assert info.get("id") == "macos"
+        assert info.get("version") == "14.5"
+        assert info.get("arch") == "arm64"
+        assert "macOS 14.5 (arm64)" in info.get("name", "")
+
+
+def test_detect_package_manager_macos_brew():
+    """Test detection of brew package manager on macOS."""
+    with patch("sys.platform", "darwin"), \
+         patch("shutil.which", return_value="/opt/homebrew/bin/brew"):
+        mgr, cmd, gui, extra_pkg = HealthService.detect_package_manager()
+        assert mgr == "brew"
+        assert cmd == "brew install ffmpeg"
+        assert gui is None
+        assert extra_pkg is None
+
+
+def test_detect_package_manager_macos_port():
+    """Test detection of MacPorts when brew is not installed."""
+    with patch("sys.platform", "darwin"), \
+         patch("shutil.which", side_effect=lambda x: "/opt/local/bin/port" if x == "port" else None), \
+         patch("pathlib.Path.is_file", return_value=False):
+        mgr, cmd, gui, extra_pkg = HealthService.detect_package_manager()
+        assert mgr == "port"
+        assert cmd == "sudo port install ffmpeg"
+
+
+def test_check_ffmpeg_macos_upgrade_fix():
+    """Test check_ffmpeg upgrade command on macOS uses brew upgrade."""
+    with patch("sys.platform", "darwin"), \
+         patch("shutil.which", return_value="/opt/homebrew/bin/ffmpeg"), \
+         patch("subprocess.run") as mock_run:
+        mock_run.return_value = MagicMock(returncode=0, stdout="ffmpeg version 3.4.8\n")
+        with patch.object(HealthService, "detect_package_manager", return_value=("brew", "brew install ffmpeg", None, None)):
+            item = HealthService.check_ffmpeg()
+            assert item.status == "warning"
+            assert item.fix_command == "brew upgrade ffmpeg"
+            assert item.fix_url == "https://brew.sh"
+
+
+def test_check_file_association_macos():
+    """Test check_file_association returns ok on macOS via LaunchServices."""
+    with patch("sys.platform", "darwin"):
+        item = HealthService.check_file_association()
+        assert item.status == "ok"
+        assert item.can_fix is False
+        assert "LaunchServices" in item.details
+
+
+def test_fix_and_remove_file_association_macos():
+    """Test fix_file_association and remove_file_association on macOS."""
+    with patch("sys.platform", "darwin"):
+        ok_fix, msg_fix = HealthService.fix_file_association()
+        assert ok_fix is True
+        assert "LaunchServices" in msg_fix
+
+        ok_rem, msg_rem = HealthService.remove_file_association()
+        assert ok_rem is True
+        assert "LaunchServices" in msg_rem
+
+
+def test_get_hwaccel_overview_macos():
+    """Test get_hwaccel_overview on macOS reports Apple VideoToolbox only."""
+    with patch("sys.platform", "darwin"), \
+         patch("video_cut.services.export_service.FFmpegCapabilities.get_encoders", return_value={"h264_videotoolbox", "hevc_videotoolbox", "prores_videotoolbox"}):
+        hw = HealthService.get_hwaccel_overview()
+        assert len(hw) == 1
+        assert hw[0].name == "Apple VideoToolbox"
+        assert hw[0].driver_key == "videotoolbox"
+        assert hw[0].is_available is True
+        assert "h264_videotoolbox" in hw[0].encoders
+
+
+
 

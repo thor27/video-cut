@@ -5,8 +5,10 @@ from __future__ import annotations
 import contextlib
 import json
 import os
+import platform
 import shutil
 import subprocess
+import sys
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -161,7 +163,18 @@ class HealthService:
 
     @classmethod
     def detect_os_info(cls) -> dict[str, str]:
-        """Read and parse /etc/os-release."""
+        """Read and parse /etc/os-release or macOS platform information."""
+        if sys.platform == "darwin":
+            ver = platform.mac_ver()[0]
+            arch = platform.machine()
+            name = f"macOS {ver} ({arch})" if ver else f"macOS ({arch})"
+            return {
+                "id": "macos",
+                "name": name,
+                "version": ver,
+                "arch": arch,
+            }
+
         info = {"id": "linux", "name": "Linux", "version": ""}
         os_release = Path("/etc/os-release")
         if os_release.exists():
@@ -182,6 +195,17 @@ class HealthService:
 
         Returns (mgr_name, install_cmd, gui_app_cmd, extra_codecs_pkg).
         """
+        if sys.platform == "darwin":
+            has_brew = bool(
+                shutil.which("brew")
+                or Path("/opt/homebrew/bin/brew").is_file()
+                or Path("/usr/local/bin/brew").is_file()
+            )
+            has_port = bool(shutil.which("port") or Path("/opt/local/bin/port").is_file())
+            if has_port and not has_brew:
+                return ("port", "sudo port install ffmpeg", None, None)
+            return ("brew", "brew install ffmpeg", None, None)
+
         os_info = cls.detect_os_info()
         distro_id = os_info.get("id", "").lower()
         id_like = os_info.get("id_like", "").lower()
@@ -310,6 +334,8 @@ class HealthService:
 
         if parsed_ver is not None and parsed_ver < MIN_FFMPEG_VERSION:
             ver_text = f"{parsed_ver[0]}.{parsed_ver[1]}"
+            mgr, cmd, _gui, _pkg = cls.detect_package_manager()
+            fix_cmd = "brew upgrade ffmpeg" if mgr == "brew" else cmd
             return HealthCheckItem(
                 id="ffmpeg",
                 title=_("FFmpeg Multimedia Engine"),
@@ -327,8 +353,8 @@ class HealthService:
                 can_fix=True,
                 fix_type="command",
                 fix_label=_("Upgrade FFmpeg"),
-                fix_command="sudo apt/dnf/pacman install ffmpeg",
-                fix_url="https://ffmpeg.org/download.html",
+                fix_command=fix_cmd,
+                fix_url="https://brew.sh" if mgr == "brew" else "https://ffmpeg.org/download.html",
             )
 
         return HealthCheckItem(
@@ -378,6 +404,19 @@ class HealthService:
     @classmethod
     def check_file_association(cls) -> HealthCheckItem:
         """Check if .vcut project files are associated with Video Cut."""
+        if sys.platform == "darwin":
+            return HealthCheckItem(
+                id="file_association",
+                title=_(".vcut Project Association"),
+                status="ok",
+                summary=_(".vcut projects are registered to open with Video Cut."),
+                details=_(
+                    "File associations on macOS are managed by Apple LaunchServices via the application bundle.\n"
+                    "To set or verify default application in Finder, select any .vcut file and press Cmd+I (Get Info)."
+                ),
+                can_fix=False,
+            )
+
         mime_type = "application/x-video-cut"
         is_associated = False
         current_handler = ""
@@ -474,7 +513,8 @@ class HealthService:
     @classmethod
     def fix_file_association(cls) -> tuple[bool, str]:
         """Automated repair of .vcut file association in user-space."""
-        import sys
+        if sys.platform == "darwin":
+            return (True, _("File associations on macOS are handled automatically by LaunchServices."))
 
         mime_xml_source = RESOURCES_DIR / "io.github.thor27.video-cut.xml"
         desktop_source = RESOURCES_DIR / "io.github.thor27.video-cut.desktop"
@@ -560,6 +600,9 @@ class HealthService:
     @classmethod
     def remove_file_association(cls) -> tuple[bool, str]:
         """Remove .vcut file association and desktop file from user-space."""
+        if sys.platform == "darwin":
+            return (True, _("File associations on macOS are managed by LaunchServices and the application bundle."))
+
         try:
             # 1. Remove user MIME package
             user_mime_file = Path.home() / ".local" / "share" / "mime" / "packages" / "io.github.thor27.video-cut.xml"
@@ -738,18 +781,17 @@ class HealthService:
         vulkan_enc = [e for e in ["h264_vulkan", "hevc_vulkan", "av1_vulkan"] if e in encoders]
         vtb_enc = [e for e in ["h264_videotoolbox", "hevc_videotoolbox", "prores_videotoolbox"] if e in encoders]
 
-        methods: list[HwAccelInfo] = []
-
         if is_macos:
-            methods.append(
+            return [
                 HwAccelInfo(
                     name="Apple VideoToolbox",
                     driver_key="videotoolbox",
                     encoders=vtb_enc,
                     is_available=bool(vtb_enc),
                 )
-            )
+            ]
 
+        methods: list[HwAccelInfo] = []
         methods.extend([
             HwAccelInfo(
                 name="VA-API (Intel / AMD)",
