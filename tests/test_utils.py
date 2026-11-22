@@ -7,6 +7,8 @@ from video_cut.utils import (
     get_container_ffprobe_path,
     get_ffmpeg_path,
     get_ffprobe_path,
+    get_system_ffmpeg_path,
+    get_system_ffprobe_path,
 )
 
 
@@ -93,10 +95,10 @@ def test_get_ffmpeg_and_ffprobe_path_macos_homebrew(monkeypatch, tmp_path: Path)
     monkeypatch.delenv("SNAP", raising=False)
     monkeypatch.delenv("APPDIR", raising=False)
 
-    # Patch the Homebrew candidate paths to check our mock
-    monkeypatch.setattr("video_cut.utils.Path", lambda p: brew_ffmpeg if "ffmpeg" in str(p) else brew_ffprobe)
-    assert get_ffmpeg_path() == str(brew_ffmpeg)
-    assert get_ffprobe_path() == str(brew_ffprobe)
+    monkeypatch.setattr("video_cut.utils.MACOS_FFMPEG_PATHS", [brew_ffmpeg])
+    monkeypatch.setattr("video_cut.utils.MACOS_FFPROBE_PATHS", [brew_ffprobe])
+    assert get_system_ffmpeg_path() == str(brew_ffmpeg)
+    assert get_system_ffprobe_path() == str(brew_ffprobe)
 
 
 def test_get_ffmpeg_and_ffprobe_path_frozen_bundle(monkeypatch, tmp_path: Path):
@@ -117,6 +119,11 @@ def test_get_ffmpeg_and_ffprobe_path_frozen_bundle(monkeypatch, tmp_path: Path):
     monkeypatch.setattr(sys, "frozen", True, raising=False)
     monkeypatch.setattr(sys, "_MEIPASS", str(meipass), raising=False)
 
+    assert get_container_ffmpeg_path() == str(b_ffmpeg)
+    assert get_container_ffprobe_path() == str(b_ffprobe)
+
+    monkeypatch.setattr("video_cut.utils.get_system_ffmpeg_path", lambda: None)
+    monkeypatch.setattr("video_cut.utils.get_system_ffprobe_path", lambda: None)
     assert get_ffmpeg_path() == str(b_ffmpeg)
     assert get_ffprobe_path() == str(b_ffprobe)
 

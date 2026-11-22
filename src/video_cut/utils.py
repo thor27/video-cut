@@ -35,6 +35,17 @@ HW_ENCODERS: set[str] = {
     "hevc_vulkan",
 }
 
+MACOS_FFMPEG_PATHS = [
+    Path("/opt/homebrew/bin/ffmpeg"),
+    Path("/usr/local/bin/ffmpeg"),
+    Path("/opt/local/bin/ffmpeg"),
+]
+MACOS_FFPROBE_PATHS = [
+    Path("/opt/homebrew/bin/ffprobe"),
+    Path("/usr/local/bin/ffprobe"),
+    Path("/opt/local/bin/ffprobe"),
+]
+
 _RESOLVED_CACHE: tuple[str, str, str, str | None] | None = None
 _CACHE_KEY: tuple[Any, ...] | None = None
 
@@ -216,11 +227,7 @@ def get_system_ffmpeg_path() -> str | None:
 
     # Standard macOS Homebrew and MacPorts locations
     if sys.platform == "darwin":
-        for brew_bin in [
-            Path("/opt/homebrew/bin/ffmpeg"),
-            Path("/usr/local/bin/ffmpeg"),
-            Path("/opt/local/bin/ffmpeg"),
-        ]:
+        for brew_bin in MACOS_FFMPEG_PATHS:
             if brew_bin.is_file() and os.access(brew_bin, os.X_OK):
                 return str(brew_bin)
 
@@ -262,11 +269,7 @@ def get_system_ffprobe_path() -> str | None:
 
     # Standard macOS Homebrew and MacPorts locations
     if sys.platform == "darwin":
-        for brew_bin in [
-            Path("/opt/homebrew/bin/ffprobe"),
-            Path("/usr/local/bin/ffprobe"),
-            Path("/opt/local/bin/ffprobe"),
-        ]:
+        for brew_bin in MACOS_FFPROBE_PATHS:
             if brew_bin.is_file() and os.access(brew_bin, os.X_OK):
                 return str(brew_bin)
 

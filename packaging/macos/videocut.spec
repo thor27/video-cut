@@ -209,8 +209,21 @@ app = BUNDLE(
                 "CFBundleTypeName": "Video Cut Project",
                 "CFBundleTypeRole": "Editor",
                 "CFBundleTypeExtensions": ["vcut"],
+                "CFBundleTypeIconFile": "videocut.icns",
                 "LSHandlerRank": "Owner",
+                "LSItemContentTypes": ["io.github.thor27.video-cut.project"],
             },
+        ],
+        "UTExportedTypeDeclarations": [
+            {
+                "UTTypeIdentifier": "io.github.thor27.video-cut.project",
+                "UTTypeDescription": "Video Cut Project File",
+                "UTTypeConformsTo": ["public.data", "public.json"],
+                "UTTypeTagSpecification": {
+                    "public.filename-extension": ["vcut"],
+                    "public.mime-type": ["application/x-videocut"],
+                },
+            }
         ],
         "NSHighResolutionCapable": True,
         "NSRequiresAquaSystemAppearance": False,

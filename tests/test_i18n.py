@@ -99,6 +99,8 @@ def test_translations_pt_br():
     assert _("FFmpeg Source") == "Origem do FFmpeg"
     assert _("Auto (Recommended)") == "Automático (Recomendado)"
     assert _("Container (Bundled)") == "Contêiner (Integrado)"
+    assert _("App Bundle (Bundled)") == "Pacote do App (Integrado)"
+    assert _("App Bundle") == "Pacote do App"
     assert _("Manual (Custom Path)") == "Manual (Caminho Personalizado)"
 
 
@@ -145,6 +147,8 @@ def test_translations_es():
     assert _("FFmpeg Source") == "Origen de FFmpeg"
     assert _("Auto (Recommended)") == "Automático (Recomendado)"
     assert _("Container (Bundled)") == "Contenedor (Integrado)"
+    assert _("App Bundle (Bundled)") == "Paquete de la App (Integrado)"
+    assert _("App Bundle") == "Paquete de la App"
     assert _("Manual (Custom Path)") == "Manual (Ruta Personalizada)"
 
 
@@ -192,6 +196,8 @@ def test_translations_fr():
     assert _("FFmpeg Source") == "Source de FFmpeg"
     assert _("Auto (Recommended)") == "Automatique (Recommandé)"
     assert _("Container (Bundled)") == "Conteneur (Intégré)"
+    assert _("App Bundle (Bundled)") == "Paquet d'application (Intégré)"
+    assert _("App Bundle") == "Paquet d'application"
     assert _("Manual (Custom Path)") == "Manuel (Chemin Personnalisé)"
 
 
@@ -229,6 +235,8 @@ def test_translations_en_us():
     assert _("FFmpeg Source") == "FFmpeg Source"
     assert _("Auto (Recommended)") == "Auto (Recommended)"
     assert _("Container (Bundled)") == "Container (Bundled)"
+    assert _("App Bundle (Bundled)") == "App Bundle (Bundled)"
+    assert _("App Bundle") == "App Bundle"
     assert _("Manual (Custom Path)") == "Manual (Custom Path)"
 
 
