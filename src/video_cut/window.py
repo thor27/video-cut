@@ -1,4 +1,5 @@
 import bisect
+import os
 import subprocess
 import sys
 import threading
@@ -2184,10 +2185,14 @@ class MainWindow(Adw.ApplicationWindow):
         except Exception:
             pass
 
-        # 3. Fallback to subprocess open / xdg-open
+        # 3. Fallback to OS native launcher
         try:
-            opener = "open" if sys.platform == "darwin" else "xdg-open"
-            subprocess.Popen([opener, str(file_path.resolve())])
+            if hasattr(os, "startfile"):
+                os.startfile(str(file_path.resolve()))
+            elif sys.platform == "darwin":
+                subprocess.Popen(["open", str(file_path.resolve())])
+            else:
+                subprocess.Popen(["xdg-open", str(file_path.resolve())])
         except Exception as e:
             print(f"Failed to open video in default player: {e}")
 

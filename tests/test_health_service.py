@@ -431,5 +431,120 @@ def test_get_hwaccel_overview_macos():
         assert "h264_videotoolbox" in hw[0].encoders
 
 
+def test_detect_os_info_windows():
+    """Test detect_os_info on Windows platform."""
+    with patch("sys.platform", "win32"), \
+         patch("platform.release", return_value="11"), \
+         patch("platform.version", return_value="10.0.22631"), \
+         patch("platform.machine", return_value="AMD64"):
+        info = HealthService.detect_os_info()
+        assert info.get("id") == "windows"
+        assert info.get("version") == "10.0.22631"
+        assert info.get("arch") == "AMD64"
+        assert "Windows 11 (AMD64)" in info.get("name", "")
+
+
+def test_detect_package_manager_windows():
+    """Test detection of winget, choco, scoop package managers on Windows."""
+    with patch("sys.platform", "win32"), \
+         patch("shutil.which", side_effect=lambda x: "C:\\Program Files\\winget.exe" if x == "winget" else None):
+        mgr, cmd, gui, extra_pkg = HealthService.detect_package_manager()
+        assert mgr == "winget"
+        assert "winget install Gyan.FFmpeg" in cmd
+
+    with patch("sys.platform", "win32"), \
+         patch("shutil.which", side_effect=lambda x: "C:\\ProgramData\\chocolatey\\bin\\choco.exe" if x == "choco" else None):
+        mgr, cmd, gui, extra_pkg = HealthService.detect_package_manager()
+        assert mgr == "choco"
+        assert "choco install ffmpeg" in cmd
+
+    with patch("sys.platform", "win32"), \
+         patch("shutil.which", side_effect=lambda x: "C:\\Users\\user\\scoop\\shims\\scoop.exe" if x == "scoop" else None):
+        mgr, cmd, gui, extra_pkg = HealthService.detect_package_manager()
+        assert mgr == "scoop"
+        assert "scoop install ffmpeg" in cmd
+
+
+def test_check_ffmpeg_windows_upgrade_fix():
+    """Test check_ffmpeg upgrade command on Windows uses winget upgrade."""
+    with patch("sys.platform", "win32"), \
+         patch("shutil.which", return_value="C:\\ffmpeg\\bin\\ffmpeg.exe"), \
+         patch("subprocess.run") as mock_run:
+        mock_run.return_value = MagicMock(returncode=0, stdout="ffmpeg version 3.4.8\n")
+        with patch.object(HealthService, "detect_package_manager", return_value=("winget", "winget install Gyan.FFmpeg", None, None)):
+            item = HealthService.check_ffmpeg()
+            assert item.status == "warning"
+            assert item.fix_command == "winget upgrade Gyan.FFmpeg"
+            assert "gyan.dev" in item.fix_url
+
+
+def test_check_file_association_windows_registered():
+    """Test check_file_association on Windows when registered in HKCU."""
+    fake_winreg = MagicMock()
+    fake_winreg.HKEY_CURRENT_USER = 1
+    fake_winreg.QueryValueEx.side_effect = [("VideoCut.Project", 1), ("VideoCut.exe %1", 1)]
+    fake_winreg.OpenKey.return_value.__enter__.return_value = MagicMock()
+
+    with patch("sys.platform", "win32"), \
+         patch.dict("sys.modules", {"winreg": fake_winreg}):
+        item = HealthService.check_file_association()
+        assert item.status == "ok"
+        assert item.can_fix is False
+        assert any(w in item.details for w in ("Registry", "Registro", "Registre"))
+
+
+def test_check_file_association_windows_unregistered():
+    """Test check_file_association on Windows when not registered."""
+    fake_winreg = MagicMock()
+    fake_winreg.HKEY_CURRENT_USER = 1
+    fake_winreg.HKEY_CLASSES_ROOT = 2
+    fake_winreg.OpenKey.side_effect = OSError("Key not found")
+
+    with patch("sys.platform", "win32"), \
+         patch.dict("sys.modules", {"winreg": fake_winreg}):
+        item = HealthService.check_file_association()
+        assert item.status == "warning"
+        assert item.can_fix is True
+        assert item.fix_type == "automated"
+
+
+def test_fix_and_remove_file_association_windows():
+    """Test fix_file_association and remove_file_association on Windows."""
+    fake_winreg = MagicMock()
+    fake_winreg.HKEY_CURRENT_USER = 1
+    fake_winreg.CreateKey.return_value.__enter__.return_value = MagicMock()
+
+    fake_ctypes = MagicMock()
+
+    with patch("sys.platform", "win32"), \
+         patch.dict("sys.modules", {"winreg": fake_winreg, "ctypes": fake_ctypes}):
+        ok_fix, msg_fix = HealthService.fix_file_association()
+        assert ok_fix is True
+        assert any(w in msg_fix for w in ("Registry", "Registro", "Registre"))
+
+        ok_rem, msg_rem = HealthService.remove_file_association()
+        assert ok_rem is True
+        assert any(w in msg_rem for w in ("Registry", "Registro", "Registre"))
+
+
+def test_get_hwaccel_overview_windows():
+    """Test get_hwaccel_overview on Windows reports NVENC, QSV, AMF, Vulkan."""
+    with patch("sys.platform", "win32"), \
+         patch("video_cut.services.export_service.FFmpegCapabilities.get_encoders", return_value={"h264_nvenc", "hevc_amf", "h264_qsv"}):
+        hw = HealthService.get_hwaccel_overview()
+        assert len(hw) == 4
+        driver_keys = [h.driver_key for h in hw]
+        assert "nvenc" in driver_keys
+        assert "qsv" in driver_keys
+        assert "amf" in driver_keys
+        assert "vulkan" in driver_keys
+        # Check availability
+        nv = next(h for h in hw if h.driver_key == "nvenc")
+        assert nv.is_available is True
+        amf = next(h for h in hw if h.driver_key == "amf")
+        assert amf.is_available is True
+
+
+
 
 

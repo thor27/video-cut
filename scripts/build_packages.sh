@@ -38,6 +38,7 @@ Options:
   --snap        Build only Snap (.snap) package
   --flatpak     Build/validate Flatpak package
   --macos       Build macOS application bundle (.app) and disk image (.dmg)
+  --windows     Build Windows standalone portable archive (.zip) and installer (.exe)
   --source      Build source tarball and zip archives
   --clean       Clean build/ and dist/ directories
   -h, --help    Show this help message
@@ -51,17 +52,24 @@ DO_APPIMAGE=0
 DO_SNAP=0
 DO_FLATPAK=0
 DO_MACOS=0
+DO_WINDOWS=0
 DO_SOURCE=0
 DO_CLEAN=0
 
 IS_DARWIN=0
+IS_WINDOWS=0
 if [ "$(uname -s)" = "Darwin" ]; then
     IS_DARWIN=1
+elif [[ "$(uname -s)" =~ (MINGW|MSYS|CYGWIN) ]]; then
+    IS_WINDOWS=1
 fi
 
 if [ $# -eq 0 ]; then
     if [ "$IS_DARWIN" -eq 1 ]; then
         DO_MACOS=1
+        DO_SOURCE=1
+    elif [ "$IS_WINDOWS" -eq 1 ]; then
+        DO_WINDOWS=1
         DO_SOURCE=1
     else
         DO_DEB=1
@@ -76,6 +84,9 @@ else
             --all)
                 if [ "$IS_DARWIN" -eq 1 ]; then
                     DO_MACOS=1
+                    DO_SOURCE=1
+                elif [ "$IS_WINDOWS" -eq 1 ]; then
+                    DO_WINDOWS=1
                     DO_SOURCE=1
                 else
                     DO_DEB=1
@@ -99,6 +110,9 @@ else
                 ;;
             --macos)
                 DO_MACOS=1
+                ;;
+            --windows)
+                DO_WINDOWS=1
                 ;;
             --source)
                 DO_SOURCE=1
@@ -165,7 +179,13 @@ if [ "$DO_MACOS" -eq 1 ]; then
     "${SCRIPTS_DIR}/build_macos.sh"
 fi
 
-# 4. Source Archives
+# 6. Windows Package (portable .zip and installer .exe)
+if [ "$DO_WINDOWS" -eq 1 ]; then
+    echo ""
+    "${SCRIPTS_DIR}/build_windows.sh"
+fi
+
+# 7. Source Archives
 if [ "$DO_SOURCE" -eq 1 ]; then
     echo ""
     echo "==> Creating Source Code Archives for Video Cut v${VERSION}..."

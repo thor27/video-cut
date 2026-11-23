@@ -408,9 +408,32 @@ def test_health_dialog_macos_bundle_labels():
             "configured_source": "auto",
         }):
             dialog._update_ffmpeg_row(item)
-            assert "App Bundle" in dialog.row_ffmpeg_source.get_subtitle()
+            assert _("App Bundle") in dialog.row_ffmpeg_source.get_subtitle()
 
         dialog.destroy()
+
+
+def test_health_dialog_windows_bundle_labels():
+    """Test health dialog uses Bundled labels and Windows placeholder on Windows."""
+    with patch("sys.platform", "win32"):
+        dialog = HealthCheckDialog()
+        model = dialog.row_ffmpeg_source.get_model()
+        assert model is not None
+        # Position 1 should be Bundled (Embedded)
+        assert _("Bundled (Embedded)") in model.get_string(1)
+        assert "ffmpeg.exe" in dialog._entry_manual_path.get_placeholder_text()
+
+        item = HealthCheckItem(id="ffmpeg", title="FFmpeg", status="ok", summary="Working", details="ffmpeg v6.1")
+        with patch("video_cut.services.health_service.HealthService.get_active_ffmpeg_info", return_value={
+            "ffmpeg_path": "C:\\Program Files\\VideoCut\\ffmpeg.exe",
+            "effective_source": "container",
+            "configured_source": "auto",
+        }):
+            dialog._update_ffmpeg_row(item)
+            assert _("Bundled") in dialog.row_ffmpeg_source.get_subtitle()
+
+        dialog.destroy()
+
 
 
 

@@ -46,6 +46,17 @@ MACOS_FFPROBE_PATHS = [
     Path("/opt/local/bin/ffprobe"),
 ]
 
+WINDOWS_FFMPEG_PATHS = [
+    Path("C:/ffmpeg/bin/ffmpeg.exe"),
+    Path("C:/Program Files/ffmpeg/bin/ffmpeg.exe"),
+    Path("C:/ProgramData/chocolatey/bin/ffmpeg.exe"),
+]
+WINDOWS_FFPROBE_PATHS = [
+    Path("C:/ffmpeg/bin/ffprobe.exe"),
+    Path("C:/Program Files/ffmpeg/bin/ffprobe.exe"),
+    Path("C:/ProgramData/chocolatey/bin/ffprobe.exe"),
+]
+
 _RESOLVED_CACHE: tuple[str, str, str, str | None] | None = None
 _CACHE_KEY: tuple[Any, ...] | None = None
 
@@ -165,19 +176,22 @@ def get_container_ffmpeg_path() -> str | None:
             return str(appdir_bin)
     # Check PyInstaller frozen bundle locations (macOS / Linux / Windows)
     if getattr(sys, "frozen", False):
+        names = ["ffmpeg.exe", "ffmpeg"] if sys.platform == "win32" else ["ffmpeg"]
         meipass = getattr(sys, "_MEIPASS", None)
         if meipass:
-            for cand in [Path(meipass) / "bin" / "ffmpeg", Path(meipass) / "ffmpeg"]:
+            for name in names:
+                for cand in [Path(meipass) / "bin" / name, Path(meipass) / name]:
+                    if cand.is_file() and os.access(cand, os.X_OK):
+                        return str(cand)
+        exe_dir = Path(sys.executable).resolve().parent
+        for name in names:
+            for cand in [
+                exe_dir / "bin" / name,
+                exe_dir / name,
+                exe_dir.parent / "Resources" / "bin" / name,
+            ]:
                 if cand.is_file() and os.access(cand, os.X_OK):
                     return str(cand)
-        exe_dir = Path(sys.executable).resolve().parent
-        for cand in [
-            exe_dir / "bin" / "ffmpeg",
-            exe_dir / "ffmpeg",
-            exe_dir.parent / "Resources" / "bin" / "ffmpeg",
-        ]:
-            if cand.is_file() and os.access(cand, os.X_OK):
-                return str(cand)
 
     return None
 
@@ -195,21 +209,32 @@ def get_container_ffprobe_path() -> str | None:
 
     # Check PyInstaller frozen bundle locations (macOS / Linux / Windows)
     if getattr(sys, "frozen", False):
+        names = ["ffprobe.exe", "ffprobe"] if sys.platform == "win32" else ["ffprobe"]
         meipass = getattr(sys, "_MEIPASS", None)
         if meipass:
-            for cand in [Path(meipass) / "bin" / "ffprobe", Path(meipass) / "ffprobe"]:
+            for name in names:
+                for cand in [Path(meipass) / "bin" / name, Path(meipass) / name]:
+                    if cand.is_file() and os.access(cand, os.X_OK):
+                        return str(cand)
+        exe_dir = Path(sys.executable).resolve().parent
+        for name in names:
+            for cand in [
+                exe_dir / "bin" / name,
+                exe_dir / name,
+                exe_dir.parent / "Resources" / "bin" / name,
+            ]:
                 if cand.is_file() and os.access(cand, os.X_OK):
                     return str(cand)
-        exe_dir = Path(sys.executable).resolve().parent
-        for cand in [
-            exe_dir / "bin" / "ffprobe",
-            exe_dir / "ffprobe",
-            exe_dir.parent / "Resources" / "bin" / "ffprobe",
-        ]:
-            if cand.is_file() and os.access(cand, os.X_OK):
-                return str(cand)
 
     return None
+
+
+def safe_which(cmd: str) -> str | None:
+    """Safe wrapper around shutil.which avoiding cross-platform mocking issues in tests."""
+    try:
+        return shutil.which(cmd)
+    except (AttributeError, OSError):
+        return None
 
 
 def get_system_ffmpeg_path() -> str | None:
@@ -231,17 +256,27 @@ def get_system_ffmpeg_path() -> str | None:
             if brew_bin.is_file() and os.access(brew_bin, os.X_OK):
                 return str(brew_bin)
 
+    # Standard Windows locations
+    if sys.platform == "win32":
+        for win_bin in WINDOWS_FFMPEG_PATHS:
+            if win_bin.is_file() and os.access(win_bin, os.X_OK):
+                return str(win_bin)
+        win_which = safe_which("ffmpeg.exe") or safe_which("ffmpeg")
+        if win_which and not any(win_which.startswith(pfx) for pfx in skip_prefixes):
+            return win_which
+
     if not skip_prefixes:
-        return shutil.which("ffmpeg")
+        return safe_which("ffmpeg")
 
     # 1. Search PATH entries that do not belong to container
     path_dirs = os.environ.get("PATH", "").split(os.pathsep)
     for d in path_dirs:
         if not d or any(d.startswith(pfx) for pfx in skip_prefixes):
             continue
-        cand = Path(d) / "ffmpeg"
-        if cand.is_file() and os.access(cand, os.X_OK):
-            return str(cand)
+        cands = [Path(d) / "ffmpeg.exe", Path(d) / "ffmpeg"] if sys.platform == "win32" else [Path(d) / "ffmpeg"]
+        for cand in cands:
+            if cand.is_file() and os.access(cand, os.X_OK):
+                return str(cand)
 
     # 2. Standard system locations
     for sp in ("/usr/bin/ffmpeg", "/usr/local/bin/ffmpeg", "/bin/ffmpeg"):
@@ -273,8 +308,17 @@ def get_system_ffprobe_path() -> str | None:
             if brew_bin.is_file() and os.access(brew_bin, os.X_OK):
                 return str(brew_bin)
 
+    # Standard Windows locations
+    if sys.platform == "win32":
+        for win_bin in WINDOWS_FFPROBE_PATHS:
+            if win_bin.is_file() and os.access(win_bin, os.X_OK):
+                return str(win_bin)
+        win_which = safe_which("ffprobe.exe") or safe_which("ffprobe")
+        if win_which and not any(win_which.startswith(pfx) for pfx in skip_prefixes):
+            return win_which
+
     if not skip_prefixes:
-        return shutil.which("ffprobe")
+        return safe_which("ffprobe")
 
     path_dirs = os.environ.get("PATH", "").split(os.pathsep)
     for d in path_dirs:
@@ -325,11 +369,14 @@ def resolve_ffmpeg_binaries(
     if src == "manual":
         if custom and Path(custom).is_file() and os.access(custom, os.X_OK):
             resolved_ffmpeg = custom
-            cand_probe = Path(custom).parent / "ffprobe"
+            cand_probe = Path(custom).parent / ("ffprobe.exe" if sys.platform == "win32" else "ffprobe")
+            if not cand_probe.is_file():
+                cand_probe = Path(custom).parent / "ffprobe"
             if cand_probe.is_file() and os.access(cand_probe, os.X_OK):
                 resolved_ffprobe = str(cand_probe)
             else:
-                resolved_ffprobe = s_ffprobe or c_ffprobe or "ffprobe"
+                fallback_probe = "ffprobe.exe" if sys.platform == "win32" else "ffprobe"
+                resolved_ffprobe = s_ffprobe or c_ffprobe or fallback_probe
             effective_source = "manual"
             note = f"Manual: {custom}"
         else:

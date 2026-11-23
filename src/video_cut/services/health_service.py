@@ -33,6 +33,7 @@ from ..utils import (
     get_healthcheck_config_dir,
     invalidate_ffmpeg_cache,
     parse_ffmpeg_version,
+    safe_which,
     set_healthcheck_config_keys,
 )
 from .export_service import FFmpegCapabilities
@@ -175,6 +176,18 @@ class HealthService:
                 "arch": arch,
             }
 
+        if sys.platform == "win32":
+            rel = platform.release()
+            ver = platform.version()
+            arch = platform.machine()
+            name = f"Windows {rel} ({arch})" if rel else f"Windows ({arch})"
+            return {
+                "id": "windows",
+                "name": name,
+                "version": ver,
+                "arch": arch,
+            }
+
         info = {"id": "linux", "name": "Linux", "version": ""}
         os_release = Path("/etc/os-release")
         if os_release.exists():
@@ -197,25 +210,34 @@ class HealthService:
         """
         if sys.platform == "darwin":
             has_brew = bool(
-                shutil.which("brew")
+                safe_which("brew")
                 or Path("/opt/homebrew/bin/brew").is_file()
                 or Path("/usr/local/bin/brew").is_file()
             )
-            has_port = bool(shutil.which("port") or Path("/opt/local/bin/port").is_file())
+            has_port = bool(safe_which("port") or Path("/opt/local/bin/port").is_file())
             if has_port and not has_brew:
                 return ("port", "sudo port install ffmpeg", None, None)
             return ("brew", "brew install ffmpeg", None, None)
+
+        if sys.platform == "win32":
+            if safe_which("winget"):
+                return ("winget", "winget install Gyan.FFmpeg", None, None)
+            if safe_which("choco"):
+                return ("choco", "choco install ffmpeg", None, None)
+            if safe_which("scoop"):
+                return ("scoop", "scoop install ffmpeg", None, None)
+            return ("winget", "winget install Gyan.FFmpeg", None, None)
 
         os_info = cls.detect_os_info()
         distro_id = os_info.get("id", "").lower()
         id_like = os_info.get("id_like", "").lower()
 
-        has_apt = bool(shutil.which("apt-get") or shutil.which("apt"))
-        has_dnf = bool(shutil.which("dnf"))
-        has_pacman = bool(shutil.which("pacman"))
-        has_zypper = bool(shutil.which("zypper"))
-        has_apk = bool(shutil.which("apk"))
-        has_gnome_software = bool(shutil.which("gnome-software"))
+        has_apt = bool(safe_which("apt-get") or safe_which("apt"))
+        has_dnf = bool(safe_which("dnf"))
+        has_pacman = bool(safe_which("pacman"))
+        has_zypper = bool(safe_which("zypper"))
+        has_apk = bool(safe_which("apk"))
+        has_gnome_software = bool(safe_which("gnome-software"))
 
         if any(d in distro_id or d in id_like for d in ("debian", "ubuntu", "mint", "pop")):
             gui = "gnome-software --search=ffmpeg" if has_gnome_software else None
@@ -234,7 +256,7 @@ class HealthService:
                 "ffmpeg-free",
             )
         elif any(d in distro_id or d in id_like for d in ("arch", "manjaro", "endeavouros")):
-            gui = "pamac-installer ffmpeg" if shutil.which("pamac-installer") else None
+            gui = "pamac-installer ffmpeg" if safe_which("pamac-installer") else None
             return (
                 "pacman",
                 "sudo pacman -S --noconfirm ffmpeg",
@@ -273,8 +295,8 @@ class HealthService:
         ffmpeg_bin = get_ffmpeg_path()
         ffprobe_bin = get_ffprobe_path()
 
-        ffmpeg_exists = bool(shutil.which(ffmpeg_bin) or (Path(ffmpeg_bin).is_file() and os.access(ffmpeg_bin, os.X_OK)))
-        ffprobe_exists = bool(shutil.which(ffprobe_bin) or (Path(ffprobe_bin).is_file() and os.access(ffprobe_bin, os.X_OK)))
+        ffmpeg_exists = bool(safe_which(ffmpeg_bin) or (Path(ffmpeg_bin).is_file() and os.access(ffmpeg_bin, os.X_OK)))
+        ffprobe_exists = bool(safe_which(ffprobe_bin) or (Path(ffprobe_bin).is_file() and os.access(ffprobe_bin, os.X_OK)))
 
         if not ffmpeg_exists or not ffprobe_exists:
             _mgr, cmd, gui, _extra = cls.detect_package_manager()
@@ -335,7 +357,18 @@ class HealthService:
         if parsed_ver is not None and parsed_ver < MIN_FFMPEG_VERSION:
             ver_text = f"{parsed_ver[0]}.{parsed_ver[1]}"
             mgr, cmd, _gui, _pkg = cls.detect_package_manager()
-            fix_cmd = "brew upgrade ffmpeg" if mgr == "brew" else cmd
+            if mgr == "brew":
+                fix_cmd = "brew upgrade ffmpeg"
+                fix_url = "https://brew.sh"
+            elif mgr == "winget":
+                fix_cmd = "winget upgrade Gyan.FFmpeg"
+                fix_url = "https://www.gyan.dev/ffmpeg/builds/"
+            elif mgr in ("choco", "scoop"):
+                fix_cmd = f"{mgr} upgrade ffmpeg"
+                fix_url = "https://www.gyan.dev/ffmpeg/builds/"
+            else:
+                fix_cmd = cmd
+                fix_url = "https://ffmpeg.org/download.html"
             return HealthCheckItem(
                 id="ffmpeg",
                 title=_("FFmpeg Multimedia Engine"),
@@ -354,7 +387,7 @@ class HealthService:
                 fix_type="command",
                 fix_label=_("Upgrade FFmpeg"),
                 fix_command=fix_cmd,
-                fix_url="https://brew.sh" if mgr == "brew" else "https://ffmpeg.org/download.html",
+                fix_url=fix_url,
             )
 
         return HealthCheckItem(
@@ -417,6 +450,55 @@ class HealthService:
                 can_fix=False,
             )
 
+        if sys.platform == "win32":
+            try:
+                import winreg
+                with winreg.OpenKey(winreg.HKEY_CURRENT_USER, r"Software\Classes\.vcut") as key:
+                    prog_id, _vtype = winreg.QueryValueEx(key, "")
+                if prog_id == "VideoCut.Project":
+                    with winreg.OpenKey(winreg.HKEY_CURRENT_USER, r"Software\Classes\VideoCut.Project\shell\open\command") as key:
+                        cmd, _vtype = winreg.QueryValueEx(key, "")
+                    if cmd:
+                        return HealthCheckItem(
+                            id="file_association",
+                            title=_(".vcut Project Association"),
+                            status="ok",
+                            summary=_(".vcut projects are registered to open with Video Cut."),
+                            details=_("Registered in Windows Registry (HKCU\\Software\\Classes\\.vcut -> VideoCut.Project)."),
+                            can_fix=False,
+                        )
+            except Exception:
+                pass
+            try:
+                import winreg
+                with winreg.OpenKey(winreg.HKEY_CLASSES_ROOT, r".vcut") as key:
+                    prog_id, _vtype = winreg.QueryValueEx(key, "")
+                if prog_id == "VideoCut.Project":
+                    return HealthCheckItem(
+                        id="file_association",
+                        title=_(".vcut Project Association"),
+                        status="ok",
+                        summary=_(".vcut projects are registered to open with Video Cut."),
+                        details=_("Registered in Windows Registry (HKCR\\.vcut -> VideoCut.Project)."),
+                        can_fix=False,
+                    )
+            except Exception:
+                pass
+
+            return HealthCheckItem(
+                id="file_association",
+                title=_(".vcut Project Association"),
+                status="warning",
+                summary=_(".vcut projects are not associated with Video Cut."),
+                details=_(
+                    ".vcut project files will not open in Video Cut when double-clicked.\n"
+                    "Click 'Associate .vcut Files' to register the file type in the Windows Registry."
+                ),
+                can_fix=True,
+                fix_type="automated",
+                fix_label=_("Associate .vcut Files"),
+            )
+
         mime_type = "application/x-video-cut"
         is_associated = False
         current_handler = ""
@@ -444,13 +526,13 @@ class HealthService:
                     if isinstance(desktop_file, str) and desktop_file
                     else True
                 )
-                executable_exists = bool(shutil.which(executable) or (executable and Path(executable).exists()))
+                executable_exists = bool(safe_which(executable) or (executable and Path(executable).exists()))
                 if (APP_ID in app_id or "video-cut" in app_id.lower()) and executable_exists and desktop_exists:
                     handler_valid = True
         except Exception:
             pass
 
-        if not handler_valid and shutil.which("xdg-mime"):
+        if not handler_valid and safe_which("xdg-mime"):
             try:
                 res = subprocess.run(
                     ["xdg-mime", "query", "default", mime_type],
@@ -516,6 +598,29 @@ class HealthService:
         if sys.platform == "darwin":
             return (True, _("File associations on macOS are handled automatically by LaunchServices."))
 
+        if sys.platform == "win32":
+            try:
+                import ctypes
+                import winreg
+
+                exe_path = sys.executable
+                with winreg.CreateKey(winreg.HKEY_CURRENT_USER, r"Software\Classes\.vcut") as key:
+                    winreg.SetValueEx(key, "", 0, winreg.REG_SZ, "VideoCut.Project")
+                    winreg.SetValueEx(key, "Content Type", 0, winreg.REG_SZ, "application/x-videocut")
+                with winreg.CreateKey(winreg.HKEY_CURRENT_USER, r"Software\Classes\VideoCut.Project") as key:
+                    winreg.SetValueEx(key, "", 0, winreg.REG_SZ, "Video Cut Project")
+                with winreg.CreateKey(winreg.HKEY_CURRENT_USER, r"Software\Classes\VideoCut.Project\DefaultIcon") as key:
+                    winreg.SetValueEx(key, "", 0, winreg.REG_SZ, f'"{exe_path}",0')
+                with winreg.CreateKey(winreg.HKEY_CURRENT_USER, r"Software\Classes\VideoCut.Project\shell\open\command") as key:
+                    winreg.SetValueEx(key, "", 0, winreg.REG_SZ, f'"{exe_path}" "%1"')
+                try:
+                    ctypes.windll.shell32.SHChangeNotify(0x08000000, 0, None, None)
+                except Exception:
+                    pass
+                return (True, _("Successfully registered .vcut file association in Windows Registry."))
+            except Exception as e:
+                return (False, _("Failed to register file association: {error}").format(error=str(e)))
+
         mime_xml_source = RESOURCES_DIR / "io.github.thor27.video-cut.xml"
         desktop_source = RESOURCES_DIR / "io.github.thor27.video-cut.desktop"
 
@@ -529,7 +634,7 @@ class HealthService:
             target_mime = user_mime_dir / "io.github.thor27.video-cut.xml"
             shutil.copy(mime_xml_source, target_mime)
 
-            if shutil.which("update-mime-database"):
+            if safe_which("update-mime-database"):
                 subprocess.run(
                     ["update-mime-database", str(Path.home() / ".local" / "share" / "mime")],
                     capture_output=True,
@@ -546,7 +651,7 @@ class HealthService:
                 appimage_path = os.environ.get("APPIMAGE")
                 if appimage_path and Path(appimage_path).exists():
                     desktop_content = desktop_content.replace("Exec=video-cut %U", f"Exec={appimage_path} %U")
-                elif not shutil.which("video-cut"):
+                elif not safe_which("video-cut"):
                     venv_bin = Path(sys.executable).parent / "video-cut"
                     if venv_bin.exists():
                         desktop_content = desktop_content.replace("Exec=video-cut %U", f"Exec={venv_bin} %U")
@@ -561,7 +666,7 @@ class HealthService:
                 icon_target_dir.mkdir(parents=True, exist_ok=True)
                 shutil.copy(icon_source, icon_target_dir / "io.github.thor27.video-cut.png")
 
-            if shutil.which("update-desktop-database"):
+            if safe_which("update-desktop-database"):
                 subprocess.run(
                     ["update-desktop-database", str(user_apps_dir)],
                     capture_output=True,
@@ -570,7 +675,7 @@ class HealthService:
 
             # 4. Associate MIME with desktop file
             desktop_name = "io.github.thor27.video-cut.desktop"
-            if shutil.which("xdg-mime"):
+            if safe_which("xdg-mime"):
                 subprocess.run(
                     ["xdg-mime", "default", desktop_name, "application/x-video-cut"],
                     capture_output=True,
@@ -603,6 +708,31 @@ class HealthService:
         if sys.platform == "darwin":
             return (True, _("File associations on macOS are managed by LaunchServices and the application bundle."))
 
+        if sys.platform == "win32":
+            try:
+                import ctypes
+                import winreg
+
+                for subkey in [
+                    r"Software\Classes\VideoCut.Project\shell\open\command",
+                    r"Software\Classes\VideoCut.Project\shell\open",
+                    r"Software\Classes\VideoCut.Project\shell",
+                    r"Software\Classes\VideoCut.Project\DefaultIcon",
+                    r"Software\Classes\VideoCut.Project",
+                    r"Software\Classes\.vcut",
+                ]:
+                    try:
+                        winreg.DeleteKey(winreg.HKEY_CURRENT_USER, subkey)
+                    except OSError:
+                        pass
+                try:
+                    ctypes.windll.shell32.SHChangeNotify(0x08000000, 0, None, None)
+                except Exception:
+                    pass
+                return (True, _("Successfully removed .vcut file association from Windows Registry."))
+            except Exception as e:
+                return (False, _("Failed to remove file association: {error}").format(error=str(e)))
+
         try:
             # 1. Remove user MIME package
             user_mime_file = Path.home() / ".local" / "share" / "mime" / "packages" / "io.github.thor27.video-cut.xml"
@@ -610,7 +740,7 @@ class HealthService:
                 user_mime_file.unlink()
 
             user_mime_dir = Path.home() / ".local" / "share" / "mime"
-            if shutil.which("update-mime-database") and user_mime_dir.exists():
+            if safe_which("update-mime-database") and user_mime_dir.exists():
                 subprocess.run(
                     ["update-mime-database", str(user_mime_dir)],
                     capture_output=True,
@@ -623,7 +753,7 @@ class HealthService:
             if target_desktop.exists():
                 target_desktop.unlink()
 
-            if shutil.which("update-desktop-database") and user_apps_dir.exists():
+            if safe_which("update-desktop-database") and user_apps_dir.exists():
                 subprocess.run(
                     ["update-desktop-database", str(user_apps_dir)],
                     capture_output=True,
@@ -768,20 +898,10 @@ class HealthService:
     @classmethod
     def get_hwaccel_overview(cls) -> list[HwAccelInfo]:
         """Return structured status for GPU hardware acceleration frameworks."""
-        import sys
         encoders = FFmpegCapabilities.get_encoders()
-
-        has_dri = Path("/dev/dri").exists() and any(p.name.startswith("renderD") for p in Path("/dev/dri").glob("renderD*"))
-        has_nvidia = bool(shutil.which("nvidia-smi") or list(Path("/dev").glob("nvidia*")))
         is_macos = sys.platform == "darwin"
-
-        vaapi_enc = [e for e in ["h264_vaapi", "hevc_vaapi", "av1_vaapi", "vp9_vaapi"] if e in encoders]
-        nvenc_enc = [e for e in ["h264_nvenc", "hevc_nvenc", "av1_nvenc"] if e in encoders]
-        qsv_enc = [e for e in ["h264_qsv", "hevc_qsv", "av1_qsv"] if e in encoders]
-        vulkan_enc = [e for e in ["h264_vulkan", "hevc_vulkan", "av1_vulkan"] if e in encoders]
-        vtb_enc = [e for e in ["h264_videotoolbox", "hevc_videotoolbox", "prores_videotoolbox"] if e in encoders]
-
         if is_macos:
+            vtb_enc = [e for e in ["h264_videotoolbox", "hevc_videotoolbox", "prores_videotoolbox"] if e in encoders]
             return [
                 HwAccelInfo(
                     name="Apple VideoToolbox",
@@ -790,6 +910,46 @@ class HealthService:
                     is_available=bool(vtb_enc),
                 )
             ]
+
+        if sys.platform == "win32":
+            nvenc_enc = [e for e in ["h264_nvenc", "hevc_nvenc", "av1_nvenc"] if e in encoders]
+            qsv_enc = [e for e in ["h264_qsv", "hevc_qsv", "av1_qsv"] if e in encoders]
+            amf_enc = [e for e in ["h264_amf", "hevc_amf", "av1_amf"] if e in encoders]
+            vulkan_enc = [e for e in ["h264_vulkan", "hevc_vulkan", "av1_vulkan"] if e in encoders]
+            return [
+                HwAccelInfo(
+                    name="NVIDIA NVENC",
+                    driver_key="nvenc",
+                    encoders=nvenc_enc,
+                    is_available=bool(nvenc_enc),
+                ),
+                HwAccelInfo(
+                    name="Intel Quick Sync (QSV)",
+                    driver_key="qsv",
+                    encoders=qsv_enc,
+                    is_available=bool(qsv_enc),
+                ),
+                HwAccelInfo(
+                    name="AMD AMF",
+                    driver_key="amf",
+                    encoders=amf_enc,
+                    is_available=bool(amf_enc),
+                ),
+                HwAccelInfo(
+                    name="Vulkan Video",
+                    driver_key="vulkan",
+                    encoders=vulkan_enc,
+                    is_available=bool(vulkan_enc),
+                ),
+            ]
+
+        has_dri = Path("/dev/dri").exists() and any(p.name.startswith("renderD") for p in Path("/dev/dri").glob("renderD*"))
+        has_nvidia = bool(safe_which("nvidia-smi") or list(Path("/dev").glob("nvidia*")))
+
+        vaapi_enc = [e for e in ["h264_vaapi", "hevc_vaapi", "av1_vaapi", "vp9_vaapi"] if e in encoders]
+        nvenc_enc = [e for e in ["h264_nvenc", "hevc_nvenc", "av1_nvenc"] if e in encoders]
+        qsv_enc = [e for e in ["h264_qsv", "hevc_qsv", "av1_qsv"] if e in encoders]
+        vulkan_enc = [e for e in ["h264_vulkan", "hevc_vulkan", "av1_vulkan"] if e in encoders]
 
         methods: list[HwAccelInfo] = []
         methods.extend([
@@ -825,7 +985,7 @@ class HealthService:
     def check_hardware_acceleration(cls) -> HealthCheckItem:
         """Check availability of GPU hardware acceleration for video encoding."""
         ffmpeg_bin = get_ffmpeg_path()
-        if not (shutil.which(ffmpeg_bin) or (Path(ffmpeg_bin).is_file() and os.access(ffmpeg_bin, os.X_OK))):
+        if not (safe_which(ffmpeg_bin) or (Path(ffmpeg_bin).is_file() and os.access(ffmpeg_bin, os.X_OK))):
             return HealthCheckItem(
                 id="hwaccel",
                 title=_("Hardware Acceleration"),
