@@ -5,6 +5,7 @@ from __future__ import annotations
 import io
 import json
 import math
+import sys
 import uuid
 import warnings
 from collections.abc import Callable
@@ -24,7 +25,9 @@ gi.require_version("Pango", "1.0")
 from gi.repository import Adw, Gdk, GdkPixbuf, Gio, GLib, Gtk, Pango
 
 from .clipboard_controller import parse_uri_list
+from .cursors import install_macos_cursor_sync, set_widget_cursor
 from .i18n import _
+from .media_backend import create_media_file
 from .models import OverlayItem, Segment
 from .player import TransformedPaintable
 from .services.ffmpeg_service import FFmpegService
@@ -153,6 +156,7 @@ class OverlayDialog(Adw.Window):
         self._build_ui()
         self._setup_canvas_gestures()
         self._setup_key_controller()
+        install_macos_cursor_sync(self)
         self._init_video_player()
         self._preload_video_clips()
         self._update_undo_redo_ui()
@@ -341,6 +345,17 @@ class OverlayDialog(Adw.Window):
             btn = Gtk.Button.new_from_icon_name(icon_name)
             btn.add_css_class("flat")
             btn.set_tooltip_text(tooltip)
+            if sys.platform == "darwin" and len(tooltip) > 18:
+                # Wrap long tooltips near the left window edge so GdkMacosPopupSurface doesn't clip them
+                def _on_query_tooltip(_widget, _x, _y, _kbd, tip, text=tooltip):
+                    lbl = Gtk.Label(label=text)
+                    lbl.set_wrap(True)
+                    lbl.set_max_width_chars(20)
+                    lbl.set_justify(Gtk.Justification.CENTER)
+                    tip.set_custom(lbl)
+                    return True
+
+                btn.connect("query-tooltip", _on_query_tooltip)
             btn.connect("clicked", lambda _: callback())
             return btn
 
@@ -1317,11 +1332,12 @@ class OverlayDialog(Adw.Window):
         self.prop_container.append(pos_header)
 
         # Position (X, Y) in video pixels on the same line
-        pos_row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
+        pos_row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=4)
         lbl_x = Gtk.Label(label=_("X:"), xalign=0)
         lbl_x.set_tooltip_text(_("X Position (Horizontal)"))
         pos_row.append(lbl_x)
         self.spin_pos_x = Gtk.SpinButton.new_with_range(-vw, 2 * vw, 1)
+        self.spin_pos_x.set_width_chars(3)
         self.spin_pos_x.set_value(cur_px_x)
         self.spin_pos_x.set_hexpand(True)
         self.spin_pos_x.set_tooltip_text(_("X Position (Horizontal)"))
@@ -1330,9 +1346,10 @@ class OverlayDialog(Adw.Window):
 
         lbl_y = Gtk.Label(label=_("Y:"), xalign=0)
         lbl_y.set_tooltip_text(_("Y Position (Vertical)"))
-        lbl_y.set_margin_start(4)
+        lbl_y.set_margin_start(2)
         pos_row.append(lbl_y)
         self.spin_pos_y = Gtk.SpinButton.new_with_range(-vh, 2 * vh, 1)
+        self.spin_pos_y.set_width_chars(3)
         self.spin_pos_y.set_value(cur_px_y)
         self.spin_pos_y.set_hexpand(True)
         self.spin_pos_y.set_tooltip_text(_("Y Position (Vertical)"))
@@ -1359,11 +1376,12 @@ class OverlayDialog(Adw.Window):
                 cur_px_w = max(1, int(round(primary.width * vw)))
                 cur_px_h = max(1, int(round(primary.height * vh)))
 
-            size_row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
+            size_row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=4)
             lbl_w = Gtk.Label(label=_("W:"), xalign=0)
             lbl_w.set_tooltip_text(_("Width"))
             size_row.append(lbl_w)
             self.spin_size_w = Gtk.SpinButton.new_with_range(1, 3 * vw, 1)
+            self.spin_size_w.set_width_chars(3)
             self.spin_size_w.set_value(cur_px_w)
             self.spin_size_w.set_hexpand(True)
             self.spin_size_w.set_tooltip_text(_("Width"))
@@ -1372,9 +1390,10 @@ class OverlayDialog(Adw.Window):
 
             lbl_h = Gtk.Label(label=_("H:"), xalign=0)
             lbl_h.set_tooltip_text(_("Height"))
-            lbl_h.set_margin_start(4)
+            lbl_h.set_margin_start(2)
             size_row.append(lbl_h)
             self.spin_size_h = Gtk.SpinButton.new_with_range(1, 3 * vh, 1)
+            self.spin_size_h.set_width_chars(3)
             self.spin_size_h.set_value(cur_px_h)
             self.spin_size_h.set_hexpand(True)
             self.spin_size_h.set_tooltip_text(_("Height"))
@@ -2134,6 +2153,7 @@ class OverlayDialog(Adw.Window):
         """Handle selection from native Gtk.EmojiChooser."""
         if hasattr(self, "emoji_chooser"):
             self.emoji_chooser.popdown()
+        self._current_cursor = ""
         self._add_emoji_item(emoji_text)
 
     def _add_emoji_item(self, emoji_text: str) -> None:
@@ -2805,7 +2825,11 @@ class OverlayDialog(Adw.Window):
                     for col_name in ("accent_color", "accent_bg_color"):
                         success, col = ctx.lookup_color(col_name)
                         if success and col:
-                            self._cached_accent_color = (col.red, col.green, col.blue)
+                            self._cached_accent_color = (
+                                clamp(float(col.red), 0.0, 1.0),
+                                clamp(float(col.green), 0.0, 1.0),
+                                clamp(float(col.blue), 0.0, 1.0),
+                            )
                             return self._cached_accent_color
             except Exception:
                 pass
@@ -3295,7 +3319,7 @@ class OverlayDialog(Adw.Window):
         if self._current_cursor != cursor_name:
             self._current_cursor = cursor_name
             if hasattr(self, "overlay_picture"):
-                self.overlay_picture.set_cursor_from_name(cursor_name)
+                set_widget_cursor(self.overlay_picture, cursor_name, update_surface=True)
 
     def _on_canvas_click(self, gesture: Gtk.GestureClick | None, _n_press: int, x: float, y: float) -> None:
         state = gesture.get_current_event_state() if gesture is not None else Gdk.ModifierType(0)
@@ -3796,10 +3820,10 @@ class OverlayDialog(Adw.Window):
         # Initial frame extraction via FFmpeg
         self._load_reference_frame()
 
-        # Connect Gtk.MediaFile
+        # Connect media playback backend (Gtk.MediaFile or GstMediaFile fallback)
         try:
             if self.segment.source_path.exists():
-                self._media_file = Gtk.MediaFile.new_for_filename(str(self.segment.source_path))
+                self._media_file = create_media_file(self.segment.source_path)
 
                 self._transformed_paintable = TransformedPaintable(
                     base=self._media_file,
@@ -3990,6 +4014,11 @@ class OverlayDialog(Adw.Window):
                 except Exception:
                     pass
             self._mf_handlers.clear()
+            if hasattr(self._media_file, "close"):
+                try:
+                    self._media_file.close()
+                except Exception:
+                    pass
             self._media_file = None
         if self._transformed_paintable:
             self._transformed_paintable.detach()

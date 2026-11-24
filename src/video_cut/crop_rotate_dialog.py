@@ -17,6 +17,7 @@ gi.require_version("GdkPixbuf", "2.0")
 import cairo
 from gi.repository import Adw, Gdk, GdkPixbuf, GLib, Gtk
 
+from .cursors import install_macos_cursor_sync, set_widget_cursor
 from .i18n import _
 from .models import Segment
 from .services.ffmpeg_service import FFmpegService
@@ -171,6 +172,7 @@ class CropRotateDialog(Adw.Window):
 
         # Build UI immediately (< 5ms)
         self._build_ui()
+        install_macos_cursor_sync(self)
 
         # Connect window close signal to cleanly cancel any pending async callbacks
         self.connect("close-request", self._on_close_request)
@@ -813,12 +815,12 @@ class CropRotateDialog(Adw.Window):
 
         if cursor_name != self._current_cursor_name:
             self._current_cursor_name = cursor_name
-            self.preview_picture.set_cursor_from_name(cursor_name)
+            set_widget_cursor(self.preview_picture, cursor_name, update_surface=True)
 
     def _on_mouse_leave(self, _c: Gtk.EventControllerMotion) -> None:
         if self._drag_mode == "NONE" and self._current_cursor_name != "default":
             self._current_cursor_name = "default"
-            self.preview_picture.set_cursor_from_name("default")
+            set_widget_cursor(self.preview_picture, "default", update_surface=True)
 
     def _on_drag_begin(self, gesture: Gtk.GestureDrag, start_x: float, start_y: float) -> None:
         self._drag_mode = self._hit_test(start_x, start_y)
@@ -1002,7 +1004,7 @@ class CropRotateDialog(Adw.Window):
         self._drag_mode = "NONE"
         if self._current_cursor_name != "default":
             self._current_cursor_name = "default"
-            self.preview_picture.set_cursor_from_name("default")
+            set_widget_cursor(self.preview_picture, "default", update_surface=True)
 
     def _get_current_aspect_ratio(self) -> float | None:
         """Return the numerical aspect ratio for the selected preset or None."""

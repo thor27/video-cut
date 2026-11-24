@@ -329,6 +329,18 @@ def test_emoji_system_rendering_and_scaling():
         surf_none = OverlayRenderService.get_emoji_surface("🔥", 64)
         assert surf_none is None
 
+    # 3. Test complex multi-codepoint emojis (skin tone, flags, ZWJ, keycap, newer Unicode)
+    complex_emojis = ["👍🏽", "🇺🇸", "🇧🇷", "👨‍💻", "🏳️‍🌈", "1️⃣", "🤭", "🫣", "🫡"]
+    rendered_bytes = set()
+    for em in complex_emojis:
+        s = OverlayRenderService.get_emoji_surface(em, 64)
+        assert s is not None, f"Failed to render complex emoji {em!r}"
+        assert s.get_width() == 64 and s.get_height() == 64
+        raw = bytes(s.get_data())
+        assert any(b != 0 for b in raw), f"Blank render for complex emoji {em!r}"
+        rendered_bytes.add(raw)
+    assert len(rendered_bytes) == len(complex_emojis)
+
 
 def test_text_wrapping_fidelity_between_preview_and_export():
     """Verify that multi-line word wrapping is 100% identical between preview and export resolutions (Issue #52)."""

@@ -1,7 +1,6 @@
 """Test to ensure playback works flawlessly after splitting clips."""
 
 import time
-from pathlib import Path
 
 import gi
 
@@ -63,7 +62,7 @@ def test_playback_after_split(sample_video):
     app.run(["test"])
 
 
-def test_reordered_segments_playback_no_seek_spam():
+def test_reordered_segments_playback_no_seek_spam(sample_video):
     """Verify that playing split and reordered segments across EOF does not spam seek or get stuck in ended state."""
     from video_cut.models import ProjectTimeline, Segment
     from video_cut.player import VideoPlayerController
@@ -75,10 +74,10 @@ def test_reordered_segments_playback_no_seek_spam():
         player = None
         try:
             timeline = ProjectTimeline()
-            # Seg 0 is [3.5, 5.0] (1.5s duration, ends at EOF of 5s test_video)
+            # Seg 0 is [3.5, 5.0] (1.5s duration, ends at EOF of 5s sample_video)
             # Seg 1 is [0.0, 3.5] (3.5s duration)
-            seg0 = Segment(Path("/tmp/test_video.mp4"), 5.0, 3.5, 5.0)
-            seg1 = Segment(Path("/tmp/test_video.mp4"), 5.0, 0.0, 3.5)
+            seg0 = Segment(sample_video, 5.0, 3.5, 5.0)
+            seg1 = Segment(sample_video, 5.0, 0.0, 3.5)
             timeline.segments = [seg0, seg1]
 
             player = VideoPlayerController(
@@ -91,10 +90,12 @@ def test_reordered_segments_playback_no_seek_spam():
             player.seek_to_global_time(0.0)
             ctx = GLib.MainContext.default()
             wait_start = time.time()
-            while time.time() - wait_start < 1.0 and not (
+            while time.time() - wait_start < 2.0 and not (
                 player.current_media_file and player.current_media_file.is_prepared()
             ):
-                ctx.iteration(True)
+                while ctx.pending():
+                    ctx.iteration(False)
+                time.sleep(0.01)
 
             seeks = []
             orig_seek = player._seek_media_file

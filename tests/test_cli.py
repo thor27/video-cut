@@ -22,3 +22,11 @@ def test_cli_parse_multiple_files():
         Path("/tmp/photo.jpg"),
         Path("/tmp/video2.mkv"),
     ]
+
+
+def test_cli_parse_ignores_macos_psn_arg(monkeypatch):
+    import sys
+
+    monkeypatch.setattr(sys, "platform", "darwin")
+    args = parse_args(["-psn_0_123456"])
+    assert args.files == []

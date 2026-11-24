@@ -1,5 +1,6 @@
 import bisect
 import subprocess
+import sys
 import threading
 from collections.abc import Callable
 from dataclasses import replace
@@ -17,6 +18,7 @@ from . import __version__
 from .advanced_export_dialog import AdvancedExportDialog
 from .clipboard_controller import ClipboardController, parse_uri_list
 from .crop_rotate_dialog import CropRotateDialog
+from .cursors import install_macos_cursor_sync
 from .ffmpeg_error_dialog import FFmpegErrorDialog
 from .health_dialog import HealthCheckDialog, StartupHealthAlertModal
 from .i18n import _
@@ -68,6 +70,7 @@ class MainWindow(Adw.ApplicationWindow):
         self._setup_shortcuts()
         self._setup_window_drag_and_drop()
         self._setup_clipboard_listener()
+        install_macos_cursor_sync(self)
         self._update_ui_state()
 
     @property
@@ -377,7 +380,10 @@ class MainWindow(Adw.ApplicationWindow):
         self.add_controller(key_ctrl)
 
     def _on_key_pressed(self, controller, keyval, keycode, state) -> bool:
-        ctrl = bool(state & Gdk.ModifierType.CONTROL_MASK)
+        primary_mask = Gdk.ModifierType.CONTROL_MASK
+        if sys.platform == "darwin":
+            primary_mask |= Gdk.ModifierType.META_MASK
+        ctrl = bool(state & primary_mask)
         alt = bool(state & Gdk.ModifierType.ALT_MASK)
         shift = bool(state & Gdk.ModifierType.SHIFT_MASK)
 
@@ -2178,9 +2184,10 @@ class MainWindow(Adw.ApplicationWindow):
         except Exception:
             pass
 
-        # 3. Fallback to subprocess xdg-open
+        # 3. Fallback to subprocess open / xdg-open
         try:
-            subprocess.Popen(["xdg-open", str(file_path.resolve())])
+            opener = "open" if sys.platform == "darwin" else "xdg-open"
+            subprocess.Popen([opener, str(file_path.resolve())])
         except Exception as e:
             print(f"Failed to open video in default player: {e}")
 

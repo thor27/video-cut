@@ -1,6 +1,11 @@
 """Adw.Application definition for Video Cut."""
 
+import os
+import sys
 from pathlib import Path
+
+if sys.platform == "darwin":
+    os.environ.setdefault("PANGOCAIRO_BACKEND", "fontconfig")
 
 import gi
 
@@ -10,7 +15,13 @@ gi.require_version("Adw", "1")
 from gi.repository import Adw, Gdk, Gio, GLib
 
 from .i18n import _
-from .paths import APP_ID, APP_NAME, load_application_css, register_resource_icons
+from .paths import (
+    APP_ID,
+    APP_NAME,
+    configure_platform_fonts,
+    load_application_css,
+    register_resource_icons,
+)
 from .window import MainWindow
 
 
@@ -42,6 +53,7 @@ class VideoCutApplication(Adw.Application):
 
     def do_activate(self) -> None:
         display = Gdk.Display.get_default()
+        configure_platform_fonts(display)
         register_resource_icons(display)
         load_application_css(display)
 

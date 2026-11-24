@@ -151,22 +151,34 @@ if [ ! -d "${APP_PATH}" ]; then
     exit 1
 fi
 
-# 3. Ensure executable permissions and configure library rpaths
+# 3. Ensure executable permissions and self-contained bundle rpaths
 echo "==> Setting executable permissions..."
 chmod +x "${APP_PATH}/Contents/MacOS/VideoCut"
 find "${APP_PATH}/Contents" -type f \( -name "*.dylib" -o -name "*.so" -o -perm +111 \) -exec chmod +x {} + 2>/dev/null || true
 
 if command -v install_name_tool 1>/dev/null 2>&1; then
-    echo "==> Configuring rpaths on VideoCut executable..."
-    install_name_tool -add_rpath "/opt/homebrew/lib" "${APP_PATH}/Contents/MacOS/VideoCut" 2>/dev/null || true
-    install_name_tool -add_rpath "/usr/local/lib" "${APP_PATH}/Contents/MacOS/VideoCut" 2>/dev/null || true
+    echo "==> Verifying self-contained bundle rpaths..."
     install_name_tool -add_rpath "@executable_path/../Frameworks" "${APP_PATH}/Contents/MacOS/VideoCut" 2>/dev/null || true
+    for bundled_tool in "${APP_PATH}/Contents/Frameworks/bin/ffmpeg" "${APP_PATH}/Contents/Frameworks/bin/ffprobe"; do
+        if [ -f "${bundled_tool}" ]; then
+            install_name_tool -add_rpath "@executable_path/.." "${bundled_tool}" 2>/dev/null || true
+        fi
+    done
+fi
+
+# Ensure Pillow's libraqm/fribidi dynamic loader finds unversioned libfribidi.dylib inside the bundle
+if [ -f "${APP_PATH}/Contents/Frameworks/libfribidi.0.dylib" ] && [ ! -e "${APP_PATH}/Contents/Frameworks/libfribidi.dylib" ]; then
+    ln -s "libfribidi.0.dylib" "${APP_PATH}/Contents/Frameworks/libfribidi.dylib"
+fi
+if [ -e "${APP_PATH}/Contents/Resources/libfribidi.0.dylib" ] && [ ! -e "${APP_PATH}/Contents/Resources/libfribidi.dylib" ]; then
+    ln -s "libfribidi.0.dylib" "${APP_PATH}/Contents/Resources/libfribidi.dylib"
 fi
 
 # 4. Ad-hoc codesign for local execution and Apple Silicon gatekeeper compliance
 if command -v codesign 1>/dev/null 2>&1; then
     echo "==> Applying ad-hoc code signature..."
-    codesign --force --deep --sign - "${APP_PATH}" || echo "Warning: codesign failed, continuing."
+    codesign --force --deep --sign - --entitlements "${PACKAGING_DIR}/entitlements.plist" "${APP_PATH}"
+    codesign --verify --deep --strict "${APP_PATH}"
 fi
 
 echo "==> VideoCut.app bundle created successfully: ${APP_PATH}"
@@ -182,7 +194,7 @@ if [ "$DO_DMG" -eq 1 ]; then
     rm -rf "${DMG_STAGING}" "${DMG_PATH}"
     mkdir -p "${DMG_STAGING}"
 
-    cp -R "${APP_PATH}" "${DMG_STAGING}/"
+    cp -a "${APP_PATH}" "${DMG_STAGING}/"
     ln -s /Applications "${DMG_STAGING}/Applications"
 
     if command -v create-dmg 1>/dev/null 2>&1; then

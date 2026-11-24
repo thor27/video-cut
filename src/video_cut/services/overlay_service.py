@@ -6,11 +6,13 @@ import io
 import math
 import re
 import subprocess
+import sys
 import threading
 from pathlib import Path
 from typing import Any
 
 _measure_local = threading.local()
+_pango_emoji_lock = threading.Lock()
 
 import cairo
 import gi
@@ -19,6 +21,14 @@ from PIL import Image, ImageDraw, ImageFont
 gi.require_version("GdkPixbuf", "2.0")
 gi.require_version("Gdk", "4.0")
 from gi.repository import GdkPixbuf
+
+try:
+    gi.require_version("Pango", "1.0")
+    gi.require_version("PangoCairo", "1.0")
+    from gi.repository import Pango, PangoCairo
+except (ValueError, ImportError):
+    Pango = None  # type: ignore[assignment]
+    PangoCairo = None  # type: ignore[assignment]
 
 from ..models import OverlayItem
 from ..utils import clamp
@@ -416,6 +426,14 @@ class OverlayRenderService:
 
         cls._checked_system_emoji_font = True
         # 1. Ask fontconfig for the active emoji font matching GTK / Pango
+        # 0. On macOS, prefer native Apple Color Emoji directly (avoids fc-match subprocess)
+        if sys.platform == "darwin":
+            apple_emoji = Path("/System/Library/Fonts/Apple Color Emoji.ttc")
+            if apple_emoji.exists() and apple_emoji.is_file():
+                cls._system_emoji_font_path = apple_emoji
+                return apple_emoji
+
+        # 1. Try fontconfig fc-match
         try:
             res = subprocess.run(
                 ["fc-match", "emoji", "-f", "%{file}"],
@@ -447,6 +465,61 @@ class OverlayRenderService:
         return None
 
     @classmethod
+    def _render_emoji_with_pangocairo(cls, emoji_char: str, px: int) -> cairo.ImageSurface | None:
+        """Render an emoji using PangoCairo so shaping & glyphs match Gtk.EmojiChooser identically."""
+        if Pango is None or PangoCairo is None:
+            return None
+        try:
+            render_px = max(160, px)
+            canvas_sz = int(render_px * 2.5)
+            pad = int(render_px * 0.4)
+            raw_surf = cairo.ImageSurface(cairo.FORMAT_ARGB32, canvas_sz, canvas_sz)
+            with _pango_emoji_lock:
+                cr = cairo.Context(raw_surf)
+                layout = PangoCairo.create_layout(cr)
+                family = "Apple Color Emoji" if sys.platform == "darwin" else "emoji"
+                layout.set_font_description(Pango.FontDescription.from_string(f"{family} {render_px}px"))
+                layout.set_text(emoji_char, -1)
+                cr.set_source_rgba(1.0, 1.0, 1.0, 1.0)
+                cr.move_to(float(pad), float(pad))
+                PangoCairo.show_layout(cr, layout)
+                raw_surf.flush()
+
+            # Compute tight non-transparent bounding box via Pillow (fast C alpha scan)
+            raw_img = Image.frombuffer(
+                "RGBA",
+                (canvas_sz, canvas_sz),
+                raw_surf.get_data(),
+                "raw",
+                "BGRA",
+                raw_surf.get_stride(),
+                1,
+            )
+            bbox = raw_img.getbbox()
+            if not bbox:
+                return None
+
+            x0, y0, x1, y1 = bbox
+            bw = max(1, x1 - x0)
+            bh = max(1, y1 - y0)
+            max_dim = max(bw, bh)
+            scale = float(px) / float(max_dim)
+            off_x = (float(px) - bw * scale) / 2.0
+            off_y = (float(px) - bh * scale) / 2.0
+
+            out_surf = cairo.ImageSurface(cairo.FORMAT_ARGB32, px, px)
+            out_cr = cairo.Context(out_surf)
+            out_cr.translate(off_x, off_y)
+            out_cr.scale(scale, scale)
+            out_cr.set_source_surface(raw_surf, -float(x0), -float(y0))
+            out_cr.get_source().set_filter(cairo.FILTER_BEST)
+            out_cr.paint()
+            out_surf.flush()
+            return out_surf
+        except Exception:
+            return None
+
+    @classmethod
     def get_emoji_surface(cls, emoji_char: str, size: int) -> cairo.ImageSurface | None:
         """Render the exact emoji image from the system font used by the emoji selector."""
         px = max(16, size)
@@ -456,32 +529,53 @@ class OverlayRenderService:
 
         fpath = cls._find_system_emoji_font()
         if fpath and fpath.exists():
-            try:
-                # Embedded bitmap strike in NotoColorEmoji is 109px
-                font = ImageFont.truetype(str(fpath), 109)
-                img = Image.new("RGBA", (200, 200), (0, 0, 0, 0))
-                draw = ImageDraw.Draw(img)
-                draw.text((30, 30), emoji_char, font=font, embedded_color=True)
-                bbox = img.getbbox()
-                if bbox:
-                    img = img.crop(bbox)
-                    # Preserve original aspect ratio inside a square canvas
-                    max_dim = max(img.width, img.height)
-                    square_img = Image.new("RGBA", (max_dim, max_dim), (0, 0, 0, 0))
-                    paste_x = (max_dim - img.width) // 2
-                    paste_y = (max_dim - img.height) // 2
-                    square_img.paste(img, (paste_x, paste_y))
-                    img = square_img
-                if img.size != (px, px):
-                    img = img.resize((px, px), Image.Resampling.LANCZOS)
-                bio = io.BytesIO()
-                img.save(bio, format="PNG")
-                bio.seek(0)
-                surf = cairo.ImageSurface.create_from_png(bio)
-                cls._cache_surface(cache_key, surf)
-                return surf
-            except Exception:
-                pass
+            # On macOS, render directly through PangoCairo (the exact same HarfBuzz/Fontconfig
+            # shaping stack used by Gtk.EmojiChooser) so ZWJ, flags, skin tones, and variation
+            # selectors always match the selector window identically even in bundled .app builds.
+            if sys.platform == "darwin":
+                pango_surf = cls._render_emoji_with_pangocairo(emoji_char, px)
+                if pango_surf is not None:
+                    cls._cache_surface(cache_key, pango_surf)
+                    return pango_surf
+
+            # Bitmap emoji fonts only support specific embedded strike sizes:
+            # NotoColorEmoji uses 109px; Apple Color Emoji uses 160/96/64/48/40/32/20px.
+            font = None
+            strike_sz = 109
+            for cand_sz in (109, 160, 128, 96, 64, 48, 32):
+                try:
+                    font = ImageFont.truetype(str(fpath), cand_sz)
+                    strike_sz = cand_sz
+                    break
+                except OSError:
+                    continue
+            if font is not None:
+                try:
+                    canvas_sz = int(strike_sz * 2)
+                    pad = int(strike_sz * 0.25)
+                    img = Image.new("RGBA", (canvas_sz, canvas_sz), (0, 0, 0, 0))
+                    draw = ImageDraw.Draw(img)
+                    draw.text((pad, pad), emoji_char, font=font, embedded_color=True)
+                    bbox = img.getbbox()
+                    if bbox:
+                        img = img.crop(bbox)
+                        # Preserve original aspect ratio inside a square canvas
+                        max_dim = max(img.width, img.height)
+                        square_img = Image.new("RGBA", (max_dim, max_dim), (0, 0, 0, 0))
+                        paste_x = (max_dim - img.width) // 2
+                        paste_y = (max_dim - img.height) // 2
+                        square_img.paste(img, (paste_x, paste_y))
+                        img = square_img
+                    if img.size != (px, px):
+                        img = img.resize((px, px), Image.Resampling.LANCZOS)
+                    bio = io.BytesIO()
+                    img.save(bio, format="PNG")
+                    bio.seek(0)
+                    surf = cairo.ImageSurface.create_from_png(bio)
+                    cls._cache_surface(cache_key, surf)
+                    return surf
+                except Exception:
+                    pass
 
         return None
 

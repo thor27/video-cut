@@ -15,6 +15,7 @@ gi.require_version("Adw", "1")
 gi.require_version("GdkPixbuf", "2.0")
 from gi.repository import Gdk, GdkPixbuf, GLib, GObject, Graphene, Gsk, Gtk
 
+from .media_backend import create_media_file
 from .models import OverlayItem, ProjectTimeline, Segment
 from .services.overlay_audio_player import OverlayAudioPlayer
 from .services.overlay_service import OverlayRenderService
@@ -255,6 +256,11 @@ class VideoPlayerController:
                 except Exception:
                     pass
             self._media_file_handlers.clear()
+            if hasattr(self.current_media_file, "close"):
+                try:
+                    self.current_media_file.close()
+                except Exception:
+                    pass
             self.current_media_file = None
 
     def clear(self) -> None:
@@ -422,7 +428,7 @@ class VideoPlayerController:
         if seg:
             self.current_segment_id = seg.id
 
-        mf = Gtk.MediaFile.new_for_filename(str(path))
+        mf = create_media_file(path)
         self.current_media_file = mf
         self._apply_segment_transform(seg)
 

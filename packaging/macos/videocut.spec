@@ -51,54 +51,67 @@ datas = [
     (str(SRC_DIR / "video_cut" / "style.css"), "video_cut"),
     (str(SRC_DIR / "video_cut" / "resources"), "video_cut/resources"),
     (str(SRC_DIR / "video_cut" / "locale"), "video_cut/locale"),
+    # Relocatable macOS Fontconfig configuration for crisp native SF Pro rendering
+    (str(SPEC_DIR / "fonts.conf"), "etc/fonts"),
 ]
 
-# Collect GSettings schemas
-schemas_path = HOMEBREW_PREFIX / "share" / "glib-2.0" / "schemas"
-if schemas_path.exists():
-    datas.append((str(schemas_path), "share/glib-2.0/schemas"))
-
-# Collect GObject introspection typelibs
-typelibs_path = HOMEBREW_PREFIX / "lib" / "girepository-1.0"
-if typelibs_path.exists():
-    datas.append((str(typelibs_path), "lib/girepository-1.0"))
-
-# Collect GdkPixbuf loaders & cache
-pixbuf_path = HOMEBREW_PREFIX / "lib" / "gdk-pixbuf-2.0"
-if pixbuf_path.exists():
-    datas.append((str(pixbuf_path), "lib/gdk-pixbuf-2.0"))
-
-# Collect GStreamer plugins
-gst_path = HOMEBREW_PREFIX / "lib" / "gstreamer-1.0"
-if gst_path.exists():
-    datas.append((str(gst_path), "lib/gstreamer-1.0"))
-
-# Collect Icon Themes
+# Collect Icon Themes (Adwaita & hicolor) if installed in Homebrew
 for icon_theme in ["Adwaita", "hicolor"]:
     theme_path = HOMEBREW_PREFIX / "share" / "icons" / icon_theme
     if theme_path.exists():
         datas.append((str(theme_path), f"share/icons/{icon_theme}"))
 
+# NOTE: PyInstaller's built-in GI / GTK / GdkPixbuf / GStreamer hooks automatically
+# collect and properly relocate gi_typelibs/, lib/gdk-pixbuf/, gst_plugins/,
+# gio_modules/, and compiled share/glib-2.0/schemas/. Do NOT duplicate them in datas.
+
 binaries = []
 
-# Collect gst-plugin-scanner
-gst_scanner = HOMEBREW_PREFIX / "libexec" / "gstreamer-1.0" / "gst-plugin-scanner"
-if gst_scanner.exists():
-    binaries.append((str(gst_scanner), "libexec/gstreamer-1.0"))
+# Pre-seed Homebrew's shared libraries that Pillow's macOS PyPI wheel also bundles
+# under PIL/.dylibs/ (most critically libharfbuzz.0.dylib, whose Pillow wheel copy
+# is compiled without GLib support and breaks libgtk-4.1.dylib with missing
+# _hb_glib_script_to_script). Seeding them here ensures PyInstaller traces all of
+# their transitive Homebrew dependencies (e.g., libgraphite2).
+HOMEBREW_LIB_DIR = HOMEBREW_PREFIX / "lib"
+BREW_PRIORITY_LIBS = [
+    "libharfbuzz.0.dylib",
+    "libfreetype.6.dylib",
+    "libpng16.16.dylib",
+    "libtiff.6.dylib",
+    "libwebp.7.dylib",
+    "libwebpdemux.2.dylib",
+    "libwebpmux.3.dylib",
+    "libsharpyuv.0.dylib",
+    "liblcms2.2.dylib",
+    "liblzma.5.dylib",
+    "libxcb.1.dylib",
+    "libXau.6.dylib",
+]
+brew_priority_paths: dict[str, str] = {}
+for lib_name in BREW_PRIORITY_LIBS:
+    lib_path = HOMEBREW_LIB_DIR / lib_name
+    if lib_path.exists():
+        resolved = str(lib_path.resolve())
+        binaries.append((resolved, "."))
+        brew_priority_paths[lib_name] = resolved
 
 # Collect FFmpeg and FFprobe binaries if present in Homebrew
 for bin_name in ["ffmpeg", "ffprobe"]:
     bin_path = HOMEBREW_PREFIX / "bin" / bin_name
     if bin_path.exists():
-        binaries.append((str(bin_path), "bin"))
+        binaries.append((str(bin_path.resolve()), "bin"))
 
 hidden_imports = [
     "gi",
     "gi.repository.Gtk",
     "gi.repository.Gdk",
+    "gi.repository.Gsk",
+    "gi.repository.Graphene",
     "gi.repository.Gio",
     "gi.repository.GLib",
     "gi.repository.GObject",
+    "gi.repository.Pango",
+    "gi.repository.PangoCairo",
     "gi.repository.Adw",
     "gi.repository.GdkPixbuf",
     "gi.repository.Gst",
@@ -107,11 +120,14 @@ hidden_imports = [
     "PIL",
     "PIL.Image",
     "PIL.ImageDraw",
+    "PIL.ImageFont",
     "PIL.IcnsImagePlugin",
     "video_cut",
     "video_cut.app",
     "video_cut.window",
     "video_cut.models",
+    "video_cut.cursors",
+    "video_cut.media_backend",
     "video_cut.player",
     "video_cut.timeline_widget",
     "video_cut.segment_card",
@@ -121,6 +137,8 @@ hidden_imports = [
     "video_cut.overlay_dialog",
     "video_cut.health_dialog",
     "video_cut.ffmpeg_error_dialog",
+    "video_cut.keyframe_help_dialog",
+    "video_cut.progress_modal",
     "video_cut.clipboard_controller",
     "video_cut.i18n",
     "video_cut.paths",
@@ -131,6 +149,9 @@ hidden_imports = [
     "video_cut.services.probe_service",
     "video_cut.services.thumbnail_service",
     "video_cut.services.overlay_service",
+    "video_cut.services.overlay_audio_player",
+    "video_cut.services.project_service",
+    "video_cut.services.private_dir",
     "video_cut.services.health_service",
 ]
 
@@ -149,6 +170,53 @@ a = Analysis(
     cipher=block_cipher,
     noarchive=False,
 )
+
+# Prevent Pillow's wheel dylibs (PIL/.dylibs/*) from shadowing Homebrew's full dylibs
+# at top-level Contents/Frameworks/ (e.g., libharfbuzz.0.dylib without GLib symbols).
+# PyInstaller places Pillow's dylibs in a.binaries AND places top-level SYMLINK entries
+# (e.g., ('libharfbuzz.0.dylib', 'PIL/.dylibs/libharfbuzz.0.dylib', 'SYMLINK')) in a.datas.
+# Drop both and ensure Homebrew's real BINARY is placed at top-level.
+# Exclude GTK 3 GStreamer plugin (libgstgtk.dylib) and GTK 3 runtime libraries.
+# Loading libgstgtk.dylib during GStreamer plugin scanning pulls libgtk-3.0.dylib and
+# libgdk-3.0.dylib into our GTK 4 process, causing Objective-C class collisions
+# (gdkCoreCursor / GtkApplicationQuartzDelegate) and GLib GtkWidget type conflicts.
+GTK3_CONFLICT_PREFIXES = (
+    "libgstgtk.",
+    "libgtk-3.",
+    "libgdk-3.",
+    "libatk-1.0.",
+)
+
+filtered_binaries = []
+present_top_level: set[str] = set()
+for dest, src, kind in a.binaries:
+    bname = os.path.basename(dest)
+    if bname.startswith(GTK3_CONFLICT_PREFIXES):
+        print(f"    [exclude] Dropping GTK3-conflicting binary: {dest}")
+        continue
+    if bname in brew_priority_paths:
+        if dest.startswith("PIL/") or (kind == "SYMLINK" and "PIL/" in str(src)):
+            print(f"    [dedup] Replacing Pillow wheel binary with Homebrew dylib: {dest} ({kind})")
+            continue
+        if dest == bname and kind == "BINARY":
+            present_top_level.add(bname)
+    filtered_binaries.append((dest, src, kind))
+
+for bname, brew_src in brew_priority_paths.items():
+    if bname not in present_top_level:
+        filtered_binaries.append((bname, brew_src, "BINARY"))
+a.binaries = filtered_binaries
+
+filtered_datas = []
+for dest, src, kind in a.datas:
+    bname = os.path.basename(dest)
+    if bname.startswith(GTK3_CONFLICT_PREFIXES):
+        continue
+    if kind == "SYMLINK" and bname in brew_priority_paths and "PIL/" in str(src):
+        print(f"    [dedup] Dropping conflicting Pillow symlink from a.datas: {dest} -> {src}")
+        continue
+    filtered_datas.append((dest, src, kind))
+a.datas = filtered_datas
 
 pyz = PYZ(a.pure, a.zipped_data, cipher=block_cipher)
 

@@ -28,26 +28,23 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-
       - name: Install System Dependencies via Homebrew
         run: |
           brew update
-          brew install gtk4 libadwaita pygobject3 gstreamer \
-            gst-plugins-base gst-plugins-good gst-plugins-bad gst-plugins-ugly \
-            gst-libav ffmpeg
+          brew install gtk4 libadwaita adwaita-icon-theme pygobject3 gstreamer ffmpeg
 
       - name: Install Python Build Dependencies
         run: |
+          BREW_PYTHON="$(brew --prefix)/bin/python3"
+          "${BREW_PYTHON}" -m venv --system-site-packages .venv-macos
+          source .venv-macos/bin/activate
           pip install --upgrade pip setuptools wheel
-          pip install -e .
+          pip install --no-build-isolation --no-deps -e .
           pip install pyinstaller pillow
 
       - name: Build macOS Application (.app & .dmg)
         run: |
+          source .venv-macos/bin/activate
           chmod +x scripts/build_macos.sh
           ./scripts/build_macos.sh --dmg
 
