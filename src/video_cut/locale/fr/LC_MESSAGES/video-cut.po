@@ -2355,3 +2355,7 @@ msgstr "Paquet Debian"
 msgid "Source distribution"
 msgstr "Distribution source"
 
+msgid "Choose between system FFmpeg or a custom binary path"
+msgstr "Choisissez entre le FFmpeg du système ou un chemin personnalisé"
+
+

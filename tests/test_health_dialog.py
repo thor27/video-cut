@@ -353,28 +353,62 @@ def test_startup_health_alert_modal_review_and_fix():
 
 
 def test_health_dialog_ffmpeg_source_combo_selection():
-    """Test changing FFmpeg source combo updates preference and refreshes checks."""
+    """Test changing FFmpeg source combo in standard system/deb/source environment."""
     dialog = HealthCheckDialog()
     assert dialog.row_ffmpeg_source is not None
     assert dialog.row_ffmpeg_manual is not None
+    model = dialog.row_ffmpeg_source.get_model()
+    # No container present by default in dev environment
+    assert model.get_n_items() == 2
+    assert model.get_string(0) == _("System")
+    assert model.get_string(1) == _("Manual (Custom Path)")
 
     with patch("video_cut.services.health_service.HealthService.set_ffmpeg_source") as mock_set, \
          patch.object(dialog, "refresh_checks") as mock_refresh:
-        # Index 1 corresponds to "container"
+        # Index 1 corresponds to "manual"
         dialog.row_ffmpeg_source.set_selected(1)
-        mock_set.assert_called_with("container")
-        mock_refresh.assert_called_once()
-        assert not dialog.row_ffmpeg_manual.get_visible()
-
-    with patch("video_cut.services.health_service.HealthService.set_ffmpeg_source") as mock_set, \
-         patch.object(dialog, "refresh_checks") as mock_refresh:
-        # Index 3 corresponds to "manual"
-        dialog.row_ffmpeg_source.set_selected(3)
         mock_set.assert_called_with("manual")
         mock_refresh.assert_called_once()
         assert dialog.row_ffmpeg_manual.get_visible()
 
+    with patch("video_cut.services.health_service.HealthService.set_ffmpeg_source") as mock_set, \
+         patch.object(dialog, "refresh_checks") as mock_refresh:
+        # Index 0 corresponds to "system"
+        dialog.row_ffmpeg_source.set_selected(0)
+        mock_set.assert_called_with("system")
+        mock_refresh.assert_called_once()
+        assert not dialog.row_ffmpeg_manual.get_visible()
+
     dialog.destroy()
+
+
+def test_health_dialog_ffmpeg_source_bundled_container_selection():
+    """Test FFmpeg source combo in bundled AppImage/Snap container environment."""
+    with patch("video_cut.health_dialog.get_container_ffmpeg_path", return_value="/appdir/usr/bin/ffmpeg"):
+        dialog = HealthCheckDialog()
+        assert dialog.row_ffmpeg_source is not None
+        model = dialog.row_ffmpeg_source.get_model()
+        assert model.get_n_items() == 4
+        assert model.get_string(0) == _("Auto (Recommended)")
+        assert model.get_string(1) == _("Container (Bundled)")
+        assert model.get_string(2) == _("System")
+        assert model.get_string(3) == _("Manual (Custom Path)")
+
+        with patch("video_cut.services.health_service.HealthService.set_ffmpeg_source") as mock_set, \
+             patch.object(dialog, "refresh_checks") as mock_refresh:
+            dialog.row_ffmpeg_source.set_selected(1)
+            mock_set.assert_called_with("container")
+            mock_refresh.assert_called_once()
+            assert not dialog.row_ffmpeg_manual.get_visible()
+
+        with patch("video_cut.services.health_service.HealthService.set_ffmpeg_source") as mock_set, \
+             patch.object(dialog, "refresh_checks") as mock_refresh:
+            dialog.row_ffmpeg_source.set_selected(3)
+            mock_set.assert_called_with("manual")
+            mock_refresh.assert_called_once()
+            assert dialog.row_ffmpeg_manual.get_visible()
+
+        dialog.destroy()
 
 
 def test_health_dialog_ffmpeg_manual_entry():

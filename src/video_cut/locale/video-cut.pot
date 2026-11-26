@@ -2080,3 +2080,7 @@ msgstr ""
 msgid "Source distribution"
 msgstr ""
 
+msgid "Choose between system FFmpeg or a custom binary path"
+msgstr ""
+
+

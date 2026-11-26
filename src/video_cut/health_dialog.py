@@ -14,7 +14,7 @@ from gi.repository import Adw, Gdk, Gio, GLib, Gtk
 
 from .i18n import _
 from .services.health_service import HealthCheckItem, HealthService
-from .utils import is_flatpak
+from .utils import get_container_ffmpeg_path, is_flatpak
 
 
 class HealthCheckDialog(Adw.Window):
@@ -100,7 +100,7 @@ class HealthCheckDialog(Adw.Window):
             self.row_ffmpeg_source.set_model(source_model)
             current_src = HealthService.get_ffmpeg_source()
             self.row_ffmpeg_source.set_selected(1 if current_src == "manual" else 0)
-        else:
+        elif get_container_ffmpeg_path():
             self.row_ffmpeg_source = Adw.ComboRow(
                 title=_("FFmpeg Source"),
                 subtitle=_("Choose between automatic smart resolution, container bundled, or system FFmpeg"),
@@ -115,6 +115,18 @@ class HealthCheckDialog(Adw.Window):
             source_map = {"auto": 0, "container": 1, "system": 2, "manual": 3}
             current_src = HealthService.get_ffmpeg_source()
             self.row_ffmpeg_source.set_selected(source_map.get(current_src, 0))
+        else:
+            self.row_ffmpeg_source = Adw.ComboRow(
+                title=_("FFmpeg Source"),
+                subtitle=_("Choose between system FFmpeg or a custom binary path"),
+            )
+            source_model = Gtk.StringList.new([
+                _("System"),
+                _("Manual (Custom Path)"),
+            ])
+            self.row_ffmpeg_source.set_model(source_model)
+            current_src = HealthService.get_ffmpeg_source()
+            self.row_ffmpeg_source.set_selected(1 if current_src == "manual" else 0)
         self.row_ffmpeg_source.connect("notify::selected", self._on_ffmpeg_source_selected)
         self.grp_ffmpeg.add(self.row_ffmpeg_source)
 
@@ -195,9 +207,13 @@ class HealthCheckDialog(Adw.Window):
         idx = self.row_ffmpeg_source.get_selected()
         if is_flatpak():
             sources = ["container", "manual"]
-        else:
+            new_source = sources[idx] if idx < len(sources) else "container"
+        elif get_container_ffmpeg_path():
             sources = ["auto", "container", "system", "manual"]
-        new_source = sources[idx] if idx < len(sources) else ("container" if is_flatpak() else "auto")
+            new_source = sources[idx] if idx < len(sources) else "auto"
+        else:
+            sources = ["system", "manual"]
+            new_source = sources[idx] if idx < len(sources) else "system"
         if self.row_ffmpeg_manual:
             self.row_ffmpeg_manual.set_visible(new_source == "manual")
         HealthService.set_ffmpeg_source(new_source)
@@ -536,9 +552,12 @@ class HealthCheckDialog(Adw.Window):
                     sub = binary_path
                 else:
                     sub = f"{binary_path} ({_('Flatpak Runtime')})"
-            elif cfg_src == "auto":
-                eff_label = _("Container") if eff_src == "container" else (_("System") if eff_src == "system" else _("Manual"))
-                sub = f"{binary_path} ({_('Auto: {src}').format(src=eff_label)})"
+            elif get_container_ffmpeg_path():
+                if cfg_src == "auto":
+                    eff_label = _("Container") if eff_src == "container" else (_("System") if eff_src == "system" else _("Manual"))
+                    sub = f"{binary_path} ({_('Auto: {src}').format(src=eff_label)})"
+                else:
+                    sub = binary_path
             else:
                 sub = binary_path
             self.row_ffmpeg_source.set_subtitle(sub)
