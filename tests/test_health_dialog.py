@@ -439,5 +439,21 @@ def test_health_dialog_flatpak_no_remove_association_button():
         dialog.destroy()
 
 
+def test_about_dialog_packaging_display():
+    """Test MainWindow._show_about_dialog formats packaging type into version and debug_info."""
+    from video_cut import __version__
+    from video_cut.window import MainWindow
+
+    with patch("video_cut.window.Adw.AboutWindow") as mock_about_cls, \
+         patch("video_cut.window.get_packaging_type_display_name", return_value="Flatpak"):
+        mock_self = MagicMock()
+        MainWindow._show_about_dialog(mock_self)
+        mock_about_cls.assert_called_once()
+        kwargs = mock_about_cls.call_args[1]
+        assert kwargs["version"] == f"{__version__} (Flatpak)"
+        assert "Distribution: Flatpak" in kwargs["debug_info"]
+
+
+
 
 

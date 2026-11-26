@@ -421,5 +421,59 @@ def test_fix_and_remove_file_association_flatpak(tmp_path: Path):
         assert "Flatpak" in msg_rem
 
 
+def test_packaging_type_detection(tmp_path: Path):
+    """Test packaging distribution type detection for flatpak, snap, appimage, deb, and source."""
+    from video_cut import utils
+    from video_cut.i18n import set_language
+
+    set_language("en_US")
+
+    # 1. Flatpak
+    with patch("video_cut.utils.is_flatpak", return_value=True):
+        assert utils.get_packaging_type() == "flatpak"
+        assert utils.get_packaging_type_display_name() == "Flatpak"
+
+    # 2. Snap
+    with patch("video_cut.utils.is_flatpak", return_value=False), \
+         patch.dict("os.environ", {"SNAP": "/snap/video-cut/current"}):
+        assert utils.is_snap() is True
+        assert utils.get_packaging_type() == "snap"
+        assert utils.get_packaging_type_display_name() == "Snap"
+
+    # 3. AppImage
+    with patch("video_cut.utils.is_flatpak", return_value=False), \
+         patch.dict("os.environ", {"APPIMAGE": "/path/to/VideoCut.AppImage"}, clear=True):
+        assert utils.is_appimage() is True
+        assert utils.get_packaging_type() == "appimage"
+        assert utils.get_packaging_type_display_name() == "AppImage"
+
+    # 4. Debian package (explicit verification, not an else-fallback)
+    with patch("video_cut.utils.is_flatpak", return_value=False), \
+         patch.dict("os.environ", {}, clear=True), \
+         patch.object(Path, "is_dir", return_value=True), \
+         patch.object(Path, "is_file", return_value=True):
+        assert utils.is_deb_package() is True
+        assert utils.get_packaging_type() == "deb"
+        assert utils.get_packaging_type_display_name() == "Debian package"
+
+    # 5. Non-deb system installation does NOT fall back to deb
+    with patch("video_cut.utils.is_flatpak", return_value=False), \
+         patch.dict("os.environ", {}, clear=True), \
+         patch("video_cut.utils.is_deb_package", return_value=False), \
+         patch("video_cut.utils.is_source_distribution", return_value=False):
+        assert utils.get_packaging_type() == "unknown"
+        assert utils.get_packaging_type_display_name() == ""
+
+    # 6. Source / git development checkout
+    with patch("video_cut.utils.is_flatpak", return_value=False), \
+         patch.dict("os.environ", {}, clear=True), \
+         patch("video_cut.utils.is_deb_package", return_value=False), \
+         patch("video_cut.utils.is_source_distribution", return_value=True):
+        assert utils.is_source_distribution() is True
+        assert utils.get_packaging_type() == "source"
+        assert utils.get_packaging_type_display_name() == "Source distribution"
+
+
+
 
 

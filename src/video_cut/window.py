@@ -1,5 +1,6 @@
 import bisect
 import subprocess
+import sys
 import threading
 from collections.abc import Callable
 from dataclasses import replace
@@ -34,7 +35,7 @@ from .services.probe_service import ProbeService, VideoMetadata
 from .services.project_service import ProjectService
 from .services.thumbnail_service import ThumbnailService
 from .timeline_widget import TimelineWidget
-from .utils import clamp, format_time
+from .utils import clamp, format_time, get_packaging_type_display_name
 
 
 class MainWindow(Adw.ApplicationWindow):
@@ -2211,13 +2212,22 @@ class MainWindow(Adw.ApplicationWindow):
             self.btn_fullscreen.set_tooltip_text(_("Toggle Fullscreen (F11)"))
 
     def _show_about_dialog(self) -> None:
+        pkg_display = get_packaging_type_display_name()
+        version_str = f"{__version__} ({pkg_display})" if pkg_display else __version__
+        debug_info = (
+            f"Video Cut: {__version__}\n"
+            f"Distribution: {pkg_display or 'Generic'}\n"
+            f"Python: {sys.version.split()[0]}"
+        )
+
         about = Adw.AboutWindow(
             transient_for=self,
             modal=True,
             application_name=_("Video Cut"),
             application_icon="io.github.thor27.video-cut",
             developer_name="Thomaz Reis",
-            version=__version__,
+            version=version_str,
+            debug_info=debug_info,
             comments=_(
                 "An easy-to-use video editor to cut and merge videos, add images, crop, and rotate"
             ),

@@ -147,6 +147,99 @@ def is_flatpak() -> bool:
     return bool(os.environ.get("FLATPAK_ID") or Path("/.flatpak-info").exists())
 
 
+def is_snap() -> bool:
+    """Return True if running inside a Snap environment."""
+    return bool(os.environ.get("SNAP"))
+
+
+def is_appimage() -> bool:
+    """Return True if running inside an AppImage environment."""
+    return bool(os.environ.get("APPIMAGE") or os.environ.get("APPDIR"))
+
+
+def is_deb_package() -> bool:
+    """Return True if installed via Debian/Ubuntu package (.deb)."""
+    if is_flatpak() or is_snap() or is_appimage():
+        return False
+
+    dpkg_info = Path("/var/lib/dpkg/info")
+    if dpkg_info.is_dir():
+        for cand in (
+            "video-cut.list",
+            "video-cut:all.list",
+            "video-cut:amd64.list",
+            "video-cut:arm64.list",
+        ):
+            if (dpkg_info / cand).is_file():
+                return True
+
+    if shutil.which("dpkg-query"):
+        try:
+            res = subprocess.run(
+                ["dpkg-query", "-W", "-f=${Status}", "video-cut"],
+                capture_output=True,
+                text=True,
+                timeout=1.0,
+                creationflags=SUBPROCESS_FLAGS,
+            )
+            if "install ok installed" in res.stdout:
+                return True
+        except Exception:
+            pass
+
+    return False
+
+
+def is_source_distribution() -> bool:
+    """Return True if running from a source checkout, git repo, or python virtual environment."""
+    if is_flatpak() or is_snap() or is_appimage() or is_deb_package():
+        return False
+
+    try:
+        project_root = Path(__file__).resolve().parents[2]
+        if (project_root / ".git").is_dir() or (project_root / "pyproject.toml").is_file():
+            return True
+    except Exception:
+        pass
+
+    if sys.prefix != getattr(sys, "base_prefix", sys.prefix):
+        return True
+
+    return False
+
+
+def get_packaging_type() -> str:
+    """Detect and return the active packaging distribution type:
+    'flatpak', 'snap', 'appimage', 'deb', 'source', or 'unknown'.
+    """
+    if is_flatpak():
+        return "flatpak"
+    if is_snap():
+        return "snap"
+    if is_appimage():
+        return "appimage"
+    if is_deb_package():
+        return "deb"
+    if is_source_distribution():
+        return "source"
+    return "unknown"
+
+
+def get_packaging_type_display_name() -> str:
+    """Return human-readable, localized packaging type name, or empty string if unknown."""
+    from .i18n import _
+
+    pkg_type = get_packaging_type()
+    names = {
+        "flatpak": _("Flatpak"),
+        "snap": _("Snap"),
+        "appimage": _("AppImage"),
+        "deb": _("Debian package"),
+        "source": _("Source distribution"),
+    }
+    return names.get(pkg_type, "")
+
+
 def get_container_ffmpeg_path() -> str | None:
     """Return path to container/bundled ffmpeg if available."""
     if is_flatpak():

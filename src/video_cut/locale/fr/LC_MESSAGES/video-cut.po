@@ -2321,3 +2321,37 @@ msgstr ""
 
 #~ msgid "Alignment & Distribution"
 #~ msgstr "Alignement et distribution"
+
+msgid "Flatpak Runtime (Bundled)"
+msgstr "Flatpak Runtime (Intégré)"
+
+msgid "Sandboxed within Flatpak multimedia runtime"
+msgstr "Isolé dans l'environnement multimédia Flatpak"
+
+msgid "Flatpak Runtime"
+msgstr "Flatpak Runtime"
+
+msgid ".vcut projects are registered via Flatpak desktop integration."
+msgstr "Les projets .vcut sont enregistrés via l'intégration de bureau Flatpak."
+
+msgid "File association is managed automatically by Flatpak."
+msgstr "L'association de fichiers est gérée automatiquement par Flatpak."
+
+msgid "Desktop integration is managed by Flatpak."
+msgstr "L'intégration au bureau est gérée par Flatpak."
+
+msgid "Flatpak"
+msgstr "Flatpak"
+
+msgid "Snap"
+msgstr "Snap"
+
+msgid "AppImage"
+msgstr "AppImage"
+
+msgid "Debian package"
+msgstr "Paquet Debian"
+
+msgid "Source distribution"
+msgstr "Distribution source"
+
