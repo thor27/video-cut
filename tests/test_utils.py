@@ -127,3 +127,40 @@ def test_get_ffmpeg_and_ffprobe_path_frozen_bundle(monkeypatch, tmp_path: Path):
     assert get_ffmpeg_path() == str(b_ffmpeg)
     assert get_ffprobe_path() == str(b_ffprobe)
 
+
+def test_get_ffmpeg_and_ffprobe_path_windows(monkeypatch, tmp_path: Path):
+    import sys
+
+    win_ffmpeg = tmp_path / "ffmpeg.exe"
+    win_ffmpeg.write_text("#!/bin/sh\n")
+    win_ffmpeg.chmod(0o755)
+
+    win_ffprobe = tmp_path / "ffprobe.exe"
+    win_ffprobe.write_text("#!/bin/sh\n")
+    win_ffprobe.chmod(0o755)
+
+    monkeypatch.setattr(sys, "platform", "win32")
+    monkeypatch.delenv("SNAP", raising=False)
+    monkeypatch.delenv("APPDIR", raising=False)
+
+    monkeypatch.setattr("video_cut.utils.WINDOWS_FFMPEG_PATHS", [win_ffmpeg])
+    monkeypatch.setattr("video_cut.utils.WINDOWS_FFPROBE_PATHS", [win_ffprobe])
+    assert get_system_ffmpeg_path() == str(win_ffmpeg)
+    assert get_system_ffprobe_path() == str(win_ffprobe)
+
+    # Test frozen bundle on Windows (exe in root of _MEIPASS)
+    bundle_dir = tmp_path / "win_bundle"
+    bundle_dir.mkdir(parents=True)
+    b_ffmpeg = bundle_dir / "ffmpeg.exe"
+    b_ffmpeg.write_text("#!/bin/sh\n")
+    b_ffmpeg.chmod(0o755)
+    b_ffprobe = bundle_dir / "ffprobe.exe"
+    b_ffprobe.write_text("#!/bin/sh\n")
+    b_ffprobe.chmod(0o755)
+
+    monkeypatch.setattr(sys, "frozen", True, raising=False)
+    monkeypatch.setattr(sys, "_MEIPASS", str(bundle_dir), raising=False)
+    assert get_container_ffmpeg_path() == str(b_ffmpeg)
+    assert get_container_ffprobe_path() == str(b_ffprobe)
+
+

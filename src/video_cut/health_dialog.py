@@ -93,7 +93,14 @@ class HealthCheckDialog(Adw.Window):
             subtitle=_("Choose between automatic smart resolution, container bundled, or system FFmpeg"),
         )
         is_macos = sys.platform == "darwin"
-        bundled_label = _("App Bundle (Bundled)") if is_macos else _("Container (Bundled)")
+        is_windows = sys.platform == "win32"
+        if is_windows:
+            bundled_label = _("Bundled (Embedded)")
+        elif is_macos:
+            bundled_label = _("App Bundle (Bundled)")
+        else:
+            bundled_label = _("Container (Bundled)")
+
         source_model = Gtk.StringList.new([
             _("Auto (Recommended)"),
             bundled_label,
@@ -119,7 +126,12 @@ class HealthCheckDialog(Adw.Window):
         self._entry_manual_path.set_text(HealthService.get_custom_ffmpeg_path())
         self._entry_manual_path.set_width_chars(30)
         self._entry_manual_path.set_hexpand(True)
-        placeholder = "/opt/homebrew/bin/ffmpeg" if is_macos else "/usr/local/bin/ffmpeg"
+        if is_windows:
+            placeholder = r"C:\ffmpeg\bin\ffmpeg.exe"
+        elif is_macos:
+            placeholder = "/opt/homebrew/bin/ffmpeg"
+        else:
+            placeholder = "/usr/local/bin/ffmpeg"
         self._entry_manual_path.set_placeholder_text(placeholder)
         self._entry_manual_path.connect("activate", self._on_manual_path_submitted)
         box_manual.append(self._entry_manual_path)
@@ -520,7 +532,12 @@ class HealthCheckDialog(Adw.Window):
             binary_path = info.get("ffmpeg_path", "")
             if cfg_src == "auto":
                 if eff_src == "container":
-                    eff_label = _("App Bundle") if sys.platform == "darwin" else _("Container")
+                    if sys.platform == "win32":
+                        eff_label = _("Bundled")
+                    elif sys.platform == "darwin":
+                        eff_label = _("App Bundle")
+                    else:
+                        eff_label = _("Container")
                 elif eff_src == "system":
                     eff_label = _("System")
                 else:

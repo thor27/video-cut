@@ -42,6 +42,7 @@ jobs:
           ./scripts/build_flatpak.sh --validate-only
           ./scripts/build_appimage.sh
           ./scripts/build_macos.sh --validate-only
+          ./scripts/build_windows.sh --validate-only
 
       - name: Run Tests
         run: xvfb-run -a .venv/bin/python -m pytest -q
