@@ -352,4 +352,74 @@ def test_check_ffmpeg_outdated_warning():
         assert item.can_fix is True
 
 
+def test_is_flatpak_detection():
+    """Test is_flatpak helper with environment variable and filesystem marker."""
+    from video_cut.utils import is_flatpak
+
+    with patch.dict("os.environ", {"FLATPAK_ID": "io.github.thor27.video-cut"}):
+        assert is_flatpak() is True
+
+    with patch.dict("os.environ", {}, clear=True), \
+         patch("pathlib.Path.exists", return_value=True):
+        assert is_flatpak() is True
+
+    with patch.dict("os.environ", {}, clear=True), \
+         patch("pathlib.Path.exists", return_value=False):
+        assert is_flatpak() is False
+
+
+def test_resolve_ffmpeg_binaries_flatpak():
+    """Test FFmpeg resolution inside Flatpak sandbox uses runtime and reports isolation."""
+    from video_cut.utils import resolve_ffmpeg_binaries
+
+    with patch("video_cut.utils.is_flatpak", return_value=True), \
+         patch("video_cut.utils.get_container_ffmpeg_path", return_value="/usr/bin/ffmpeg"), \
+         patch("video_cut.utils.get_container_ffprobe_path", return_value="/usr/bin/ffprobe"):
+        # Auto mode selects Flatpak runtime
+        ff, probe, eff_src, note = resolve_ffmpeg_binaries(source="auto")
+        assert ff == "/usr/bin/ffmpeg"
+        assert probe == "/usr/bin/ffprobe"
+        assert eff_src == "container"
+        assert "Flatpak runtime" in (note or "")
+
+        # System mode falls back with informative isolation note
+        ff2, probe2, eff_src2, note2 = resolve_ffmpeg_binaries(source="system")
+        assert ff2 == "/usr/bin/ffmpeg"
+        assert eff_src2 == "container"
+        assert "Flatpak sandbox" in (note2 or "")
+
+
+def test_check_file_association_flatpak(tmp_path: Path):
+    """Test check_file_association inside Flatpak returns ok and cleans up broken desktop entry."""
+    broken_apps = tmp_path / ".local" / "share" / "applications"
+    broken_apps.mkdir(parents=True, exist_ok=True)
+    broken_desktop = broken_apps / "io.github.thor27.video-cut.desktop"
+    broken_desktop.write_text("[Desktop Entry]\nExec=video-cut %U\n", encoding="utf-8")
+
+    with patch("video_cut.services.health_service.is_flatpak", return_value=True), \
+         patch("pathlib.Path.home", return_value=tmp_path):
+        item = HealthService.check_file_association()
+        assert item.status == "ok"
+        assert item.can_fix is False
+        assert "Flatpak" in item.summary
+        # Broken desktop entry with raw Exec=video-cut must be removed to avoid shadowing
+        assert not broken_desktop.exists()
+
+
+def test_fix_and_remove_file_association_flatpak(tmp_path: Path):
+    """Test fix_file_association and remove_file_association inside Flatpak."""
+    with patch("video_cut.services.health_service.is_flatpak", return_value=True), \
+         patch("pathlib.Path.home", return_value=tmp_path):
+        ok_fix, msg_fix = HealthService.fix_file_association()
+        assert ok_fix is True
+        assert "Flatpak" in msg_fix
+        # No files written to fake user home
+        assert not (tmp_path / ".local" / "share" / "applications" / "io.github.thor27.video-cut.desktop").exists()
+
+        ok_rem, msg_rem = HealthService.remove_file_association()
+        assert ok_rem is False
+        assert "Flatpak" in msg_rem
+
+
+
 

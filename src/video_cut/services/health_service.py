@@ -30,6 +30,7 @@ from ..utils import (
     get_ffprobe_path,
     get_healthcheck_config_dir,
     invalidate_ffmpeg_cache,
+    is_flatpak,
     parse_ffmpeg_version,
     set_healthcheck_config_keys,
 )
@@ -382,6 +383,37 @@ class HealthService:
         is_associated = False
         current_handler = ""
 
+        if is_flatpak():
+            # If a broken shadowing desktop file was previously created on host, clean it up
+            broken_desktop = Path.home() / ".local" / "share" / "applications" / "io.github.thor27.video-cut.desktop"
+            if broken_desktop.exists():
+                try:
+                    content = broken_desktop.read_text(encoding="utf-8")
+                    if "Exec=video-cut" in content and "flatpak run" not in content:
+                        broken_desktop.unlink(missing_ok=True)
+                        if shutil.which("update-desktop-database"):
+                            subprocess.run(
+                                ["update-desktop-database", str(broken_desktop.parent)],
+                                capture_output=True,
+                                timeout=3.0,
+                            )
+                except Exception:
+                    pass
+
+            return HealthCheckItem(
+                id="file_association",
+                title=_(".vcut Project Association"),
+                status="ok",
+                summary=_(".vcut projects are registered via Flatpak desktop integration."),
+                details=(
+                    f"MIME Type: {mime_type}\n"
+                    f"Application ID: {APP_ID}\n"
+                    "Status: Managed by Flatpak system export\n"
+                    "Desktop entry and MIME types are exported to the host environment."
+                ),
+                can_fix=False,
+            )
+
         # 1. Check if the MIME database recognizes *.vcut files
         content_type, _uncertain = Gio.content_type_guess("project.vcut", None)
         if hasattr(Gio.content_type_guess, "assert_called"):
@@ -474,6 +506,9 @@ class HealthService:
     @classmethod
     def fix_file_association(cls) -> tuple[bool, str]:
         """Automated repair of .vcut file association in user-space."""
+        if is_flatpak():
+            return (True, _("File association is managed automatically by Flatpak."))
+
         import sys
 
         mime_xml_source = RESOURCES_DIR / "io.github.thor27.video-cut.xml"
@@ -560,6 +595,9 @@ class HealthService:
     @classmethod
     def remove_file_association(cls) -> tuple[bool, str]:
         """Remove .vcut file association and desktop file from user-space."""
+        if is_flatpak():
+            return (False, _("Desktop integration is managed by Flatpak."))
+
         try:
             # 1. Remove user MIME package
             user_mime_file = Path.home() / ".local" / "share" / "mime" / "packages" / "io.github.thor27.video-cut.xml"

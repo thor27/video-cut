@@ -392,4 +392,52 @@ def test_health_dialog_ffmpeg_manual_entry():
     dialog.destroy()
 
 
+def test_health_dialog_flatpak_source_options():
+    """Test HealthCheckDialog displays simplified runtime options inside Flatpak."""
+    with patch("video_cut.health_dialog.is_flatpak", return_value=True):
+        dialog = HealthCheckDialog()
+        assert dialog.row_ffmpeg_source is not None
+        model = dialog.row_ffmpeg_source.get_model()
+        assert model.get_n_items() == 2
+        assert model.get_string(0) == _("Flatpak Runtime (Bundled)")
+        assert model.get_string(1) == _("Manual (Custom Path)")
+
+        # Verify selection maps to container and manual
+        with patch("video_cut.services.health_service.HealthService.set_ffmpeg_source") as mock_set, \
+             patch.object(dialog, "refresh_checks"):
+            dialog.row_ffmpeg_source.set_selected(1)
+            mock_set.assert_called_with("manual")
+
+            dialog.row_ffmpeg_source.set_selected(0)
+            mock_set.assert_called_with("container")
+
+        dialog.destroy()
+
+
+def test_health_dialog_flatpak_no_remove_association_button():
+    """Test HealthCheckDialog does not show Remove Association button inside Flatpak."""
+    with patch("video_cut.health_dialog.is_flatpak", return_value=True):
+        dialog = HealthCheckDialog()
+        item = HealthCheckItem(
+            id="file_association",
+            title="Association",
+            status="ok",
+            summary="Registered via Flatpak",
+            details="Default",
+        )
+        dialog._apply_results([item])
+
+        child = dialog._suffix_association.get_first_child()
+        btn_remove = None
+        while child is not None:
+            if isinstance(child, Gtk.Button) and not isinstance(child, Gtk.MenuButton):
+                btn_remove = child
+                break
+            child = child.get_next_sibling()
+
+        assert btn_remove is None
+        dialog.destroy()
+
+
+
 

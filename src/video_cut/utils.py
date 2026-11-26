@@ -142,8 +142,18 @@ def probe_binary_encoders(binary_path: str) -> set[str]:
         return set()
 
 
+def is_flatpak() -> bool:
+    """Return True if running inside a Flatpak sandbox."""
+    return bool(os.environ.get("FLATPAK_ID") or Path("/.flatpak-info").exists())
+
+
 def get_container_ffmpeg_path() -> str | None:
     """Return path to container/bundled ffmpeg if available."""
+    if is_flatpak():
+        for cand in ("/app/bin/ffmpeg", "/usr/bin/ffmpeg"):
+            p = Path(cand)
+            if p.is_file() and os.access(p, os.X_OK):
+                return str(p)
     if "SNAP" in os.environ:
         snap_bin = Path(os.environ["SNAP"]) / "usr" / "bin" / "ffmpeg"
         if snap_bin.is_file() and os.access(snap_bin, os.X_OK):
@@ -157,6 +167,11 @@ def get_container_ffmpeg_path() -> str | None:
 
 def get_container_ffprobe_path() -> str | None:
     """Return path to container/bundled ffprobe if available."""
+    if is_flatpak():
+        for cand in ("/app/bin/ffprobe", "/usr/bin/ffprobe"):
+            p = Path(cand)
+            if p.is_file() and os.access(p, os.X_OK):
+                return str(p)
     if "SNAP" in os.environ:
         snap_bin = Path(os.environ["SNAP"]) / "usr" / "bin" / "ffprobe"
         if snap_bin.is_file() and os.access(snap_bin, os.X_OK):
@@ -169,7 +184,12 @@ def get_container_ffprobe_path() -> str | None:
 
 
 def get_system_ffmpeg_path() -> str | None:
-    """Find system FFmpeg binary on host, ignoring AppImage/Snap directories."""
+    """Find system FFmpeg binary on host, ignoring container/runtime directories."""
+    if is_flatpak():
+        # Inside Flatpak sandbox, host binaries cannot be cleanly executed due to
+        # runtime glibc and shared library isolation.
+        return None
+
     skip_prefixes: list[str] = []
     if "APPDIR" in os.environ:
         skip_prefixes.append(os.environ["APPDIR"])
@@ -200,7 +220,10 @@ def get_system_ffmpeg_path() -> str | None:
 
 
 def get_system_ffprobe_path() -> str | None:
-    """Find system FFprobe binary on host, ignoring AppImage/Snap directories."""
+    """Find system FFprobe binary on host, ignoring container/runtime directories."""
+    if is_flatpak():
+        return None
+
     skip_prefixes: list[str] = []
     if "APPDIR" in os.environ:
         skip_prefixes.append(os.environ["APPDIR"])
@@ -241,7 +264,15 @@ def resolve_ffmpeg_binaries(
 
     src = source if source is not None else get_ffmpeg_source_setting()
     custom = custom_path if custom_path is not None else get_custom_ffmpeg_path_setting()
-    cache_key = (source, custom_path, src, custom, os.environ.get("SNAP"), os.environ.get("APPDIR"))
+    cache_key = (
+        source,
+        custom_path,
+        src,
+        custom,
+        os.environ.get("SNAP"),
+        os.environ.get("APPDIR"),
+        os.environ.get("FLATPAK_ID"),
+    )
 
     if source is None and custom_path is None and _RESOLVED_CACHE is not None and _CACHE_KEY == cache_key:
         return _RESOLVED_CACHE
@@ -277,7 +308,7 @@ def resolve_ffmpeg_binaries(
             resolved_ffmpeg = c_ffmpeg
             resolved_ffprobe = c_ffprobe or s_ffprobe or "ffprobe"
             effective_source = "container"
-            note = "Container bundled FFmpeg"
+            note = "Flatpak runtime FFmpeg" if is_flatpak() else "Container bundled FFmpeg"
         else:
             resolved_ffmpeg = s_ffmpeg or "ffmpeg"
             resolved_ffprobe = s_ffprobe or "ffprobe"
@@ -294,7 +325,10 @@ def resolve_ffmpeg_binaries(
             resolved_ffmpeg = c_ffmpeg or "ffmpeg"
             resolved_ffprobe = c_ffprobe or "ffprobe"
             effective_source = "container" if c_ffmpeg else "system"
-            note = "System FFmpeg requested, but none found; using container fallback" if c_ffmpeg else "System FFmpeg not found"
+            if is_flatpak() and c_ffmpeg:
+                note = "Host system FFmpeg is not accessible inside Flatpak sandbox; using Flatpak runtime"
+            else:
+                note = "System FFmpeg requested, but none found; using container fallback" if c_ffmpeg else "System FFmpeg not found"
 
     else:  # auto
         if c_ffmpeg and s_ffmpeg:
@@ -339,7 +373,11 @@ def resolve_ffmpeg_binaries(
             resolved_ffmpeg = c_ffmpeg
             resolved_ffprobe = c_ffprobe or s_ffprobe or "ffprobe"
             effective_source = "container"
-            note = "Auto: Using Container FFmpeg (no system FFmpeg found)"
+            note = (
+                "Auto: Selected Flatpak runtime FFmpeg"
+                if is_flatpak()
+                else "Auto: Using Container FFmpeg (no system FFmpeg found)"
+            )
         elif s_ffmpeg:
             resolved_ffmpeg = s_ffmpeg
             resolved_ffprobe = s_ffprobe or c_ffprobe or "ffprobe"
