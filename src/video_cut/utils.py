@@ -157,21 +157,34 @@ def is_appimage() -> bool:
     return bool(os.environ.get("APPIMAGE") or os.environ.get("APPDIR"))
 
 
-def is_deb_package() -> bool:
-    """Return True if installed via Debian/Ubuntu package (.deb)."""
+def is_source_distribution() -> bool:
+    """Return True if running from a source checkout, git repo, or python virtual environment."""
     if is_flatpak() or is_snap() or is_appimage():
         return False
 
-    dpkg_info = Path("/var/lib/dpkg/info")
-    if dpkg_info.is_dir():
-        for cand in (
-            "video-cut.list",
-            "video-cut:all.list",
-            "video-cut:amd64.list",
-            "video-cut:arm64.list",
-        ):
-            if (dpkg_info / cand).is_file():
+    try:
+        this_dir = Path(__file__).resolve().parent
+        for parent in [this_dir, *this_dir.parents]:
+            if (parent / ".git").is_dir() or (parent / "pyproject.toml").is_file():
                 return True
+    except Exception:
+        pass
+
+    if sys.prefix != getattr(sys, "base_prefix", sys.prefix):
+        return True
+
+    return False
+
+
+def is_deb_package() -> bool:
+    """Return True if this running instance is installed via Debian/Ubuntu package (.deb)."""
+    if is_flatpak() or is_snap() or is_appimage() or is_source_distribution():
+        return False
+
+    this_file = Path(__file__).resolve()
+    # A Debian package installed instance is in system paths (e.g. /usr/lib/python3/dist-packages or /usr/share)
+    if not (str(this_file).startswith("/usr/") or str(this_file).startswith("/var/")):
+        return False
 
     if shutil.which("dpkg-query"):
         try:
@@ -182,35 +195,47 @@ def is_deb_package() -> bool:
                 timeout=1.0,
                 creationflags=SUBPROCESS_FLAGS,
             )
-            if "install ok installed" in res.stdout:
+            if "install ok installed" not in res.stdout:
+                return False
+        except Exception:
+            return False
+
+        try:
+            res_owner = subprocess.run(
+                ["dpkg-query", "-S", str(this_file)],
+                capture_output=True,
+                text=True,
+                timeout=1.0,
+                creationflags=SUBPROCESS_FLAGS,
+            )
+            if res_owner.returncode == 0 and "video-cut" in res_owner.stdout:
                 return True
         except Exception:
             pass
 
-    return False
-
-
-def is_source_distribution() -> bool:
-    """Return True if running from a source checkout, git repo, or python virtual environment."""
-    if is_flatpak() or is_snap() or is_appimage() or is_deb_package():
-        return False
-
-    try:
-        project_root = Path(__file__).resolve().parents[2]
-        if (project_root / ".git").is_dir() or (project_root / "pyproject.toml").is_file():
-            return True
-    except Exception:
-        pass
-
-    if sys.prefix != getattr(sys, "base_prefix", sys.prefix):
-        return True
+    dpkg_info = Path("/var/lib/dpkg/info")
+    if dpkg_info.is_dir():
+        for cand in (
+            "video-cut.list",
+            "video-cut:all.list",
+            "video-cut:amd64.list",
+            "video-cut:arm64.list",
+        ):
+            list_file = dpkg_info / cand
+            if list_file.is_file() and list_file.stat().st_size > 0:
+                try:
+                    content = list_file.read_text(encoding="utf-8")
+                    if str(this_file) in content or "video_cut" in content:
+                        return True
+                except Exception:
+                    pass
 
     return False
 
 
 def get_packaging_type() -> str:
     """Detect and return the active packaging distribution type:
-    'flatpak', 'snap', 'appimage', 'deb', 'source', or 'unknown'.
+    'flatpak', 'snap', 'appimage', 'source', 'deb', or 'unknown'.
     """
     if is_flatpak():
         return "flatpak"
@@ -218,10 +243,10 @@ def get_packaging_type() -> str:
         return "snap"
     if is_appimage():
         return "appimage"
-    if is_deb_package():
-        return "deb"
     if is_source_distribution():
         return "source"
+    if is_deb_package():
+        return "deb"
     return "unknown"
 
 

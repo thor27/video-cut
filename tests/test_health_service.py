@@ -475,8 +475,18 @@ def test_packaging_type_detection(tmp_path: Path):
     # 4. Debian package (explicit verification, not an else-fallback)
     with patch("video_cut.utils.is_flatpak", return_value=False), \
          patch.dict("os.environ", {}, clear=True), \
-         patch.object(Path, "is_dir", return_value=True), \
-         patch.object(Path, "is_file", return_value=True):
+         patch("video_cut.utils.is_source_distribution", return_value=False), \
+         patch.object(Path, "resolve", return_value=Path("/usr/lib/python3/dist-packages/video_cut/utils.py")), \
+         patch("shutil.which", return_value="/usr/bin/dpkg-query"), \
+         patch("subprocess.run") as mock_run:
+        def fake_dpkg(cmd, **kwargs):
+            if "-W" in cmd:
+                return MagicMock(returncode=0, stdout="install ok installed")
+            if "-S" in cmd:
+                return MagicMock(returncode=0, stdout="video-cut: /usr/lib/python3/dist-packages/video_cut/utils.py")
+            return MagicMock(returncode=1, stdout="")
+
+        mock_run.side_effect = fake_dpkg
         assert utils.is_deb_package() is True
         assert utils.get_packaging_type() == "deb"
         assert utils.get_packaging_type_display_name() == "Debian package"
@@ -484,17 +494,17 @@ def test_packaging_type_detection(tmp_path: Path):
     # 5. Non-deb system installation does NOT fall back to deb
     with patch("video_cut.utils.is_flatpak", return_value=False), \
          patch.dict("os.environ", {}, clear=True), \
-         patch("video_cut.utils.is_deb_package", return_value=False), \
-         patch("video_cut.utils.is_source_distribution", return_value=False):
+         patch("video_cut.utils.is_source_distribution", return_value=False), \
+         patch("video_cut.utils.is_deb_package", return_value=False):
         assert utils.get_packaging_type() == "unknown"
         assert utils.get_packaging_type_display_name() == ""
 
-    # 6. Source / git development checkout
+    # 6. Source / git development checkout (takes precedence even if deb installed on OS)
     with patch("video_cut.utils.is_flatpak", return_value=False), \
          patch.dict("os.environ", {}, clear=True), \
-         patch("video_cut.utils.is_deb_package", return_value=False), \
          patch("video_cut.utils.is_source_distribution", return_value=True):
         assert utils.is_source_distribution() is True
+        assert utils.is_deb_package() is False
         assert utils.get_packaging_type() == "source"
         assert utils.get_packaging_type_display_name() == "Source distribution"
 
