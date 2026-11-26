@@ -14,6 +14,16 @@ from video_cut.segment_card import SegmentCard
 from video_cut.timeline_widget import TimelineWidget
 
 
+def _cursor_name(widget: Gtk.Widget) -> str | None:
+    cursor = widget.get_cursor()
+    if cursor is None:
+        return None
+    if cursor.get_name() is not None:
+        return cursor.get_name()
+    fallback = cursor.get_fallback()
+    return fallback.get_name() if fallback is not None else None
+
+
 def test_segment_card_needle_and_margins():
     app = Adw.Application(application_id="io.github.thor27.video-cut.test.needle")
     err = []
@@ -96,9 +106,9 @@ def test_segment_card_needle_and_margins():
             assert scrubbed_times[-1][1] > 10.0
 
             # 7. Verify knob, needle, and overlay cursors are ew-resize for scrubbing and drag is unobstructed
-            assert card.needle_knob.get_cursor().get_name() == "ew-resize"
-            assert card.needle.get_cursor().get_name() == "ew-resize"
-            assert card.overlay.get_cursor().get_name() == "ew-resize"
+            assert _cursor_name(card.needle_knob) == "ew-resize"
+            assert _cursor_name(card.needle) == "ew-resize"
+            assert _cursor_name(card.overlay) == "ew-resize"
             assert card.needle_knob.observe_controllers().get_n_items() == 0
             assert "Drag to scrub" in card.needle_knob.get_tooltip_text()
 
@@ -232,9 +242,9 @@ def test_drag_preview_and_single_segment_delete_prevention():
             )
 
             # Verify filmstrip, overlay, and needle have permanent ew-resize cursors
-            assert card.filmstrip_box.get_cursor().get_name() == "ew-resize"
-            assert card.overlay.get_cursor().get_name() == "ew-resize"
-            assert card.needle.get_cursor().get_name() == "ew-resize"
+            assert _cursor_name(card.filmstrip_box) == "ew-resize"
+            assert _cursor_name(card.overlay) == "ew-resize"
+            assert _cursor_name(card.needle) == "ew-resize"
 
             # Verify context menu items reflect can_delete=False, then can_delete=True
             assert card.menu_delete.get_sensitive() is False
@@ -285,12 +295,12 @@ def test_drag_preview_and_single_segment_delete_prevention():
             tw.rebuild_filmstrip()
 
             tw._set_scrubbing_cursor(True)
-            assert tw.get_cursor().get_name() == "ew-resize"
-            assert tw.cards_box.get_cursor().get_name() == "ew-resize"
-            assert tw.scrolled_window.get_cursor().get_name() == "ew-resize"
+            assert _cursor_name(tw) == "ew-resize"
+            assert _cursor_name(tw.cards_box) == "ew-resize"
+            assert _cursor_name(tw.scrolled_window) == "ew-resize"
             for c in tw._cards.values():
-                assert c.get_cursor().get_name() == "ew-resize"
-                assert c.header.get_cursor().get_name() == "ew-resize"
+                assert _cursor_name(c) == "ew-resize"
+                assert _cursor_name(c.header) == "ew-resize"
 
             tw._set_scrubbing_cursor(False)
             assert tw.get_cursor() is None

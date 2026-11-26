@@ -1,6 +1,11 @@
 """Adw.Application definition for Video Cut."""
 
+import os
+import sys
 from pathlib import Path
+
+if sys.platform == "darwin":
+    os.environ.setdefault("PANGOCAIRO_BACKEND", "fontconfig")
 
 import gi
 
@@ -10,7 +15,13 @@ gi.require_version("Adw", "1")
 from gi.repository import Adw, Gdk, Gio, GLib
 
 from .i18n import _
-from .paths import APP_ID, APP_NAME, load_application_css, register_resource_icons
+from .paths import (
+    APP_ID,
+    APP_NAME,
+    configure_platform_fonts,
+    load_application_css,
+    register_resource_icons,
+)
 from .window import MainWindow
 
 
@@ -42,13 +53,14 @@ class VideoCutApplication(Adw.Application):
 
     def do_activate(self) -> None:
         display = Gdk.Display.get_default()
+        configure_platform_fonts(display)
         register_resource_icons(display)
         load_application_css(display)
 
-        self.set_accels_for_action("win.new_window", ["<Control>n"])
-        self.set_accels_for_action("win.open", ["<Control>o"])
-        self.set_accels_for_action("win.save_project", ["<Control>s"])
-        self.set_accels_for_action("win.save_project_as", ["<Control><Shift>s"])
+        self.set_accels_for_action("win.new_window", ["<Primary>n"])
+        self.set_accels_for_action("win.open", ["<Primary>o"])
+        self.set_accels_for_action("win.save_project", ["<Primary>s"])
+        self.set_accels_for_action("win.save_project_as", ["<Primary><Shift>s"])
         self.set_accels_for_action("win.fullscreen", ["F11"])
 
         if not self.window:

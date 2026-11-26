@@ -13,6 +13,7 @@ gi.require_version("GdkPixbuf", "2.0")
 import cairo
 from gi.repository import Gdk, GdkPixbuf, GLib, GObject, Gtk
 
+from .cursors import set_widget_cursor
 from .i18n import _
 from .models import Segment
 from .utils import clamp, format_time
@@ -125,7 +126,7 @@ class SegmentCard(Gtk.Box):
         self.header = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=4)
         self.header.add_css_class("segment-header")
         self.header.set_overflow(Gtk.Overflow.VISIBLE)
-        self.header.set_cursor_from_name("grab")
+        set_widget_cursor(self.header, "grab")
         self.header.set_tooltip_text(_("Drag header to reorder clip"))
         self.header.set_size_request(-1, 34)
 
@@ -167,7 +168,7 @@ class SegmentCard(Gtk.Box):
         self.btn_left = Gtk.Button.new_from_icon_name("go-previous-symbolic")
         self.btn_left.set_tooltip_text(_("Move clip left (Alt+Left)"))
         self.btn_left.set_focusable(False)
-        self.btn_left.set_cursor_from_name("default")
+        set_widget_cursor(self.btn_left, "default")
         self.btn_left.add_css_class("flat")
         self.btn_left.add_css_class("circular")
         self.btn_left.set_sensitive(self.can_move_left)
@@ -178,7 +179,7 @@ class SegmentCard(Gtk.Box):
         self.btn_right = Gtk.Button.new_from_icon_name("go-next-symbolic")
         self.btn_right.set_tooltip_text(_("Move clip right (Alt+Right)"))
         self.btn_right.set_focusable(False)
-        self.btn_right.set_cursor_from_name("default")
+        set_widget_cursor(self.btn_right, "default")
         self.btn_right.add_css_class("flat")
         self.btn_right.add_css_class("circular")
         self.btn_right.set_sensitive(self.can_move_right)
@@ -188,7 +189,7 @@ class SegmentCard(Gtk.Box):
         # Split Pill: standalone fallback button for unit tests and API compatibility
         self._standalone_split_pill = Gtk.Button()
         self._standalone_split_pill.add_css_class("playhead-split-btn")
-        self._standalone_split_pill.set_cursor_from_name("pointer")
+        set_widget_cursor(self._standalone_split_pill, "pointer")
         self._standalone_split_pill.set_tooltip_text(_("Split clip at cursor"))
         self._standalone_split_pill.set_focusable(False)
         self._standalone_split_pill.set_size_request(-1, 24)
@@ -491,12 +492,12 @@ class SegmentCard(Gtk.Box):
         self.filmstrip_box.set_margin_end(7)
         # 7px top margin aligns the equator (50%) of the 14px ball with the top of the image
         self.filmstrip_box.set_margin_top(7)
-        self.filmstrip_box.set_cursor_from_name("ew-resize")
+        set_widget_cursor(self.filmstrip_box, "ew-resize")
 
         self.overlay = Gtk.Overlay()
         self.overlay.set_overflow(Gtk.Overflow.VISIBLE)
         self.overlay.set_child(self.filmstrip_box)
-        self.overlay.set_cursor_from_name("ew-resize")
+        set_widget_cursor(self.overlay, "ew-resize")
 
         # The Playhead Needle: container with perfectly centralized knob and thin bar
         self.needle = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
@@ -504,7 +505,7 @@ class SegmentCard(Gtk.Box):
         self.needle.set_halign(Gtk.Align.START)
         self.needle.set_valign(Gtk.Align.FILL)
         self.needle.set_size_request(14, 68)
-        self.needle.set_cursor_from_name("ew-resize")
+        set_widget_cursor(self.needle, "ew-resize")
         self.needle.set_visible(False)
 
         # 1. Orange ball (14px diameter) with ew-resize cursor for scrubbing
@@ -512,7 +513,7 @@ class SegmentCard(Gtk.Box):
         self.needle_knob.add_css_class("playhead-needle-knob")
         self.needle_knob.set_halign(Gtk.Align.CENTER)
         self.needle_knob.set_size_request(14, 14)
-        self.needle_knob.set_cursor_from_name("ew-resize")
+        set_widget_cursor(self.needle_knob, "ew-resize")
         self.needle_knob.set_tooltip_text("Playhead cursor • Drag to scrub • Press S to split")
         self.needle.append(self.needle_knob)
 
@@ -527,7 +528,7 @@ class SegmentCard(Gtk.Box):
 
         self._popover_btn = Gtk.Button()
         self._popover_btn.add_css_class("playhead-split-btn")
-        self._popover_btn.set_cursor_from_name("pointer")
+        set_widget_cursor(self._popover_btn, "pointer")
         self._popover_btn.set_tooltip_text("Split clip at cursor")
         self._popover_btn.set_focusable(False)
         self._popover_btn.set_visible(False)
@@ -553,7 +554,7 @@ class SegmentCard(Gtk.Box):
         needle_bar.set_halign(Gtk.Align.CENTER)
         needle_bar.set_vexpand(True)
         needle_bar.set_size_request(2, -1)
-        needle_bar.set_cursor_from_name("ew-resize")
+        set_widget_cursor(needle_bar, "ew-resize")
         needle_bar.set_tooltip_text("Playhead cursor • Drag to scrub • Press S to split")
         self.needle.append(needle_bar)
 

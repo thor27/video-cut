@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import sys
 import threading
 from collections.abc import Callable
 
@@ -91,9 +92,11 @@ class HealthCheckDialog(Adw.Window):
             title=_("FFmpeg Source"),
             subtitle=_("Choose between automatic smart resolution, container bundled, or system FFmpeg"),
         )
+        is_macos = sys.platform == "darwin"
+        bundled_label = _("App Bundle (Bundled)") if is_macos else _("Container (Bundled)")
         source_model = Gtk.StringList.new([
             _("Auto (Recommended)"),
-            _("Container (Bundled)"),
+            bundled_label,
             _("System"),
             _("Manual (Custom Path)"),
         ])
@@ -116,7 +119,8 @@ class HealthCheckDialog(Adw.Window):
         self._entry_manual_path.set_text(HealthService.get_custom_ffmpeg_path())
         self._entry_manual_path.set_width_chars(30)
         self._entry_manual_path.set_hexpand(True)
-        self._entry_manual_path.set_placeholder_text("/usr/local/bin/ffmpeg")
+        placeholder = "/opt/homebrew/bin/ffmpeg" if is_macos else "/usr/local/bin/ffmpeg"
+        self._entry_manual_path.set_placeholder_text(placeholder)
         self._entry_manual_path.connect("activate", self._on_manual_path_submitted)
         box_manual.append(self._entry_manual_path)
 
@@ -515,7 +519,12 @@ class HealthCheckDialog(Adw.Window):
             cfg_src = info.get("configured_source", "auto")
             binary_path = info.get("ffmpeg_path", "")
             if cfg_src == "auto":
-                eff_label = _("Container") if eff_src == "container" else (_("System") if eff_src == "system" else _("Manual"))
+                if eff_src == "container":
+                    eff_label = _("App Bundle") if sys.platform == "darwin" else _("Container")
+                elif eff_src == "system":
+                    eff_label = _("System")
+                else:
+                    eff_label = _("Manual")
                 sub = f"{binary_path} ({_('Auto: {src}').format(src=eff_label)})"
             else:
                 sub = binary_path

@@ -19,7 +19,7 @@
 }
 
 .time-badge {
-    font-family: monospace;
+    font-family: ".SF NS Mono", "Menlo", monospace;
     font-size: 13px;
     font-weight: 700;
     background-color: alpha(currentColor, 0.1);
@@ -29,7 +29,7 @@
 
 entry.time-badge,
 .time-entry {
-    font-family: monospace;
+    font-family: ".SF NS Mono", "Menlo", monospace;
     font-size: 13px;
     font-weight: 700;
     min-width: 90px;

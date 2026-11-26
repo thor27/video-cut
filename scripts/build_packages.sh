@@ -32,17 +32,17 @@ Usage:
   ./scripts/build_packages.sh [options]
 
 Options:
-  --all         Build all distribution packages (DEB, AppImage, Snap, Flatpak, Source)
+  --all         Build all distribution packages (Linux: DEB, AppImage, Snap, Flatpak, Source / macOS: DMG, App, Source)
   --deb         Build only Debian (.deb) package
   --appimage    Build only AppImage (.AppImage) package
   --snap        Build only Snap (.snap) package
   --flatpak     Build/validate Flatpak package
+  --macos       Build macOS application bundle (.app) and disk image (.dmg)
   --source      Build source tarball and zip archives
   --clean       Clean build/ and dist/ directories
   -h, --help    Show this help message
 
-If no option is provided, DEB, AppImage, and Source archives will be built by default,
-and Snapcraft and Flatpak configurations will be validated.
+If no option is provided, default packages for the current operating system will be built.
 EOF
 }
 
@@ -50,24 +50,40 @@ DO_DEB=0
 DO_APPIMAGE=0
 DO_SNAP=0
 DO_FLATPAK=0
+DO_MACOS=0
 DO_SOURCE=0
 DO_CLEAN=0
 
+IS_DARWIN=0
+if [ "$(uname -s)" = "Darwin" ]; then
+    IS_DARWIN=1
+fi
+
 if [ $# -eq 0 ]; then
-    DO_DEB=1
-    DO_APPIMAGE=1
-    DO_SNAP=1
-    DO_FLATPAK=1
-    DO_SOURCE=1
+    if [ "$IS_DARWIN" -eq 1 ]; then
+        DO_MACOS=1
+        DO_SOURCE=1
+    else
+        DO_DEB=1
+        DO_APPIMAGE=1
+        DO_SNAP=1
+        DO_FLATPAK=1
+        DO_SOURCE=1
+    fi
 else
     while [ $# -gt 0 ]; do
         case "$1" in
             --all)
-                DO_DEB=1
-                DO_APPIMAGE=1
-                DO_SNAP=1
-                DO_FLATPAK=1
-                DO_SOURCE=1
+                if [ "$IS_DARWIN" -eq 1 ]; then
+                    DO_MACOS=1
+                    DO_SOURCE=1
+                else
+                    DO_DEB=1
+                    DO_APPIMAGE=1
+                    DO_SNAP=1
+                    DO_FLATPAK=1
+                    DO_SOURCE=1
+                fi
                 ;;
             --deb)
                 DO_DEB=1
@@ -80,6 +96,9 @@ else
                 ;;
             --flatpak)
                 DO_FLATPAK=1
+                ;;
+            --macos)
+                DO_MACOS=1
                 ;;
             --source)
                 DO_SOURCE=1
@@ -138,6 +157,12 @@ fi
 if [ "$DO_FLATPAK" -eq 1 ]; then
     echo ""
     "${SCRIPTS_DIR}/build_flatpak.sh"
+fi
+
+# 5. macOS Package (.app and .dmg)
+if [ "$DO_MACOS" -eq 1 ]; then
+    echo ""
+    "${SCRIPTS_DIR}/build_macos.sh"
 fi
 
 # 4. Source Archives

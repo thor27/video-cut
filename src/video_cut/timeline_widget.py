@@ -7,11 +7,11 @@ from pathlib import Path
 import gi
 
 gi.require_version("Gtk", "4.0")
-gi.require_version("Gdk", "4.0")
 gi.require_version("Adw", "1")
 gi.require_version("Graphene", "1.0")
-from gi.repository import Gdk, GLib, Graphene, Gtk
+from gi.repository import GLib, Graphene, Gtk
 
+from .cursors import apply_macos_cursor, get_cursor, set_widget_cursor
 from .i18n import _
 from .models import ProjectTimeline, Segment
 from .segment_card import SegmentCard
@@ -482,7 +482,7 @@ class TimelineWidget(Gtk.Box):
         # Floating Split Pill Button positioned above all cards in filmstrip_overlay
         self.split_pill = Gtk.Button()
         self.split_pill.add_css_class("playhead-split-btn")
-        self.split_pill.set_cursor_from_name("pointer")
+        set_widget_cursor(self.split_pill, "pointer")
         self.split_pill.set_tooltip_text(_("Split clip at cursor"))
         self.split_pill.set_focusable(False)
         self.split_pill.set_visible(False)
@@ -794,33 +794,32 @@ class TimelineWidget(Gtk.Box):
 
     def _set_scrubbing_cursor(self, active: bool) -> None:
         """Keep the two-arrows mouse cursor active across the entire window, timeline, and cards while dragging."""
+        ew_cursor = get_cursor("ew-resize") if active else None
         root = self.get_root()
         if root:
             native = root.get_native()
             if native:
                 surface = native.get_surface()
                 if surface:
-                    c = Gdk.Cursor.new_from_name("ew-resize", None) if active else None
-                    surface.set_cursor(c)
-            if active:
-                root.set_cursor_from_name("ew-resize")
-            else:
-                root.set_cursor(None)
+                    surface.set_cursor(ew_cursor)
+            root.set_cursor(ew_cursor)
 
         if active:
-            self.set_cursor_from_name("ew-resize")
-            self.scrolled_window.set_cursor_from_name("ew-resize")
-            self.cards_box.set_cursor_from_name("ew-resize")
+            self.set_cursor(ew_cursor)
+            self.scrolled_window.set_cursor(ew_cursor)
+            self.cards_box.set_cursor(ew_cursor)
             for card in self._cards.values():
-                card.set_cursor_from_name("ew-resize")
-                card.header.set_cursor_from_name("ew-resize")
+                card.set_cursor(ew_cursor)
+                card.header.set_cursor(ew_cursor)
+            apply_macos_cursor("ew-resize")
         else:
             self.set_cursor(None)
             self.scrolled_window.set_cursor(None)
             self.cards_box.set_cursor(None)
             for card in self._cards.values():
                 card.set_cursor(None)
-                card.header.set_cursor_from_name("grab")
+                set_widget_cursor(card.header, "grab")
+            apply_macos_cursor("default")
 
     def invalidate_keyframe_points_cache(self) -> None:
         self._cached_keyframe_points = None
@@ -950,7 +949,8 @@ class TimelineWidget(Gtk.Box):
                 if native:
                     surface = native.get_surface()
                     if surface and surface.get_cursor() is None:
-                        surface.set_cursor(Gdk.Cursor.new_from_name("ew-resize", None))
+                        surface.set_cursor(get_cursor("ew-resize"))
+            apply_macos_cursor("ew-resize")
         self._handle_scrub(source_card, cur_x, cur_y)
 
     def _on_scrub_end(self) -> None:

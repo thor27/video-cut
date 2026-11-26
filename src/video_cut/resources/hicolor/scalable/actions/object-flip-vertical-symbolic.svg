@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16">
+  <rect fill="currentColor" x="1.5" y="7.3" width="13" height="1.4" rx="0.7" opacity="0.6"/>
+  <path fill="currentColor" d="M3 6l9.5-4.5V6H3z"/>
+  <path fill="currentColor" fill-rule="evenodd" d="M3 10l9.5 4.5V10H3zm4 1.3h4.2v1.6L7 11.3z"/>
+</svg>

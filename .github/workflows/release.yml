@@ -82,3 +82,43 @@ jobs:
             dist/SHA256SUMS
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  release-macos:
+    name: Build & Publish macOS Release
+    runs-on: macos-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Install System Dependencies via Homebrew
+        run: |
+          brew update
+          brew install gtk4 libadwaita adwaita-icon-theme pygobject3 gstreamer ffmpeg
+
+      - name: Install Python Build Dependencies
+        run: |
+          BREW_PYTHON="$(brew --prefix)/bin/python3"
+          "${BREW_PYTHON}" -m venv --system-site-packages .venv-macos
+          source .venv-macos/bin/activate
+          pip install --upgrade pip setuptools wheel
+          pip install --no-build-isolation --no-deps -e .
+          pip install pyinstaller pillow
+
+      - name: Build macOS Application (.app & .dmg)
+        run: |
+          source .venv-macos/bin/activate
+          chmod +x scripts/build_macos.sh
+          RELEASE_VER="${GITHUB_REF_NAME#v}"
+          export VERSION="${RELEASE_VER}"
+          ./scripts/build_macos.sh --dmg
+
+      - name: Upload macOS Assets to GitHub Release
+        uses: softprops/action-gh-release@8a0cd651e5b2365bd640854a3fa5dfc70e4875f3 # v3.0.4
+        with:
+          draft: true
+          files: |
+            dist/*.dmg
+            dist/*.dmg.sha256
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
