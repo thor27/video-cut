@@ -290,16 +290,36 @@ def test_resolve_ffmpeg_binaries_container_fallback_to_system():
         assert eff_src == "system"
 
 
-def test_resolve_ffmpeg_binaries_auto_hwaccel():
-    """Test auto mode prefers system FFmpeg when it has hardware acceleration and essential codecs."""
+def test_resolve_ffmpeg_binaries_auto_container_has_hwaccel():
+    """Test auto mode prefers container FFmpeg when it has both essential codecs and hardware acceleration."""
     from video_cut.utils import resolve_ffmpeg_binaries
 
     with patch("video_cut.utils.get_container_ffmpeg_path", return_value="/appdir/usr/bin/ffmpeg"), \
          patch("video_cut.utils.get_container_ffprobe_path", return_value="/appdir/usr/bin/ffprobe"), \
          patch("video_cut.utils.get_system_ffmpeg_path", return_value="/usr/bin/ffmpeg"), \
          patch("video_cut.utils.get_system_ffprobe_path", return_value="/usr/bin/ffprobe"), \
-         patch("subprocess.run") as mock_run, \
          patch("video_cut.utils.probe_binary_encoders", return_value={"libx264", "aac", "h264_vaapi"}):
+        ff, probe, eff_src, note = resolve_ffmpeg_binaries(source="auto")
+        assert ff == "/appdir/usr/bin/ffmpeg"
+        assert eff_src == "container"
+        assert "essential codecs and hardware acceleration supported" in (note or "")
+
+
+def test_resolve_ffmpeg_binaries_auto_system_has_hwaccel():
+    """Test auto mode prefers system FFmpeg when system has hardware acceleration and container lacks it."""
+    from video_cut.utils import resolve_ffmpeg_binaries
+
+    def fake_encoders(binary_path: str):
+        if "appdir" in binary_path:
+            return {"libx264", "aac"}  # Container has software only
+        return {"libx264", "aac", "h264_vaapi"}  # System has hardware acceleration
+
+    with patch("video_cut.utils.get_container_ffmpeg_path", return_value="/appdir/usr/bin/ffmpeg"), \
+         patch("video_cut.utils.get_container_ffprobe_path", return_value="/appdir/usr/bin/ffprobe"), \
+         patch("video_cut.utils.get_system_ffmpeg_path", return_value="/usr/bin/ffmpeg"), \
+         patch("video_cut.utils.get_system_ffprobe_path", return_value="/usr/bin/ffprobe"), \
+         patch("subprocess.run") as mock_run, \
+         patch("video_cut.utils.probe_binary_encoders", side_effect=fake_encoders):
         mock_run.return_value = MagicMock(returncode=0, stdout="ffmpeg version 6.1.1\n")
         ff, probe, eff_src, note = resolve_ffmpeg_binaries(source="auto")
         assert ff == "/usr/bin/ffmpeg"
@@ -328,12 +348,17 @@ def test_resolve_ffmpeg_binaries_auto_outdated_version():
     """Test auto mode prefers container when system FFmpeg version is < 4.3."""
     from video_cut.utils import resolve_ffmpeg_binaries
 
+    def fake_encoders(binary_path: str):
+        if "appdir" in binary_path:
+            return {"libx264", "aac"}  # Container has software only
+        return {"libx264", "aac", "h264_vaapi"}  # System has hwaccel, but version is old
+
     with patch("video_cut.utils.get_container_ffmpeg_path", return_value="/appdir/usr/bin/ffmpeg"), \
          patch("video_cut.utils.get_container_ffprobe_path", return_value="/appdir/usr/bin/ffprobe"), \
          patch("video_cut.utils.get_system_ffmpeg_path", return_value="/usr/bin/ffmpeg"), \
          patch("video_cut.utils.get_system_ffprobe_path", return_value="/usr/bin/ffprobe"), \
          patch("subprocess.run") as mock_run, \
-         patch("video_cut.utils.probe_binary_encoders", return_value={"libx264", "aac", "h264_vaapi"}):
+         patch("video_cut.utils.probe_binary_encoders", side_effect=fake_encoders):
         mock_run.return_value = MagicMock(returncode=0, stdout="ffmpeg version 3.4.8\n")
         ff, probe, eff_src, note = resolve_ffmpeg_binaries(source="auto")
         assert ff == "/appdir/usr/bin/ffmpeg"
@@ -472,6 +497,54 @@ def test_packaging_type_detection(tmp_path: Path):
         assert utils.is_source_distribution() is True
         assert utils.get_packaging_type() == "source"
         assert utils.get_packaging_type_display_name() == "Source distribution"
+
+
+def test_snap_ffmpeg_isolation():
+    """Test that Snap environment prevents accessing host system binaries."""
+    from video_cut.utils import (
+        get_container_ffmpeg_path,
+        get_system_ffmpeg_path,
+        get_system_ffprobe_path,
+        resolve_ffmpeg_binaries,
+    )
+
+    with patch("video_cut.utils.is_snap", return_value=True), \
+         patch.dict("os.environ", {"SNAP": "/snap/video-cut/current"}):
+        assert get_system_ffmpeg_path() is None
+        assert get_system_ffprobe_path() is None
+
+        # Container path resolution
+        with patch("pathlib.Path.is_file", return_value=True), \
+             patch("os.access", return_value=True):
+            snap_ffmpeg = get_container_ffmpeg_path()
+            assert snap_ffmpeg is not None
+            assert "snap" in snap_ffmpeg or "/usr/bin/ffmpeg" in snap_ffmpeg
+
+            # Resolve binaries in snap returns container
+            ff, probe, eff_src, note = resolve_ffmpeg_binaries(source="auto")
+            assert eff_src == "container"
+            assert "Snap runtime" in (note or "")
+
+
+def test_snap_file_association():
+    """Test HealthService file association behaves correctly under Snap."""
+    from video_cut.i18n import set_language
+
+    set_language("en_US")
+    with patch("video_cut.services.health_service.is_snap", return_value=True):
+        item = HealthService.check_file_association()
+        assert item.status == "ok"
+        assert item.can_fix is False
+        assert "Snap desktop integration" in item.summary
+
+        ok_fix, fix_msg = HealthService.fix_file_association()
+        assert ok_fix is True
+        assert "Snap" in fix_msg
+
+        ok_rem, rem_msg = HealthService.remove_file_association()
+        assert ok_rem is False
+        assert "Snap" in rem_msg
+
 
 
 

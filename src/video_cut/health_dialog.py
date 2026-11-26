@@ -14,7 +14,7 @@ from gi.repository import Adw, Gdk, Gio, GLib, Gtk
 
 from .i18n import _
 from .services.health_service import HealthCheckItem, HealthService
-from .utils import get_container_ffmpeg_path, is_flatpak
+from .utils import get_container_ffmpeg_path, is_flatpak, is_snap
 
 
 class HealthCheckDialog(Adw.Window):
@@ -95,6 +95,18 @@ class HealthCheckDialog(Adw.Window):
             )
             source_model = Gtk.StringList.new([
                 _("Flatpak Runtime (Bundled)"),
+                _("Manual (Custom Path)"),
+            ])
+            self.row_ffmpeg_source.set_model(source_model)
+            current_src = HealthService.get_ffmpeg_source()
+            self.row_ffmpeg_source.set_selected(1 if current_src == "manual" else 0)
+        elif is_snap():
+            self.row_ffmpeg_source = Adw.ComboRow(
+                title=_("FFmpeg Source"),
+                subtitle=_("Sandboxed within Snap multimedia runtime"),
+            )
+            source_model = Gtk.StringList.new([
+                _("Snap Runtime (Bundled)"),
                 _("Manual (Custom Path)"),
             ])
             self.row_ffmpeg_source.set_model(source_model)
@@ -205,7 +217,7 @@ class HealthCheckDialog(Adw.Window):
         if self._updating_source or not self.row_ffmpeg_source:
             return
         idx = self.row_ffmpeg_source.get_selected()
-        if is_flatpak():
+        if is_flatpak() or is_snap():
             sources = ["container", "manual"]
             new_source = sources[idx] if idx < len(sources) else "container"
         elif get_container_ffmpeg_path():
@@ -552,6 +564,11 @@ class HealthCheckDialog(Adw.Window):
                     sub = binary_path
                 else:
                     sub = f"{binary_path} ({_('Flatpak Runtime')})"
+            elif is_snap():
+                if cfg_src == "manual":
+                    sub = binary_path
+                else:
+                    sub = f"{binary_path} ({_('Snap Runtime')})"
             elif get_container_ffmpeg_path():
                 if cfg_src == "auto":
                     eff_label = _("Container") if eff_src == "container" else (_("System") if eff_src == "system" else _("Manual"))
@@ -796,7 +813,7 @@ class HealthCheckDialog(Adw.Window):
             btn_fix.add_css_class("suggested-action")
             btn_fix.connect("clicked", self._on_fix_association_clicked)
             suffix_box.append(btn_fix)
-        elif not is_flatpak():
+        elif not is_flatpak() and not is_snap():
             btn_remove = Gtk.Button(label=_("Remove Association"))
             btn_remove.connect("clicked", self._on_remove_association_clicked)
             suffix_box.append(btn_remove)

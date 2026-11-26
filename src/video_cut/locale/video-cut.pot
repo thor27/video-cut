@@ -2083,4 +2083,22 @@ msgstr ""
 msgid "Choose between system FFmpeg or a custom binary path"
 msgstr ""
 
+msgid "Snap Runtime (Bundled)"
+msgstr ""
+
+msgid "Sandboxed within Snap multimedia runtime"
+msgstr ""
+
+msgid "Snap Runtime"
+msgstr ""
+
+msgid ".vcut projects are registered via Snap desktop integration."
+msgstr ""
+
+msgid "File association is managed automatically by Snap."
+msgstr ""
+
+msgid "Desktop integration is managed by Snap."
+msgstr ""
+
 

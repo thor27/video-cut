@@ -2348,4 +2348,22 @@ msgstr "Distribuição fonte"
 msgid "Choose between system FFmpeg or a custom binary path"
 msgstr "Escolha entre o FFmpeg do sistema ou um caminho personalizado"
 
+msgid "Snap Runtime (Bundled)"
+msgstr "Snap Runtime (Integrado)"
+
+msgid "Sandboxed within Snap multimedia runtime"
+msgstr "Isolado no runtime multimídia do Snap"
+
+msgid "Snap Runtime"
+msgstr "Snap Runtime"
+
+msgid ".vcut projects are registered via Snap desktop integration."
+msgstr "Projetos .vcut estão registrados via integração de desktop do Snap."
+
+msgid "File association is managed automatically by Snap."
+msgstr "A associação de arquivos é gerenciada automaticamente pelo Snap."
+
+msgid "Desktop integration is managed by Snap."
+msgstr "A integração com a área de trabalho é gerenciada pelo Snap."
+
 

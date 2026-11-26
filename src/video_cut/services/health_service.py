@@ -31,6 +31,7 @@ from ..utils import (
     get_healthcheck_config_dir,
     invalidate_ffmpeg_cache,
     is_flatpak,
+    is_snap,
     parse_ffmpeg_version,
     set_healthcheck_config_keys,
 )
@@ -414,6 +415,21 @@ class HealthService:
                 can_fix=False,
             )
 
+        if is_snap():
+            return HealthCheckItem(
+                id="file_association",
+                title=_(".vcut Project Association"),
+                status="ok",
+                summary=_(".vcut projects are registered via Snap desktop integration."),
+                details=(
+                    f"MIME Type: {mime_type}\n"
+                    f"Application ID: {APP_ID}\n"
+                    "Status: Managed by Snap system export\n"
+                    "Desktop entry and MIME types are exported by snapd to the host environment."
+                ),
+                can_fix=False,
+            )
+
         # 1. Check if the MIME database recognizes *.vcut files
         content_type, _uncertain = Gio.content_type_guess("project.vcut", None)
         if hasattr(Gio.content_type_guess, "assert_called"):
@@ -508,6 +524,8 @@ class HealthService:
         """Automated repair of .vcut file association in user-space."""
         if is_flatpak():
             return (True, _("File association is managed automatically by Flatpak."))
+        if is_snap():
+            return (True, _("File association is managed automatically by Snap."))
 
         import sys
 
@@ -597,6 +615,8 @@ class HealthService:
         """Remove .vcut file association and desktop file from user-space."""
         if is_flatpak():
             return (False, _("Desktop integration is managed by Flatpak."))
+        if is_snap():
+            return (False, _("Desktop integration is managed by Snap."))
 
         try:
             # 1. Remove user MIME package

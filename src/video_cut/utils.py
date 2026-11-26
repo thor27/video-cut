@@ -247,10 +247,15 @@ def get_container_ffmpeg_path() -> str | None:
             p = Path(cand)
             if p.is_file() and os.access(p, os.X_OK):
                 return str(p)
-    if "SNAP" in os.environ:
-        snap_bin = Path(os.environ["SNAP"]) / "usr" / "bin" / "ffmpeg"
-        if snap_bin.is_file() and os.access(snap_bin, os.X_OK):
-            return str(snap_bin)
+    if is_snap():
+        snap_root = os.environ.get("SNAP", "")
+        for cand in (
+            Path(snap_root) / "usr" / "bin" / "ffmpeg" if snap_root else None,
+            Path(snap_root) / "bin" / "ffmpeg" if snap_root else None,
+            Path("/usr/bin/ffmpeg"),
+        ):
+            if cand and cand.is_file() and os.access(cand, os.X_OK):
+                return str(cand)
     if "APPDIR" in os.environ:
         appdir_bin = Path(os.environ["APPDIR"]) / "usr" / "bin" / "ffmpeg"
         if appdir_bin.is_file() and os.access(appdir_bin, os.X_OK):
@@ -265,10 +270,15 @@ def get_container_ffprobe_path() -> str | None:
             p = Path(cand)
             if p.is_file() and os.access(p, os.X_OK):
                 return str(p)
-    if "SNAP" in os.environ:
-        snap_bin = Path(os.environ["SNAP"]) / "usr" / "bin" / "ffprobe"
-        if snap_bin.is_file() and os.access(snap_bin, os.X_OK):
-            return str(snap_bin)
+    if is_snap():
+        snap_root = os.environ.get("SNAP", "")
+        for cand in (
+            Path(snap_root) / "usr" / "bin" / "ffprobe" if snap_root else None,
+            Path(snap_root) / "bin" / "ffprobe" if snap_root else None,
+            Path("/usr/bin/ffprobe"),
+        ):
+            if cand and cand.is_file() and os.access(cand, os.X_OK):
+                return str(cand)
     if "APPDIR" in os.environ:
         appdir_bin = Path(os.environ["APPDIR"]) / "usr" / "bin" / "ffprobe"
         if appdir_bin.is_file() and os.access(appdir_bin, os.X_OK):
@@ -278,9 +288,9 @@ def get_container_ffprobe_path() -> str | None:
 
 def get_system_ffmpeg_path() -> str | None:
     """Find system FFmpeg binary on host, ignoring container/runtime directories."""
-    if is_flatpak():
-        # Inside Flatpak sandbox, host binaries cannot be cleanly executed due to
-        # runtime glibc and shared library isolation.
+    if is_flatpak() or is_snap():
+        # Inside sandboxed runtimes (Flatpak or Snap with strict confinement),
+        # host system binaries cannot be cleanly executed due to filesystem and library isolation.
         return None
 
     skip_prefixes: list[str] = []
@@ -314,7 +324,7 @@ def get_system_ffmpeg_path() -> str | None:
 
 def get_system_ffprobe_path() -> str | None:
     """Find system FFprobe binary on host, ignoring container/runtime directories."""
-    if is_flatpak():
+    if is_flatpak() or is_snap():
         return None
 
     skip_prefixes: list[str] = []
@@ -401,7 +411,12 @@ def resolve_ffmpeg_binaries(
             resolved_ffmpeg = c_ffmpeg
             resolved_ffprobe = c_ffprobe or s_ffprobe or "ffprobe"
             effective_source = "container"
-            note = "Flatpak runtime FFmpeg" if is_flatpak() else "Container bundled FFmpeg"
+            if is_flatpak():
+                note = "Flatpak runtime FFmpeg"
+            elif is_snap():
+                note = "Snap runtime FFmpeg"
+            else:
+                note = "Container bundled FFmpeg"
         else:
             resolved_ffmpeg = s_ffmpeg or "ffmpeg"
             resolved_ffprobe = s_ffprobe or "ffprobe"
@@ -420,57 +435,78 @@ def resolve_ffmpeg_binaries(
             effective_source = "container" if c_ffmpeg else "system"
             if is_flatpak() and c_ffmpeg:
                 note = "Host system FFmpeg is not accessible inside Flatpak sandbox; using Flatpak runtime"
+            elif is_snap() and c_ffmpeg:
+                note = "Host system FFmpeg is not accessible inside Snap sandbox; using Snap runtime"
             else:
                 note = "System FFmpeg requested, but none found; using container fallback" if c_ffmpeg else "System FFmpeg not found"
 
     else:  # auto
         if c_ffmpeg and s_ffmpeg:
-            s_ver: tuple[int, int] | None = None
-            try:
-                res = subprocess.run(
-                    [s_ffmpeg, "-version"],
-                    capture_output=True,
-                    text=True,
-                    timeout=2.0,
-                    creationflags=SUBPROCESS_FLAGS,
-                )
-                if res.returncode == 0 and res.stdout:
-                    s_ver = parse_ffmpeg_version(res.stdout.splitlines()[0])
-            except Exception:
-                pass
+            c_encoders = probe_binary_encoders(c_ffmpeg)
+            c_has_essential = ESSENTIAL_ENCODERS.issubset(c_encoders)
+            c_has_hw = bool(c_encoders.intersection(HW_ENCODERS))
 
-            if s_ver is None or s_ver < MIN_FFMPEG_VERSION:
+            if c_has_essential and c_has_hw:
                 resolved_ffmpeg = c_ffmpeg
                 resolved_ffprobe = c_ffprobe or s_ffprobe or "ffprobe"
                 effective_source = "container"
-                ver_display = f"{s_ver[0]}.{s_ver[1]}" if s_ver else "unknown"
-                note = f"Auto: System FFmpeg version ({ver_display}) is older than required (4.3+); selected Container"
+                note = "Auto: Selected Container FFmpeg (essential codecs and hardware acceleration supported)"
             else:
-                s_encoders = probe_binary_encoders(s_ffmpeg)
-                if not ESSENTIAL_ENCODERS.issubset(s_encoders):
+                s_ver: tuple[int, int] | None = None
+                try:
+                    res = subprocess.run(
+                        [s_ffmpeg, "-version"],
+                        capture_output=True,
+                        text=True,
+                        timeout=2.0,
+                        creationflags=SUBPROCESS_FLAGS,
+                    )
+                    if res.returncode == 0 and res.stdout:
+                        s_ver = parse_ffmpeg_version(res.stdout.splitlines()[0])
+                except Exception:
+                    pass
+
+                if s_ver is None or s_ver < MIN_FFMPEG_VERSION:
                     resolved_ffmpeg = c_ffmpeg
                     resolved_ffprobe = c_ffprobe or s_ffprobe or "ffprobe"
                     effective_source = "container"
-                    note = "Auto: System FFmpeg lacks essential codecs (libx264/aac); selected Container"
-                elif s_encoders.intersection(HW_ENCODERS):
-                    resolved_ffmpeg = s_ffmpeg
-                    resolved_ffprobe = s_ffprobe or c_ffprobe or "ffprobe"
-                    effective_source = "system"
-                    note = "Auto: Selected System FFmpeg (hardware acceleration supported)"
+                    ver_display = f"{s_ver[0]}.{s_ver[1]}" if s_ver else "unknown"
+                    note = f"Auto: System FFmpeg version ({ver_display}) is older than required (4.3+); selected Container"
                 else:
-                    resolved_ffmpeg = c_ffmpeg
-                    resolved_ffprobe = c_ffprobe or s_ffprobe or "ffprobe"
-                    effective_source = "container"
-                    note = "Auto: Selected Container FFmpeg"
+                    s_encoders = probe_binary_encoders(s_ffmpeg)
+                    s_has_essential = ESSENTIAL_ENCODERS.issubset(s_encoders)
+                    s_has_hw = bool(s_encoders.intersection(HW_ENCODERS))
+
+                    if not s_has_essential:
+                        resolved_ffmpeg = c_ffmpeg
+                        resolved_ffprobe = c_ffprobe or s_ffprobe or "ffprobe"
+                        effective_source = "container"
+                        note = "Auto: System FFmpeg lacks essential codecs (libx264/aac); selected Container"
+                    elif s_has_hw and not c_has_hw:
+                        resolved_ffmpeg = s_ffmpeg
+                        resolved_ffprobe = s_ffprobe or c_ffprobe or "ffprobe"
+                        effective_source = "system"
+                        note = "Auto: Selected System FFmpeg (hardware acceleration supported)"
+                    elif not c_has_essential and s_has_essential:
+                        resolved_ffmpeg = s_ffmpeg
+                        resolved_ffprobe = s_ffprobe or c_ffprobe or "ffprobe"
+                        effective_source = "system"
+                        note = "Auto: Selected System FFmpeg (container lacks essential codecs)"
+                    else:
+                        resolved_ffmpeg = c_ffmpeg
+                        resolved_ffprobe = c_ffprobe or s_ffprobe or "ffprobe"
+                        effective_source = "container"
+                        note = "Auto: Selected Container FFmpeg"
         elif c_ffmpeg:
             resolved_ffmpeg = c_ffmpeg
             resolved_ffprobe = c_ffprobe or s_ffprobe or "ffprobe"
             effective_source = "container"
-            note = (
-                "Auto: Selected Flatpak runtime FFmpeg"
-                if is_flatpak()
-                else "Auto: Using Container FFmpeg (no system FFmpeg found)"
-            )
+            if is_flatpak():
+                note = "Auto: Selected Flatpak runtime FFmpeg"
+            elif is_snap():
+                note = "Auto: Selected Snap runtime FFmpeg"
+            else:
+                note = "Auto: Using Container FFmpeg (no system FFmpeg found)"
         elif s_ffmpeg:
             resolved_ffmpeg = s_ffmpeg
             resolved_ffprobe = s_ffprobe or c_ffprobe or "ffprobe"

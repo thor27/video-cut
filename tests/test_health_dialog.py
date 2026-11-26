@@ -473,6 +473,57 @@ def test_health_dialog_flatpak_no_remove_association_button():
         dialog.destroy()
 
 
+def test_health_dialog_snap_source_options():
+    """Test HealthCheckDialog displays simplified runtime options inside Snap."""
+    from video_cut.i18n import set_language
+
+    set_language("en_US")
+    with patch("video_cut.health_dialog.is_flatpak", return_value=False), \
+         patch("video_cut.health_dialog.is_snap", return_value=True):
+        dialog = HealthCheckDialog()
+        assert dialog.row_ffmpeg_source is not None
+        model = dialog.row_ffmpeg_source.get_model()
+        assert model.get_n_items() == 2
+        assert model.get_string(0) == _("Snap Runtime (Bundled)")
+        assert model.get_string(1) == _("Manual (Custom Path)")
+
+        with patch("video_cut.services.health_service.HealthService.set_ffmpeg_source") as mock_set, \
+             patch.object(dialog, "refresh_checks"):
+            dialog.row_ffmpeg_source.set_selected(1)
+            mock_set.assert_called_with("manual")
+
+            dialog.row_ffmpeg_source.set_selected(0)
+            mock_set.assert_called_with("container")
+
+        dialog.destroy()
+
+
+def test_health_dialog_snap_no_remove_association_button():
+    """Test HealthCheckDialog does not show Remove Association button inside Snap."""
+    with patch("video_cut.health_dialog.is_flatpak", return_value=False), \
+         patch("video_cut.health_dialog.is_snap", return_value=True):
+        dialog = HealthCheckDialog()
+        item = HealthCheckItem(
+            id="file_association",
+            title="Association",
+            status="ok",
+            summary="Registered via Snap",
+            details="Default",
+        )
+        dialog._apply_results([item])
+
+        child = dialog._suffix_association.get_first_child()
+        btn_remove = None
+        while child is not None:
+            if isinstance(child, Gtk.Button) and not isinstance(child, Gtk.MenuButton):
+                btn_remove = child
+                break
+            child = child.get_next_sibling()
+
+        assert btn_remove is None
+        dialog.destroy()
+
+
 def test_about_dialog_packaging_display():
     """Test MainWindow._show_about_dialog formats packaging type into version and debug_info."""
     from video_cut import __version__
