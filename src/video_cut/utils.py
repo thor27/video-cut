@@ -250,17 +250,74 @@ def get_packaging_type() -> str:
     return "unknown"
 
 
+def get_git_commit_hash() -> str | None:
+    """Return short git commit hash if running from a git repository."""
+    try:
+        this_dir = Path(__file__).resolve().parent
+        for parent in [this_dir, *this_dir.parents]:
+            git_dir = parent / ".git"
+            if git_dir.exists():
+                if shutil.which("git"):
+                    res = subprocess.run(
+                        ["git", "rev-parse", "--short", "HEAD"],
+                        cwd=str(parent),
+                        capture_output=True,
+                        text=True,
+                        timeout=1.0,
+                        creationflags=SUBPROCESS_FLAGS,
+                    )
+                    if res.returncode == 0 and res.stdout.strip():
+                        return res.stdout.strip()
+
+                head_file = git_dir / "HEAD"
+                if git_dir.is_file():  # worktree or submodule
+                    content = git_dir.read_text(encoding="utf-8").strip()
+                    if content.startswith("gitdir:"):
+                        cand = Path(content.split(":", 1)[1].strip())
+                        git_dir = cand if cand.is_absolute() else (parent / cand).resolve()
+                        head_file = git_dir / "HEAD"
+
+                if head_file.is_file():
+                    head_ref = head_file.read_text(encoding="utf-8").strip()
+                    if head_ref.startswith("ref:"):
+                        ref_rel = head_ref.split(":", 1)[1].strip()
+                        ref_path = git_dir / ref_rel
+                        if ref_path.is_file():
+                            full_hash = ref_path.read_text(encoding="utf-8").strip()
+                            if full_hash:
+                                return full_hash[:7]
+                        packed_refs = git_dir / "packed-refs"
+                        if packed_refs.is_file():
+                            for line in packed_refs.read_text(encoding="utf-8").splitlines():
+                                line = line.strip()
+                                if line and not line.startswith("#") and not line.startswith("^"):
+                                    parts = line.split()
+                                    if len(parts) >= 2 and parts[1] == ref_rel:
+                                        return parts[0][:7]
+                    elif len(head_ref) >= 7 and all(c in "0123456789abcdefABCDEF" for c in head_ref[:7]):
+                        return head_ref[:7]
+                break
+    except Exception:
+        pass
+    return None
+
+
 def get_packaging_type_display_name() -> str:
     """Return human-readable, localized packaging type name, or empty string if unknown."""
     from .i18n import _
 
     pkg_type = get_packaging_type()
+    if pkg_type == "source":
+        commit = get_git_commit_hash()
+        if commit:
+            return f"git-{commit}"
+        return _("Source distribution")
+
     names = {
         "flatpak": _("Flatpak"),
         "snap": _("Snap"),
         "appimage": _("AppImage"),
         "deb": _("Debian package"),
-        "source": _("Source distribution"),
     }
     return names.get(pkg_type, "")
 

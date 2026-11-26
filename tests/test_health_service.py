@@ -506,7 +506,10 @@ def test_packaging_type_detection(tmp_path: Path):
         assert utils.is_source_distribution() is True
         assert utils.is_deb_package() is False
         assert utils.get_packaging_type() == "source"
-        assert utils.get_packaging_type_display_name() == "Source distribution"
+        with patch("video_cut.utils.get_git_commit_hash", return_value="9b2c490"):
+            assert utils.get_packaging_type_display_name() == "git-9b2c490"
+        with patch("video_cut.utils.get_git_commit_hash", return_value=None):
+            assert utils.get_packaging_type_display_name() == "Source distribution"
 
 
 def test_snap_ffmpeg_isolation():
@@ -554,6 +557,17 @@ def test_snap_file_association():
         ok_rem, rem_msg = HealthService.remove_file_association()
         assert ok_rem is False
         assert "Snap" in rem_msg
+
+
+def test_get_git_commit_hash():
+    """Test get_git_commit_hash returns short commit hash from git."""
+    from video_cut.utils import get_git_commit_hash
+
+    commit = get_git_commit_hash()
+    assert commit is not None
+    assert len(commit) >= 7
+    assert all(c in "0123456789abcdefABCDEF" for c in commit)
+
 
 
 
