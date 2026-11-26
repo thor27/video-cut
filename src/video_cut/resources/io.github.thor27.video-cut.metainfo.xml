@@ -53,6 +53,21 @@
   </screenshots>
 
   <releases>
+    <release version="0.7.0" date="2026-11-26">
+      <url type="details">https://github.com/thor27/video-cut/releases/tag/v0.7.0</url>
+      <description>
+        <p>Highlights of version 0.7.0:</p>
+        <ul>
+          <li>Smart FFmpeg Resolution &amp; Source Selection: automatic engine resolution favoring hardware acceleration without degraded codec support, with user-selectable source modes (Auto, Container, System, Manual) in System Health &amp; Setup</li>
+          <li>System Health &amp; Diagnostics: comprehensive healthcheck interface with GPU hardware acceleration overview (VA-API, NVENC, QSV, Vulkan), multimedia codecs matrix, and automated distro package installation / upgrade fixers</li>
+          <li>First-Time Health Alert: modal diagnostic notification on startup when essential video editing dependencies are missing or misconfigured</li>
+          <li>Native File Associations: one-click registration and removal of .vcut project file associations</li>
+          <li>Diagnostic Error Dialog: detailed modal error dialog with copyable output and log details on FFmpeg export or conversion failures</li>
+          <li>Overlay Word Wrapping Parity: identical multi-line text wrapping between timeline preview canvases and exported videos at any resolution</li>
+          <li>AppImage Hardening: bundled self-contained Python runtime and GStreamer playback plugins, isolated GIO modules, and resolved playback seek race conditions</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.6.1" date="2026-11-19">
       <url type="details">https://github.com/thor27/video-cut/releases/tag/v0.6.1</url>
       <description>

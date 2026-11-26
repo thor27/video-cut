@@ -7,6 +7,49 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.7.0] - 2026-11-26
+
+### 🚀 Smart FFmpeg Resolution & Source Selection
+- **Smart FFmpeg Engine**: Automatic resolution of the optimal FFmpeg executable available on the system. When running inside containerized packages (AppImage or Snap), prioritizes host FFmpeg if version >= 4.3 and hardware acceleration is present, while strictly guarding against degraded codec support (such as missing `libx264` or `aac` in Fedora's `ffmpeg-free`).
+- **User-Configurable Source Modes**: Choose which FFmpeg binary to use directly in the System Health & Setup dialog:
+  - **Auto (Recommended)**: Automatically selects the best FFmpeg engine favoring hardware acceleration without losing codec capabilities.
+  - **Container (Bundled)**: Uses the bundled static FFmpeg from AppImage/Snap (falls back to system when running from source).
+  - **System**: Enforces the host operating system's FFmpeg binary.
+  - **Manual (Custom Path)**: Custom path selection with integrated path entry and native GTK file picker.
+- **Dynamic Invalidation & Cache Reset**: Switching sources immediately clears capability and binary caches, re-evaluating codecs and hardware encoders on the fly.
+- **Minimum Version Enforcement**: Established minimum version requirement (FFmpeg >= 4.3) with warning notifications and one-click package upgrade actions for legacy binaries.
+
+### 🏥 System Health & Automated Diagnostics
+- **Comprehensive Diagnostics Dialog**: Accessible from the main menu, providing visual categorized status groups:
+  - **System & Packaging**: Detected distribution/OS, version, architecture, and package manager.
+  - **FFmpeg Engine**: Active binary location, effective source, version validation, and upgrade suggestions.
+  - **GPU Hardware Acceleration**: Real-time detection matrix for VA-API, NVIDIA NVENC, Intel Quick Sync (QSV), Vulkan Video, Apple VideoToolbox, and AMD AMF.
+  - **Multimedia Codecs**: Availability inspection across H.264, HEVC/H.265, AV1, VP9, ProRes, AAC, MP3, Opus, FLAC, and Vorbis.
+  - **File Association**: Status of `.vcut` project file registration.
+- **Automated Fixers**: Inline action buttons generate tailored distribution package commands (`apt`, `dnf`, `pacman`, `zypper`, `apk`, `gnome-software`, `pamac-installer`, `brew`, `port`, `winget`, `choco`, `scoop`).
+- **One-Click File Association**: Instant registration and clean removal of `.vcut` project MIME and desktop associations with automatic cache refreshing (`update-mime-database`, `update-desktop-database`).
+- **First-Time Health Alert**: Startup alert modal dialog (`StartupHealthAlertModal`) warning users when vital export or playback dependencies are missing.
+- **Configurable Startup Healthcheck**: Toggle in Preferences to enable or disable automatic health verification on startup.
+
+### 🚨 Diagnostic Error Handling
+- **Modal Error Dialog on FFmpeg Failure**: Replaced silent failures or terminal logs with a dedicated `FFmpegErrorDialog` modal when video export, transcode, or image conversion fails.
+- **One-Click Copy Details**: Full command arguments, working directory, exit code, and complete stderr output with visual feedback and GNOME HIG dismiss ergonomics (Escape key support).
+
+### 📐 Text Overlay Parity
+- **Exact Wrapping Parity**: Multi-line text overlay wrapping is now calculated at canonical 1080p reference scale, ensuring identical line breaks and text layout between timeline preview canvases and final exports at any resolution.
+- **Automatic Text Box Height Fitting**: Dynamic text height calculation using canonical line breaks to prevent vertical clipping or overflow.
+
+### 📦 Portability & AppImage Hardening
+- **Self-Contained Python & GStreamer**: Bundled Python 3 runtime, versioned packages, pycairo extensions, and full GStreamer playback plugin suite (GIO, demuxers, audio/video decoders, audio effects, OpenGL/PipeWire/Pulse sinks).
+- **GIO Isolation**: Isolated module search directory to eliminate symbol clashes with host GVFS.
+- **OpenGL Acceleration**: Default to hardware-accelerated OpenGL renderer (`GSK_RENDERER=gl`).
+- **Seek Freezing Fix**: Eliminated race conditions during scrubbing and rapid timeline seeking by pausing timeline clock during seeks and queuing playback until seek completion.
+
+### 🌐 Internationalization
+- 100% translation coverage for English (`en_US`), Portuguese (`pt_BR`), Spanish (`es`), and French (`fr`) across all new health check, error reporting, and FFmpeg source configuration dialogs.
+
+---
+
 ## [0.6.1] - 2026-11-19
 
 ### 📦 Packaging & AppImage Portability Hardening
