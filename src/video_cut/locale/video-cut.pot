@@ -2046,3 +2046,59 @@ msgid ""
 "An easy-to-use video editor to cut and merge videos, add images, crop, and "
 "rotate"
 msgstr ""
+
+msgid "Flatpak Runtime (Bundled)"
+msgstr ""
+
+msgid "Sandboxed within Flatpak multimedia runtime"
+msgstr ""
+
+msgid "Flatpak Runtime"
+msgstr ""
+
+msgid ".vcut projects are registered via Flatpak desktop integration."
+msgstr ""
+
+msgid "File association is managed automatically by Flatpak."
+msgstr ""
+
+msgid "Desktop integration is managed by Flatpak."
+msgstr ""
+
+msgid "Flatpak"
+msgstr ""
+
+msgid "Snap"
+msgstr ""
+
+msgid "AppImage"
+msgstr ""
+
+msgid "Debian package"
+msgstr ""
+
+msgid "Source distribution"
+msgstr ""
+
+msgid "Choose between system FFmpeg or a custom binary path"
+msgstr ""
+
+msgid "Snap Runtime (Bundled)"
+msgstr ""
+
+msgid "Sandboxed within Snap multimedia runtime"
+msgstr ""
+
+msgid "Snap Runtime"
+msgstr ""
+
+msgid ".vcut projects are registered via Snap desktop integration."
+msgstr ""
+
+msgid "File association is managed automatically by Snap."
+msgstr ""
+
+msgid "Desktop integration is managed by Snap."
+msgstr ""
+
+

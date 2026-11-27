@@ -142,12 +142,202 @@ def probe_binary_encoders(binary_path: str) -> set[str]:
         return set()
 
 
+def is_flatpak() -> bool:
+    """Return True if running inside a Flatpak sandbox."""
+    return bool(os.environ.get("FLATPAK_ID") or Path("/.flatpak-info").exists())
+
+
+def is_snap() -> bool:
+    """Return True if running inside a Snap environment."""
+    return bool(os.environ.get("SNAP"))
+
+
+def is_appimage() -> bool:
+    """Return True if running inside an AppImage environment."""
+    return bool(os.environ.get("APPIMAGE") or os.environ.get("APPDIR"))
+
+
+def is_source_distribution() -> bool:
+    """Return True if running from a source checkout, git repo, or python virtual environment."""
+    if is_flatpak() or is_snap() or is_appimage():
+        return False
+
+    try:
+        this_dir = Path(__file__).resolve().parent
+        for parent in [this_dir, *this_dir.parents]:
+            if (parent / ".git").is_dir() or (parent / "pyproject.toml").is_file():
+                return True
+    except Exception:
+        pass
+
+    if sys.prefix != getattr(sys, "base_prefix", sys.prefix):
+        return True
+
+    return False
+
+
+def is_deb_package() -> bool:
+    """Return True if this running instance is installed via Debian/Ubuntu package (.deb)."""
+    if is_flatpak() or is_snap() or is_appimage() or is_source_distribution():
+        return False
+
+    this_file = Path(__file__).resolve()
+    # A Debian package installed instance is in system paths (e.g. /usr/lib/python3/dist-packages or /usr/share)
+    if not (str(this_file).startswith("/usr/") or str(this_file).startswith("/var/")):
+        return False
+
+    if shutil.which("dpkg-query"):
+        try:
+            res = subprocess.run(
+                ["dpkg-query", "-W", "-f=${Status}", "video-cut"],
+                capture_output=True,
+                text=True,
+                timeout=1.0,
+                creationflags=SUBPROCESS_FLAGS,
+            )
+            if "install ok installed" not in res.stdout:
+                return False
+        except Exception:
+            return False
+
+        try:
+            res_owner = subprocess.run(
+                ["dpkg-query", "-S", str(this_file)],
+                capture_output=True,
+                text=True,
+                timeout=1.0,
+                creationflags=SUBPROCESS_FLAGS,
+            )
+            if res_owner.returncode == 0 and "video-cut" in res_owner.stdout:
+                return True
+        except Exception:
+            pass
+
+    dpkg_info = Path("/var/lib/dpkg/info")
+    if dpkg_info.is_dir():
+        for cand in (
+            "video-cut.list",
+            "video-cut:all.list",
+            "video-cut:amd64.list",
+            "video-cut:arm64.list",
+        ):
+            list_file = dpkg_info / cand
+            if list_file.is_file() and list_file.stat().st_size > 0:
+                try:
+                    content = list_file.read_text(encoding="utf-8")
+                    if str(this_file) in content or "video_cut" in content:
+                        return True
+                except Exception:
+                    pass
+
+    return False
+
+
+def get_packaging_type() -> str:
+    """Detect and return the active packaging distribution type:
+    'flatpak', 'snap', 'appimage', 'source', 'deb', or 'unknown'.
+    """
+    if is_flatpak():
+        return "flatpak"
+    if is_snap():
+        return "snap"
+    if is_appimage():
+        return "appimage"
+    if is_source_distribution():
+        return "source"
+    if is_deb_package():
+        return "deb"
+    return "unknown"
+
+
+def get_git_commit_hash() -> str | None:
+    """Return short git commit hash if running from a git repository."""
+    try:
+        this_dir = Path(__file__).resolve().parent
+        for parent in [this_dir, *this_dir.parents]:
+            git_dir = parent / ".git"
+            if git_dir.exists():
+                if shutil.which("git"):
+                    res = subprocess.run(
+                        ["git", "rev-parse", "--short", "HEAD"],
+                        cwd=str(parent),
+                        capture_output=True,
+                        text=True,
+                        timeout=1.0,
+                        creationflags=SUBPROCESS_FLAGS,
+                    )
+                    if res.returncode == 0 and res.stdout.strip():
+                        return res.stdout.strip()
+
+                head_file = git_dir / "HEAD"
+                if git_dir.is_file():  # worktree or submodule
+                    content = git_dir.read_text(encoding="utf-8").strip()
+                    if content.startswith("gitdir:"):
+                        cand = Path(content.split(":", 1)[1].strip())
+                        git_dir = cand if cand.is_absolute() else (parent / cand).resolve()
+                        head_file = git_dir / "HEAD"
+
+                if head_file.is_file():
+                    head_ref = head_file.read_text(encoding="utf-8").strip()
+                    if head_ref.startswith("ref:"):
+                        ref_rel = head_ref.split(":", 1)[1].strip()
+                        ref_path = git_dir / ref_rel
+                        if ref_path.is_file():
+                            full_hash = ref_path.read_text(encoding="utf-8").strip()
+                            if full_hash:
+                                return full_hash[:7]
+                        packed_refs = git_dir / "packed-refs"
+                        if packed_refs.is_file():
+                            for line in packed_refs.read_text(encoding="utf-8").splitlines():
+                                line = line.strip()
+                                if line and not line.startswith("#") and not line.startswith("^"):
+                                    parts = line.split()
+                                    if len(parts) >= 2 and parts[1] == ref_rel:
+                                        return parts[0][:7]
+                    elif len(head_ref) >= 7 and all(c in "0123456789abcdefABCDEF" for c in head_ref[:7]):
+                        return head_ref[:7]
+                break
+    except Exception:
+        pass
+    return None
+
+
+def get_packaging_type_display_name() -> str:
+    """Return human-readable, localized packaging type name, or empty string if unknown."""
+    from .i18n import _
+
+    pkg_type = get_packaging_type()
+    if pkg_type == "source":
+        commit = get_git_commit_hash()
+        if commit:
+            return f"git-{commit}"
+        return _("Source distribution")
+
+    names = {
+        "flatpak": _("Flatpak"),
+        "snap": _("Snap"),
+        "appimage": _("AppImage"),
+        "deb": _("Debian package"),
+    }
+    return names.get(pkg_type, "")
+
+
 def get_container_ffmpeg_path() -> str | None:
     """Return path to container/bundled ffmpeg if available."""
-    if "SNAP" in os.environ:
-        snap_bin = Path(os.environ["SNAP"]) / "usr" / "bin" / "ffmpeg"
-        if snap_bin.is_file() and os.access(snap_bin, os.X_OK):
-            return str(snap_bin)
+    if is_flatpak():
+        for cand in ("/app/bin/ffmpeg", "/usr/bin/ffmpeg"):
+            p = Path(cand)
+            if p.is_file() and os.access(p, os.X_OK):
+                return str(p)
+    if is_snap():
+        snap_root = os.environ.get("SNAP", "")
+        for cand in (
+            Path(snap_root) / "usr" / "bin" / "ffmpeg" if snap_root else None,
+            Path(snap_root) / "bin" / "ffmpeg" if snap_root else None,
+            Path("/usr/bin/ffmpeg"),
+        ):
+            if cand and cand.is_file() and os.access(cand, os.X_OK):
+                return str(cand)
     if "APPDIR" in os.environ:
         appdir_bin = Path(os.environ["APPDIR"]) / "usr" / "bin" / "ffmpeg"
         if appdir_bin.is_file() and os.access(appdir_bin, os.X_OK):
@@ -157,10 +347,20 @@ def get_container_ffmpeg_path() -> str | None:
 
 def get_container_ffprobe_path() -> str | None:
     """Return path to container/bundled ffprobe if available."""
-    if "SNAP" in os.environ:
-        snap_bin = Path(os.environ["SNAP"]) / "usr" / "bin" / "ffprobe"
-        if snap_bin.is_file() and os.access(snap_bin, os.X_OK):
-            return str(snap_bin)
+    if is_flatpak():
+        for cand in ("/app/bin/ffprobe", "/usr/bin/ffprobe"):
+            p = Path(cand)
+            if p.is_file() and os.access(p, os.X_OK):
+                return str(p)
+    if is_snap():
+        snap_root = os.environ.get("SNAP", "")
+        for cand in (
+            Path(snap_root) / "usr" / "bin" / "ffprobe" if snap_root else None,
+            Path(snap_root) / "bin" / "ffprobe" if snap_root else None,
+            Path("/usr/bin/ffprobe"),
+        ):
+            if cand and cand.is_file() and os.access(cand, os.X_OK):
+                return str(cand)
     if "APPDIR" in os.environ:
         appdir_bin = Path(os.environ["APPDIR"]) / "usr" / "bin" / "ffprobe"
         if appdir_bin.is_file() and os.access(appdir_bin, os.X_OK):
@@ -169,7 +369,12 @@ def get_container_ffprobe_path() -> str | None:
 
 
 def get_system_ffmpeg_path() -> str | None:
-    """Find system FFmpeg binary on host, ignoring AppImage/Snap directories."""
+    """Find system FFmpeg binary on host, ignoring container/runtime directories."""
+    if is_flatpak() or is_snap():
+        # Inside sandboxed runtimes (Flatpak or Snap with strict confinement),
+        # host system binaries cannot be cleanly executed due to filesystem and library isolation.
+        return None
+
     skip_prefixes: list[str] = []
     if "APPDIR" in os.environ:
         skip_prefixes.append(os.environ["APPDIR"])
@@ -200,7 +405,10 @@ def get_system_ffmpeg_path() -> str | None:
 
 
 def get_system_ffprobe_path() -> str | None:
-    """Find system FFprobe binary on host, ignoring AppImage/Snap directories."""
+    """Find system FFprobe binary on host, ignoring container/runtime directories."""
+    if is_flatpak() or is_snap():
+        return None
+
     skip_prefixes: list[str] = []
     if "APPDIR" in os.environ:
         skip_prefixes.append(os.environ["APPDIR"])
@@ -241,7 +449,15 @@ def resolve_ffmpeg_binaries(
 
     src = source if source is not None else get_ffmpeg_source_setting()
     custom = custom_path if custom_path is not None else get_custom_ffmpeg_path_setting()
-    cache_key = (source, custom_path, src, custom, os.environ.get("SNAP"), os.environ.get("APPDIR"))
+    cache_key = (
+        source,
+        custom_path,
+        src,
+        custom,
+        os.environ.get("SNAP"),
+        os.environ.get("APPDIR"),
+        os.environ.get("FLATPAK_ID"),
+    )
 
     if source is None and custom_path is None and _RESOLVED_CACHE is not None and _CACHE_KEY == cache_key:
         return _RESOLVED_CACHE
@@ -277,7 +493,12 @@ def resolve_ffmpeg_binaries(
             resolved_ffmpeg = c_ffmpeg
             resolved_ffprobe = c_ffprobe or s_ffprobe or "ffprobe"
             effective_source = "container"
-            note = "Container bundled FFmpeg"
+            if is_flatpak():
+                note = "Flatpak runtime FFmpeg"
+            elif is_snap():
+                note = "Snap runtime FFmpeg"
+            else:
+                note = "Container bundled FFmpeg"
         else:
             resolved_ffmpeg = s_ffmpeg or "ffmpeg"
             resolved_ffprobe = s_ffprobe or "ffprobe"
@@ -294,52 +515,80 @@ def resolve_ffmpeg_binaries(
             resolved_ffmpeg = c_ffmpeg or "ffmpeg"
             resolved_ffprobe = c_ffprobe or "ffprobe"
             effective_source = "container" if c_ffmpeg else "system"
-            note = "System FFmpeg requested, but none found; using container fallback" if c_ffmpeg else "System FFmpeg not found"
+            if is_flatpak() and c_ffmpeg:
+                note = "Host system FFmpeg is not accessible inside Flatpak sandbox; using Flatpak runtime"
+            elif is_snap() and c_ffmpeg:
+                note = "Host system FFmpeg is not accessible inside Snap sandbox; using Snap runtime"
+            else:
+                note = "System FFmpeg requested, but none found; using container fallback" if c_ffmpeg else "System FFmpeg not found"
 
     else:  # auto
         if c_ffmpeg and s_ffmpeg:
-            s_ver: tuple[int, int] | None = None
-            try:
-                res = subprocess.run(
-                    [s_ffmpeg, "-version"],
-                    capture_output=True,
-                    text=True,
-                    timeout=2.0,
-                    creationflags=SUBPROCESS_FLAGS,
-                )
-                if res.returncode == 0 and res.stdout:
-                    s_ver = parse_ffmpeg_version(res.stdout.splitlines()[0])
-            except Exception:
-                pass
+            c_encoders = probe_binary_encoders(c_ffmpeg)
+            c_has_essential = ESSENTIAL_ENCODERS.issubset(c_encoders)
+            c_has_hw = bool(c_encoders.intersection(HW_ENCODERS))
 
-            if s_ver is None or s_ver < MIN_FFMPEG_VERSION:
+            if c_has_essential and c_has_hw:
                 resolved_ffmpeg = c_ffmpeg
                 resolved_ffprobe = c_ffprobe or s_ffprobe or "ffprobe"
                 effective_source = "container"
-                ver_display = f"{s_ver[0]}.{s_ver[1]}" if s_ver else "unknown"
-                note = f"Auto: System FFmpeg version ({ver_display}) is older than required (4.3+); selected Container"
+                note = "Auto: Selected Container FFmpeg (essential codecs and hardware acceleration supported)"
             else:
-                s_encoders = probe_binary_encoders(s_ffmpeg)
-                if not ESSENTIAL_ENCODERS.issubset(s_encoders):
+                s_ver: tuple[int, int] | None = None
+                try:
+                    res = subprocess.run(
+                        [s_ffmpeg, "-version"],
+                        capture_output=True,
+                        text=True,
+                        timeout=2.0,
+                        creationflags=SUBPROCESS_FLAGS,
+                    )
+                    if res.returncode == 0 and res.stdout:
+                        s_ver = parse_ffmpeg_version(res.stdout.splitlines()[0])
+                except Exception:
+                    pass
+
+                if s_ver is None or s_ver < MIN_FFMPEG_VERSION:
                     resolved_ffmpeg = c_ffmpeg
                     resolved_ffprobe = c_ffprobe or s_ffprobe or "ffprobe"
                     effective_source = "container"
-                    note = "Auto: System FFmpeg lacks essential codecs (libx264/aac); selected Container"
-                elif s_encoders.intersection(HW_ENCODERS):
-                    resolved_ffmpeg = s_ffmpeg
-                    resolved_ffprobe = s_ffprobe or c_ffprobe or "ffprobe"
-                    effective_source = "system"
-                    note = "Auto: Selected System FFmpeg (hardware acceleration supported)"
+                    ver_display = f"{s_ver[0]}.{s_ver[1]}" if s_ver else "unknown"
+                    note = f"Auto: System FFmpeg version ({ver_display}) is older than required (4.3+); selected Container"
                 else:
-                    resolved_ffmpeg = c_ffmpeg
-                    resolved_ffprobe = c_ffprobe or s_ffprobe or "ffprobe"
-                    effective_source = "container"
-                    note = "Auto: Selected Container FFmpeg"
+                    s_encoders = probe_binary_encoders(s_ffmpeg)
+                    s_has_essential = ESSENTIAL_ENCODERS.issubset(s_encoders)
+                    s_has_hw = bool(s_encoders.intersection(HW_ENCODERS))
+
+                    if not s_has_essential:
+                        resolved_ffmpeg = c_ffmpeg
+                        resolved_ffprobe = c_ffprobe or s_ffprobe or "ffprobe"
+                        effective_source = "container"
+                        note = "Auto: System FFmpeg lacks essential codecs (libx264/aac); selected Container"
+                    elif s_has_hw and not c_has_hw:
+                        resolved_ffmpeg = s_ffmpeg
+                        resolved_ffprobe = s_ffprobe or c_ffprobe or "ffprobe"
+                        effective_source = "system"
+                        note = "Auto: Selected System FFmpeg (hardware acceleration supported)"
+                    elif not c_has_essential and s_has_essential:
+                        resolved_ffmpeg = s_ffmpeg
+                        resolved_ffprobe = s_ffprobe or c_ffprobe or "ffprobe"
+                        effective_source = "system"
+                        note = "Auto: Selected System FFmpeg (container lacks essential codecs)"
+                    else:
+                        resolved_ffmpeg = c_ffmpeg
+                        resolved_ffprobe = c_ffprobe or s_ffprobe or "ffprobe"
+                        effective_source = "container"
+                        note = "Auto: Selected Container FFmpeg"
         elif c_ffmpeg:
             resolved_ffmpeg = c_ffmpeg
             resolved_ffprobe = c_ffprobe or s_ffprobe or "ffprobe"
             effective_source = "container"
-            note = "Auto: Using Container FFmpeg (no system FFmpeg found)"
+            if is_flatpak():
+                note = "Auto: Selected Flatpak runtime FFmpeg"
+            elif is_snap():
+                note = "Auto: Selected Snap runtime FFmpeg"
+            else:
+                note = "Auto: Using Container FFmpeg (no system FFmpeg found)"
         elif s_ffmpeg:
             resolved_ffmpeg = s_ffmpeg
             resolved_ffprobe = s_ffprobe or c_ffprobe or "ffprobe"
@@ -412,3 +661,19 @@ def clamp(val: float, min_val: float, max_val: float) -> float:
 def generate_id() -> str:
     """Generate a short unique identifier for segments."""
     return uuid.uuid4().hex[:8]
+
+
+def resolve_file_arg(val: str | Path) -> Path:
+    """Resolve an input argument into a local filesystem Path, decoding file:// URIs."""
+    if isinstance(val, Path):
+        s = str(val)
+    else:
+        s = str(val).strip()
+    if s.startswith("file://"):
+        try:
+            from urllib.parse import unquote, urlsplit
+            return Path(unquote(urlsplit(s).path))
+        except Exception:
+            pass
+    return Path(s)
+

@@ -14,6 +14,7 @@ from gi.repository import Adw, Gdk, Gio, GLib, Gtk
 
 from .i18n import _
 from .services.health_service import HealthCheckItem, HealthService
+from .utils import get_container_ffmpeg_path, is_flatpak, is_snap
 
 
 class HealthCheckDialog(Adw.Window):
@@ -87,20 +88,57 @@ class HealthCheckDialog(Adw.Window):
         self.row_ffmpeg = Adw.ActionRow(title=_("FFmpeg Tools"))
         self.grp_ffmpeg.add(self.row_ffmpeg)
 
-        self.row_ffmpeg_source = Adw.ComboRow(
-            title=_("FFmpeg Source"),
-            subtitle=_("Choose between automatic smart resolution, container bundled, or system FFmpeg"),
-        )
-        source_model = Gtk.StringList.new([
-            _("Auto (Recommended)"),
-            _("Container (Bundled)"),
-            _("System"),
-            _("Manual (Custom Path)"),
-        ])
-        self.row_ffmpeg_source.set_model(source_model)
-        source_map = {"auto": 0, "container": 1, "system": 2, "manual": 3}
-        current_src = HealthService.get_ffmpeg_source()
-        self.row_ffmpeg_source.set_selected(source_map.get(current_src, 0))
+        if is_flatpak():
+            self.row_ffmpeg_source = Adw.ComboRow(
+                title=_("FFmpeg Source"),
+                subtitle=_("Sandboxed within Flatpak multimedia runtime"),
+            )
+            source_model = Gtk.StringList.new([
+                _("Flatpak Runtime (Bundled)"),
+                _("Manual (Custom Path)"),
+            ])
+            self.row_ffmpeg_source.set_model(source_model)
+            current_src = HealthService.get_ffmpeg_source()
+            self.row_ffmpeg_source.set_selected(1 if current_src == "manual" else 0)
+        elif is_snap():
+            self.row_ffmpeg_source = Adw.ComboRow(
+                title=_("FFmpeg Source"),
+                subtitle=_("Sandboxed within Snap multimedia runtime"),
+            )
+            source_model = Gtk.StringList.new([
+                _("Snap Runtime (Bundled)"),
+                _("Manual (Custom Path)"),
+            ])
+            self.row_ffmpeg_source.set_model(source_model)
+            current_src = HealthService.get_ffmpeg_source()
+            self.row_ffmpeg_source.set_selected(1 if current_src == "manual" else 0)
+        elif get_container_ffmpeg_path():
+            self.row_ffmpeg_source = Adw.ComboRow(
+                title=_("FFmpeg Source"),
+                subtitle=_("Choose between automatic smart resolution, container bundled, or system FFmpeg"),
+            )
+            source_model = Gtk.StringList.new([
+                _("Auto (Recommended)"),
+                _("Container (Bundled)"),
+                _("System"),
+                _("Manual (Custom Path)"),
+            ])
+            self.row_ffmpeg_source.set_model(source_model)
+            source_map = {"auto": 0, "container": 1, "system": 2, "manual": 3}
+            current_src = HealthService.get_ffmpeg_source()
+            self.row_ffmpeg_source.set_selected(source_map.get(current_src, 0))
+        else:
+            self.row_ffmpeg_source = Adw.ComboRow(
+                title=_("FFmpeg Source"),
+                subtitle=_("Choose between system FFmpeg or a custom binary path"),
+            )
+            source_model = Gtk.StringList.new([
+                _("System"),
+                _("Manual (Custom Path)"),
+            ])
+            self.row_ffmpeg_source.set_model(source_model)
+            current_src = HealthService.get_ffmpeg_source()
+            self.row_ffmpeg_source.set_selected(1 if current_src == "manual" else 0)
         self.row_ffmpeg_source.connect("notify::selected", self._on_ffmpeg_source_selected)
         self.grp_ffmpeg.add(self.row_ffmpeg_source)
 
@@ -179,8 +217,15 @@ class HealthCheckDialog(Adw.Window):
         if self._updating_source or not self.row_ffmpeg_source:
             return
         idx = self.row_ffmpeg_source.get_selected()
-        sources = ["auto", "container", "system", "manual"]
-        new_source = sources[idx] if idx < len(sources) else "auto"
+        if is_flatpak() or is_snap():
+            sources = ["container", "manual"]
+            new_source = sources[idx] if idx < len(sources) else "container"
+        elif get_container_ffmpeg_path():
+            sources = ["auto", "container", "system", "manual"]
+            new_source = sources[idx] if idx < len(sources) else "auto"
+        else:
+            sources = ["system", "manual"]
+            new_source = sources[idx] if idx < len(sources) else "system"
         if self.row_ffmpeg_manual:
             self.row_ffmpeg_manual.set_visible(new_source == "manual")
         HealthService.set_ffmpeg_source(new_source)
@@ -514,9 +559,22 @@ class HealthCheckDialog(Adw.Window):
             eff_src = info.get("effective_source", "system")
             cfg_src = info.get("configured_source", "auto")
             binary_path = info.get("ffmpeg_path", "")
-            if cfg_src == "auto":
-                eff_label = _("Container") if eff_src == "container" else (_("System") if eff_src == "system" else _("Manual"))
-                sub = f"{binary_path} ({_('Auto: {src}').format(src=eff_label)})"
+            if is_flatpak():
+                if cfg_src == "manual":
+                    sub = binary_path
+                else:
+                    sub = f"{binary_path} ({_('Flatpak Runtime')})"
+            elif is_snap():
+                if cfg_src == "manual":
+                    sub = binary_path
+                else:
+                    sub = f"{binary_path} ({_('Snap Runtime')})"
+            elif get_container_ffmpeg_path():
+                if cfg_src == "auto":
+                    eff_label = _("Container") if eff_src == "container" else (_("System") if eff_src == "system" else _("Manual"))
+                    sub = f"{binary_path} ({_('Auto: {src}').format(src=eff_label)})"
+                else:
+                    sub = binary_path
             else:
                 sub = binary_path
             self.row_ffmpeg_source.set_subtitle(sub)
@@ -755,7 +813,11 @@ class HealthCheckDialog(Adw.Window):
             btn_fix.add_css_class("suggested-action")
             btn_fix.connect("clicked", self._on_fix_association_clicked)
             suffix_box.append(btn_fix)
-        else:
+            if not is_flatpak() and HealthService.is_file_association_installed():
+                btn_remove = Gtk.Button(label=_("Remove Association"))
+                btn_remove.connect("clicked", self._on_remove_association_clicked)
+                suffix_box.append(btn_remove)
+        elif not is_flatpak() and HealthService.can_remove_file_association():
             btn_remove = Gtk.Button(label=_("Remove Association"))
             btn_remove.connect("clicked", self._on_remove_association_clicked)
             suffix_box.append(btn_remove)

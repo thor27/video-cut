@@ -290,16 +290,36 @@ def test_resolve_ffmpeg_binaries_container_fallback_to_system():
         assert eff_src == "system"
 
 
-def test_resolve_ffmpeg_binaries_auto_hwaccel():
-    """Test auto mode prefers system FFmpeg when it has hardware acceleration and essential codecs."""
+def test_resolve_ffmpeg_binaries_auto_container_has_hwaccel():
+    """Test auto mode prefers container FFmpeg when it has both essential codecs and hardware acceleration."""
     from video_cut.utils import resolve_ffmpeg_binaries
 
     with patch("video_cut.utils.get_container_ffmpeg_path", return_value="/appdir/usr/bin/ffmpeg"), \
          patch("video_cut.utils.get_container_ffprobe_path", return_value="/appdir/usr/bin/ffprobe"), \
          patch("video_cut.utils.get_system_ffmpeg_path", return_value="/usr/bin/ffmpeg"), \
          patch("video_cut.utils.get_system_ffprobe_path", return_value="/usr/bin/ffprobe"), \
-         patch("subprocess.run") as mock_run, \
          patch("video_cut.utils.probe_binary_encoders", return_value={"libx264", "aac", "h264_vaapi"}):
+        ff, probe, eff_src, note = resolve_ffmpeg_binaries(source="auto")
+        assert ff == "/appdir/usr/bin/ffmpeg"
+        assert eff_src == "container"
+        assert "essential codecs and hardware acceleration supported" in (note or "")
+
+
+def test_resolve_ffmpeg_binaries_auto_system_has_hwaccel():
+    """Test auto mode prefers system FFmpeg when system has hardware acceleration and container lacks it."""
+    from video_cut.utils import resolve_ffmpeg_binaries
+
+    def fake_encoders(binary_path: str):
+        if "appdir" in binary_path:
+            return {"libx264", "aac"}  # Container has software only
+        return {"libx264", "aac", "h264_vaapi"}  # System has hardware acceleration
+
+    with patch("video_cut.utils.get_container_ffmpeg_path", return_value="/appdir/usr/bin/ffmpeg"), \
+         patch("video_cut.utils.get_container_ffprobe_path", return_value="/appdir/usr/bin/ffprobe"), \
+         patch("video_cut.utils.get_system_ffmpeg_path", return_value="/usr/bin/ffmpeg"), \
+         patch("video_cut.utils.get_system_ffprobe_path", return_value="/usr/bin/ffprobe"), \
+         patch("subprocess.run") as mock_run, \
+         patch("video_cut.utils.probe_binary_encoders", side_effect=fake_encoders):
         mock_run.return_value = MagicMock(returncode=0, stdout="ffmpeg version 6.1.1\n")
         ff, probe, eff_src, note = resolve_ffmpeg_binaries(source="auto")
         assert ff == "/usr/bin/ffmpeg"
@@ -328,12 +348,17 @@ def test_resolve_ffmpeg_binaries_auto_outdated_version():
     """Test auto mode prefers container when system FFmpeg version is < 4.3."""
     from video_cut.utils import resolve_ffmpeg_binaries
 
+    def fake_encoders(binary_path: str):
+        if "appdir" in binary_path:
+            return {"libx264", "aac"}  # Container has software only
+        return {"libx264", "aac", "h264_vaapi"}  # System has hwaccel, but version is old
+
     with patch("video_cut.utils.get_container_ffmpeg_path", return_value="/appdir/usr/bin/ffmpeg"), \
          patch("video_cut.utils.get_container_ffprobe_path", return_value="/appdir/usr/bin/ffprobe"), \
          patch("video_cut.utils.get_system_ffmpeg_path", return_value="/usr/bin/ffmpeg"), \
          patch("video_cut.utils.get_system_ffprobe_path", return_value="/usr/bin/ffprobe"), \
          patch("subprocess.run") as mock_run, \
-         patch("video_cut.utils.probe_binary_encoders", return_value={"libx264", "aac", "h264_vaapi"}):
+         patch("video_cut.utils.probe_binary_encoders", side_effect=fake_encoders):
         mock_run.return_value = MagicMock(returncode=0, stdout="ffmpeg version 3.4.8\n")
         ff, probe, eff_src, note = resolve_ffmpeg_binaries(source="auto")
         assert ff == "/appdir/usr/bin/ffmpeg"
@@ -350,6 +375,315 @@ def test_check_ffmpeg_outdated_warning():
         assert item.status == "warning"
         assert "3.4" in item.summary
         assert item.can_fix is True
+
+
+def test_is_flatpak_detection():
+    """Test is_flatpak helper with environment variable and filesystem marker."""
+    from video_cut.utils import is_flatpak
+
+    with patch.dict("os.environ", {"FLATPAK_ID": "io.github.thor27.video-cut"}):
+        assert is_flatpak() is True
+
+    with patch.dict("os.environ", {}, clear=True), \
+         patch("pathlib.Path.exists", return_value=True):
+        assert is_flatpak() is True
+
+    with patch.dict("os.environ", {}, clear=True), \
+         patch("pathlib.Path.exists", return_value=False):
+        assert is_flatpak() is False
+
+
+def test_resolve_ffmpeg_binaries_flatpak():
+    """Test FFmpeg resolution inside Flatpak sandbox uses runtime and reports isolation."""
+    from video_cut.utils import resolve_ffmpeg_binaries
+
+    with patch("video_cut.utils.is_flatpak", return_value=True), \
+         patch("video_cut.utils.get_container_ffmpeg_path", return_value="/usr/bin/ffmpeg"), \
+         patch("video_cut.utils.get_container_ffprobe_path", return_value="/usr/bin/ffprobe"):
+        # Auto mode selects Flatpak runtime
+        ff, probe, eff_src, note = resolve_ffmpeg_binaries(source="auto")
+        assert ff == "/usr/bin/ffmpeg"
+        assert probe == "/usr/bin/ffprobe"
+        assert eff_src == "container"
+        assert "Flatpak runtime" in (note or "")
+
+        # System mode falls back with informative isolation note
+        ff2, probe2, eff_src2, note2 = resolve_ffmpeg_binaries(source="system")
+        assert ff2 == "/usr/bin/ffmpeg"
+        assert eff_src2 == "container"
+        assert "Flatpak sandbox" in (note2 or "")
+
+
+def test_check_file_association_flatpak(tmp_path: Path):
+    """Test check_file_association inside Flatpak returns ok and cleans up broken desktop entry."""
+    broken_apps = tmp_path / ".local" / "share" / "applications"
+    broken_apps.mkdir(parents=True, exist_ok=True)
+    broken_desktop = broken_apps / "io.github.thor27.video-cut.desktop"
+    broken_desktop.write_text("[Desktop Entry]\nExec=video-cut %U\n", encoding="utf-8")
+
+    with patch("video_cut.services.health_service.is_flatpak", return_value=True), \
+         patch("pathlib.Path.home", return_value=tmp_path):
+        item = HealthService.check_file_association()
+        assert item.status == "ok"
+        assert item.can_fix is False
+        assert "Flatpak" in item.summary
+        # Broken desktop entry with raw Exec=video-cut must be removed to avoid shadowing
+        assert not broken_desktop.exists()
+
+
+def test_fix_and_remove_file_association_flatpak(tmp_path: Path):
+    """Test fix_file_association and remove_file_association inside Flatpak."""
+    with patch("video_cut.services.health_service.is_flatpak", return_value=True), \
+         patch("pathlib.Path.home", return_value=tmp_path):
+        ok_fix, msg_fix = HealthService.fix_file_association()
+        assert ok_fix is True
+        assert "Flatpak" in msg_fix
+        # No files written to fake user home
+        assert not (tmp_path / ".local" / "share" / "applications" / "io.github.thor27.video-cut.desktop").exists()
+
+        ok_rem, msg_rem = HealthService.remove_file_association()
+        assert ok_rem is False
+        assert "Flatpak" in msg_rem
+
+
+def test_packaging_type_detection(tmp_path: Path):
+    """Test packaging distribution type detection for flatpak, snap, appimage, deb, and source."""
+    from video_cut import utils
+    from video_cut.i18n import set_language
+
+    set_language("en_US")
+
+    # 1. Flatpak
+    with patch("video_cut.utils.is_flatpak", return_value=True):
+        assert utils.get_packaging_type() == "flatpak"
+        assert utils.get_packaging_type_display_name() == "Flatpak"
+
+    # 2. Snap
+    with patch("video_cut.utils.is_flatpak", return_value=False), \
+         patch.dict("os.environ", {"SNAP": "/snap/video-cut/current"}):
+        assert utils.is_snap() is True
+        assert utils.get_packaging_type() == "snap"
+        assert utils.get_packaging_type_display_name() == "Snap"
+
+    # 3. AppImage
+    with patch("video_cut.utils.is_flatpak", return_value=False), \
+         patch.dict("os.environ", {"APPIMAGE": "/path/to/VideoCut.AppImage"}, clear=True):
+        assert utils.is_appimage() is True
+        assert utils.get_packaging_type() == "appimage"
+        assert utils.get_packaging_type_display_name() == "AppImage"
+
+    # 4. Debian package (explicit verification, not an else-fallback)
+    with patch("video_cut.utils.is_flatpak", return_value=False), \
+         patch.dict("os.environ", {}, clear=True), \
+         patch("video_cut.utils.is_source_distribution", return_value=False), \
+         patch.object(Path, "resolve", return_value=Path("/usr/lib/python3/dist-packages/video_cut/utils.py")), \
+         patch("shutil.which", return_value="/usr/bin/dpkg-query"), \
+         patch("subprocess.run") as mock_run:
+        def fake_dpkg(cmd, **kwargs):
+            if "-W" in cmd:
+                return MagicMock(returncode=0, stdout="install ok installed")
+            if "-S" in cmd:
+                return MagicMock(returncode=0, stdout="video-cut: /usr/lib/python3/dist-packages/video_cut/utils.py")
+            return MagicMock(returncode=1, stdout="")
+
+        mock_run.side_effect = fake_dpkg
+        assert utils.is_deb_package() is True
+        assert utils.get_packaging_type() == "deb"
+        assert utils.get_packaging_type_display_name() == "Debian package"
+
+    # 5. Non-deb system installation does NOT fall back to deb
+    with patch("video_cut.utils.is_flatpak", return_value=False), \
+         patch.dict("os.environ", {}, clear=True), \
+         patch("video_cut.utils.is_source_distribution", return_value=False), \
+         patch("video_cut.utils.is_deb_package", return_value=False):
+        assert utils.get_packaging_type() == "unknown"
+        assert utils.get_packaging_type_display_name() == ""
+
+    # 6. Source / git development checkout (takes precedence even if deb installed on OS)
+    with patch("video_cut.utils.is_flatpak", return_value=False), \
+         patch.dict("os.environ", {}, clear=True), \
+         patch("video_cut.utils.is_source_distribution", return_value=True):
+        assert utils.is_source_distribution() is True
+        assert utils.is_deb_package() is False
+        assert utils.get_packaging_type() == "source"
+        with patch("video_cut.utils.get_git_commit_hash", return_value="9b2c490"):
+            assert utils.get_packaging_type_display_name() == "git-9b2c490"
+        with patch("video_cut.utils.get_git_commit_hash", return_value=None):
+            assert utils.get_packaging_type_display_name() == "Source distribution"
+
+
+def test_snap_ffmpeg_isolation():
+    """Test that Snap environment prevents accessing host system binaries."""
+    from video_cut.utils import (
+        get_container_ffmpeg_path,
+        get_system_ffmpeg_path,
+        get_system_ffprobe_path,
+        resolve_ffmpeg_binaries,
+    )
+
+    with patch("video_cut.utils.is_snap", return_value=True), \
+         patch.dict("os.environ", {"SNAP": "/snap/video-cut/current"}):
+        assert get_system_ffmpeg_path() is None
+        assert get_system_ffprobe_path() is None
+
+        # Container path resolution
+        with patch("pathlib.Path.is_file", return_value=True), \
+             patch("os.access", return_value=True):
+            snap_ffmpeg = get_container_ffmpeg_path()
+            assert snap_ffmpeg is not None
+            assert "snap" in snap_ffmpeg or "/usr/bin/ffmpeg" in snap_ffmpeg
+
+            # Resolve binaries in snap returns container
+            ff, probe, eff_src, note = resolve_ffmpeg_binaries(source="auto")
+            assert eff_src == "container"
+            assert "Snap runtime" in (note or "")
+
+
+def test_snap_file_association(tmp_path: Path):
+    """Test HealthService file association performs proper checks and allows fix/remove under Snap."""
+    from video_cut.i18n import set_language
+
+    set_language("en_US")
+    # 1. Unregistered MIME under Snap warns and allows fix
+    with patch("video_cut.services.health_service.is_flatpak", return_value=False), \
+         patch("video_cut.services.health_service.is_snap", return_value=True), \
+         patch("pathlib.Path.home", return_value=tmp_path), \
+         patch.dict("os.environ", {"SNAP": "/snap/video-cut/current", "SNAP_REAL_HOME": str(tmp_path)}), \
+         patch.object(HealthService, "_is_vcut_mime_registered", return_value=False), \
+         patch("gi.repository.Gio.content_type_guess", return_value=("application/octet-stream", False)):
+        item = HealthService.check_file_association()
+        assert item.status == "warning"
+        assert item.can_fix is True
+        assert item.fix_label is not None
+
+        # Fix creates files and returns success
+        ok_fix, fix_msg = HealthService.fix_file_association()
+        assert ok_fix is True
+        assert (tmp_path / ".local" / "share" / "mime" / "packages" / "io.github.thor27.video-cut.xml").exists()
+        assert (tmp_path / ".local" / "share" / "applications" / "io.github.thor27.video-cut.desktop").exists()
+
+        # Removal is allowed under Snap
+        assert HealthService.can_remove_file_association() is True
+        ok_rem, rem_msg = HealthService.remove_file_association()
+        assert ok_rem is True
+        assert not (tmp_path / ".local" / "share" / "mime" / "packages" / "io.github.thor27.video-cut.xml").exists()
+        assert not (tmp_path / ".local" / "share" / "applications" / "io.github.thor27.video-cut.desktop").exists()
+
+
+def test_get_git_commit_hash():
+    """Test get_git_commit_hash returns short commit hash from git."""
+    from video_cut.utils import get_git_commit_hash
+
+    commit = get_git_commit_hash()
+    assert commit is not None
+    assert len(commit) >= 7
+    assert all(c in "0123456789abcdefABCDEF" for c in commit)
+
+
+def test_resolve_file_arg():
+    """Test resolve_file_arg correctly parses filesystem paths and file:// URIs."""
+    from video_cut.utils import resolve_file_arg
+
+    assert resolve_file_arg("/home/user/test.vcut") == Path("/home/user/test.vcut")
+    assert resolve_file_arg(Path("/home/user/test.vcut")) == Path("/home/user/test.vcut")
+    assert resolve_file_arg("file:///home/user/test.vcut") == Path("/home/user/test.vcut")
+    assert resolve_file_arg("file:///home/user/My%20Folder/v%C3%ADdeo%201.vcut") == Path("/home/user/My Folder/vídeo 1.vcut")
+
+
+def test_appimage_file_association(tmp_path: Path):
+    """Test HealthService file association in AppImage: registration, path check, path update, and removal."""
+    from video_cut.i18n import set_language
+
+    set_language("en_US")
+    appimage_v1 = tmp_path / "Downloads" / "VideoCut-v1.AppImage"
+    appimage_v1.parent.mkdir(parents=True, exist_ok=True)
+    appimage_v1.write_text("binary1")
+
+    with patch("video_cut.services.health_service.is_flatpak", return_value=False), \
+         patch("video_cut.services.health_service.is_appimage", return_value=True), \
+         patch("pathlib.Path.home", return_value=tmp_path), \
+         patch.dict("os.environ", {"APPIMAGE": str(appimage_v1)}), \
+         patch.object(HealthService, "_is_vcut_mime_registered", return_value=False), \
+         patch("gi.repository.Gio.content_type_guess", return_value=("application/octet-stream", False)):
+
+        # 1. Initially unregistered -> warning, fix_label="Register Association"
+        assert HealthService.is_file_association_installed() is False
+        item = HealthService.check_file_association()
+        assert item.status == "warning"
+        assert item.can_fix is True
+        assert item.fix_label == "Register Association"
+
+        # 2. Fix creates desktop file with quoted AppImage path
+        ok_fix, fix_msg = HealthService.fix_file_association()
+        assert ok_fix is True
+        desktop_file = tmp_path / ".local" / "share" / "applications" / "io.github.thor27.video-cut.desktop"
+        assert desktop_file.exists()
+        content = desktop_file.read_text(encoding="utf-8")
+        assert f'Exec="{appimage_v1}" %F' in content
+        assert f"TryExec={appimage_v1}" in content
+        assert HealthService.is_file_association_installed() is True
+
+        # 3. When MIME is recognized and path matches -> status is ok
+        with patch.object(HealthService, "_is_vcut_mime_registered", return_value=True), \
+             patch("gi.repository.Gio.content_type_guess", return_value=("application/x-video-cut", False)), \
+             patch("gi.repository.Gio.AppInfo.get_default_for_type", return_value=MagicMock(
+                 get_id=lambda: "io.github.thor27.video-cut.desktop",
+                 get_executable=lambda: str(appimage_v1),
+                 get_filename=lambda: str(desktop_file),
+             )):
+            item_ok = HealthService.check_file_association()
+            assert item_ok.status == "ok"
+
+            # 4. If AppImage was moved / changed to v2 -> outdated path warning with "Update Path"
+            appimage_v2 = tmp_path / "Applications" / "VideoCut-v2.AppImage"
+            with patch.dict("os.environ", {"APPIMAGE": str(appimage_v2)}):
+                item_outdated = HealthService.check_file_association()
+                assert item_outdated.status == "warning"
+                assert item_outdated.fix_label == "Update Path"
+                assert "outdated AppImage path" in item_outdated.summary
+                assert HealthService.is_file_association_installed() is True
+
+                # Fix path updates the desktop file to v2
+                ok_update, _ = HealthService.fix_file_association()
+                assert ok_update is True
+                new_content = desktop_file.read_text(encoding="utf-8")
+                assert f'Exec="{appimage_v2}" %F' in new_content
+                assert f"TryExec={appimage_v2}" in new_content
+
+        # 5. Remove cleans up files even when path was changed
+        ok_rem, rem_msg = HealthService.remove_file_association()
+        assert ok_rem is True
+        assert not desktop_file.exists()
+        assert HealthService.is_file_association_installed() is False
+
+
+def test_source_file_association(tmp_path: Path):
+    """Test HealthService file association behaves standardly for source distributions."""
+    with patch("video_cut.services.health_service.is_flatpak", return_value=False), \
+         patch("video_cut.services.health_service.is_appimage", return_value=False), \
+         patch("video_cut.services.health_service.is_snap", return_value=False), \
+         patch("pathlib.Path.home", return_value=tmp_path):
+
+        # Fix creates standard Exec=video-cut %F and TryExec=video-cut
+        ok_fix, _ = HealthService.fix_file_association()
+        assert ok_fix is True
+        desktop_file = tmp_path / ".local" / "share" / "applications" / "io.github.thor27.video-cut.desktop"
+        assert desktop_file.exists()
+        content = desktop_file.read_text(encoding="utf-8")
+        assert "Exec=video-cut %F" in content
+        assert "TryExec=video-cut" in content
+        assert HealthService.is_file_association_installed() is True
+
+        # Clean removal
+        ok_rem, _ = HealthService.remove_file_association()
+        assert ok_rem is True
+        assert not desktop_file.exists()
+        assert HealthService.is_file_association_installed() is False
+
+
+
+
+
 
 
 

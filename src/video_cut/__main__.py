@@ -2,13 +2,13 @@
 
 import argparse
 import sys
-from pathlib import Path
 
 from gi.repository import GLib
 
 from . import __version__
 from .app import VideoCutApplication
 from .paths import APP_ID, APP_NAME
+from .utils import resolve_file_arg
 
 
 def parse_args(args: list[str] | None = None) -> argparse.Namespace:
@@ -26,7 +26,7 @@ def parse_args(args: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument(
         "files",
         nargs="*",
-        type=Path,
+        type=resolve_file_arg,
         help="One or more video or image files to open in the timeline.",
     )
     return parser.parse_args(args)

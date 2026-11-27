@@ -5,6 +5,7 @@ from __future__ import annotations
 import contextlib
 import json
 import os
+import re
 import shutil
 import subprocess
 from dataclasses import dataclass
@@ -30,6 +31,9 @@ from ..utils import (
     get_ffprobe_path,
     get_healthcheck_config_dir,
     invalidate_ffmpeg_cache,
+    is_appimage,
+    is_flatpak,
+    is_snap,
     parse_ffmpeg_version,
     set_healthcheck_config_keys,
 )
@@ -353,6 +357,11 @@ class HealthService:
         data_home = Path(os.environ.get("XDG_DATA_HOME", Path.home() / ".local" / "share"))
         data_dirs_str = os.environ.get("XDG_DATA_DIRS", "/usr/local/share/:/usr/share/")
         all_dirs = [data_home] + [Path(d) for d in data_dirs_str.split(":") if d]
+        snap_real_home = os.environ.get("SNAP_REAL_HOME")
+        if snap_real_home:
+            rh_share = Path(snap_real_home) / ".local" / "share"
+            if rh_share.is_dir() and rh_share not in all_dirs:
+                all_dirs.insert(0, rh_share)
 
         for base in all_dirs:
             for fname in ("globs2", "globs"):
@@ -382,6 +391,37 @@ class HealthService:
         is_associated = False
         current_handler = ""
 
+        if is_flatpak():
+            # If a broken shadowing desktop file was previously created on host, clean it up
+            broken_desktop = Path.home() / ".local" / "share" / "applications" / "io.github.thor27.video-cut.desktop"
+            if broken_desktop.exists():
+                try:
+                    content = broken_desktop.read_text(encoding="utf-8")
+                    if "Exec=video-cut" in content and "flatpak run" not in content:
+                        broken_desktop.unlink(missing_ok=True)
+                        if shutil.which("update-desktop-database"):
+                            subprocess.run(
+                                ["update-desktop-database", str(broken_desktop.parent)],
+                                capture_output=True,
+                                timeout=3.0,
+                            )
+                except Exception:
+                    pass
+
+            return HealthCheckItem(
+                id="file_association",
+                title=_(".vcut Project Association"),
+                status="ok",
+                summary=_(".vcut projects are registered via Flatpak desktop integration."),
+                details=(
+                    f"MIME Type: {mime_type}\n"
+                    f"Application ID: {APP_ID}\n"
+                    "Status: Managed by Flatpak system export\n"
+                    "Desktop entry and MIME types are exported to the host environment."
+                ),
+                can_fix=False,
+            )
+
         # 1. Check if the MIME database recognizes *.vcut files
         content_type, _uncertain = Gio.content_type_guess("project.vcut", None)
         if hasattr(Gio.content_type_guess, "assert_called"):
@@ -393,6 +433,10 @@ class HealthService:
 
         # 2. Check if an active, installed Video Cut handler is default
         handler_valid = False
+        registered_exec = ""
+        outdated_appimage = False
+        appimage_path = os.environ.get("APPIMAGE")
+
         try:
             app_info = Gio.AppInfo.get_default_for_type(mime_type, False)
             if app_info:
@@ -427,6 +471,44 @@ class HealthService:
             except Exception:
                 pass
 
+        # If running inside AppImage, verify the desktop entry points to the current AppImage location
+        if is_appimage() and appimage_path:
+            desktop_cand = Path.home() / ".local" / "share" / "applications" / "io.github.thor27.video-cut.desktop"
+            if desktop_cand.exists():
+                try:
+                    for line in desktop_cand.read_text(encoding="utf-8").splitlines():
+                        if line.startswith("Exec="):
+                            registered_exec = line[5:].strip()
+                            break
+                    if appimage_path not in registered_exec:
+                        handler_valid = False
+                        outdated_appimage = True
+                except Exception:
+                    pass
+            else:
+                handler_valid = False
+
+        if outdated_appimage:
+            return HealthCheckItem(
+                id="file_association",
+                title=_(".vcut Project Association"),
+                status="warning",
+                summary=_("Video Cut association points to an outdated AppImage path."),
+                details=_(
+                    "MIME Type: {mime_type}\n"
+                    "Current AppImage: {current}\n"
+                    "Registered Executable: {registered}\n\n"
+                    "Update the association so that .vcut project files open with your current AppImage location."
+                ).format(
+                    mime_type=mime_type,
+                    current=appimage_path,
+                    registered=registered_exec or _("None"),
+                ),
+                can_fix=True,
+                fix_type="automated",
+                fix_label=_("Update Path"),
+            )
+
         is_associated = mime_registered and handler_valid
 
         if is_associated:
@@ -447,7 +529,10 @@ class HealthService:
         if not mime_registered:
             summary_reasons.append(_("MIME type for .vcut is not registered"))
         if not handler_valid:
-            summary_reasons.append(_("Video Cut is not set as default handler"))
+            if not shutil.which("video-cut"):
+                summary_reasons.append(_("executable 'video-cut' not found in PATH"))
+            else:
+                summary_reasons.append(_("Video Cut is not set as default handler"))
 
         return HealthCheckItem(
             id="file_association",
@@ -474,7 +559,8 @@ class HealthService:
     @classmethod
     def fix_file_association(cls) -> tuple[bool, str]:
         """Automated repair of .vcut file association in user-space."""
-        import sys
+        if is_flatpak():
+            return (True, _("File association is managed automatically by Flatpak."))
 
         mime_xml_source = RESOURCES_DIR / "io.github.thor27.video-cut.xml"
         desktop_source = RESOURCES_DIR / "io.github.thor27.video-cut.desktop"
@@ -483,130 +569,310 @@ class HealthService:
             return (False, _("MIME XML resource file not found."))
 
         try:
-            # 1. Install user MIME package
-            user_mime_dir = Path.home() / ".local" / "share" / "mime" / "packages"
-            user_mime_dir.mkdir(parents=True, exist_ok=True)
-            target_mime = user_mime_dir / "io.github.thor27.video-cut.xml"
-            shutil.copy(mime_xml_source, target_mime)
+            target_homes = [Path.home()]
+            snap_real_home = os.environ.get("SNAP_REAL_HOME")
+            if snap_real_home:
+                rh = Path(snap_real_home)
+                if rh.is_dir() and rh not in target_homes:
+                    target_homes.insert(0, rh)
 
-            if shutil.which("update-mime-database"):
-                subprocess.run(
-                    ["update-mime-database", str(Path.home() / ".local" / "share" / "mime")],
-                    capture_output=True,
-                    timeout=5.0,
-                )
+            for home_dir in target_homes:
+                # 1. Install user MIME package
+                user_mime_dir = home_dir / ".local" / "share" / "mime" / "packages"
+                with contextlib.suppress(Exception):
+                    user_mime_dir.mkdir(parents=True, exist_ok=True)
+                    shutil.copy(mime_xml_source, user_mime_dir / "io.github.thor27.video-cut.xml")
 
-            # 2. Install desktop entry with appropriate executable path
-            user_apps_dir = Path.home() / ".local" / "share" / "applications"
-            user_apps_dir.mkdir(parents=True, exist_ok=True)
-            target_desktop = user_apps_dir / "io.github.thor27.video-cut.desktop"
+                if shutil.which("update-mime-database"):
+                    with contextlib.suppress(Exception):
+                        subprocess.run(
+                            ["update-mime-database", str(home_dir / ".local" / "share" / "mime")],
+                            capture_output=True,
+                            timeout=5.0,
+                        )
 
-            if desktop_source.exists():
-                desktop_content = desktop_source.read_text(encoding="utf-8")
-                appimage_path = os.environ.get("APPIMAGE")
-                if appimage_path and Path(appimage_path).exists():
-                    desktop_content = desktop_content.replace("Exec=video-cut %U", f"Exec={appimage_path} %U")
-                elif not shutil.which("video-cut"):
-                    venv_bin = Path(sys.executable).parent / "video-cut"
-                    if venv_bin.exists():
-                        desktop_content = desktop_content.replace("Exec=video-cut %U", f"Exec={venv_bin} %U")
-                    else:
-                        desktop_content = desktop_content.replace("Exec=video-cut %U", f"Exec={sys.executable} -m video_cut %U")
-                target_desktop.write_text(desktop_content, encoding="utf-8")
+                # 2. Install desktop entry with appropriate executable path
+                user_apps_dir = home_dir / ".local" / "share" / "applications"
+                with contextlib.suppress(Exception):
+                    user_apps_dir.mkdir(parents=True, exist_ok=True)
+                    target_desktop = user_apps_dir / "io.github.thor27.video-cut.desktop"
 
-            # 3. Install icon if available
-            icon_source = RESOURCES_DIR / "icon_512.png"
-            if icon_source.exists():
-                icon_target_dir = Path.home() / ".local" / "share" / "icons" / "hicolor" / "512x512" / "apps"
-                icon_target_dir.mkdir(parents=True, exist_ok=True)
-                shutil.copy(icon_source, icon_target_dir / "io.github.thor27.video-cut.png")
+                    if desktop_source.exists():
+                        desktop_content = desktop_source.read_text(encoding="utf-8")
+                        appimage_path = os.environ.get("APPIMAGE")
+                        if is_appimage() and appimage_path:
+                            escaped_appimage = str(appimage_path).replace('"', '\\"')
+                            desktop_content = re.sub(
+                                r"^Exec=.*$",
+                                f'Exec="{escaped_appimage}" %F',
+                                desktop_content,
+                                flags=re.MULTILINE,
+                            )
+                            desktop_content = re.sub(
+                                r"^TryExec=.*$",
+                                f'TryExec={escaped_appimage}',
+                                desktop_content,
+                                flags=re.MULTILINE,
+                            )
+                            if "TryExec=" not in desktop_content:
+                                desktop_content = desktop_content.replace(
+                                    f'Exec="{escaped_appimage}" %F',
+                                    f'TryExec={escaped_appimage}\nExec="{escaped_appimage}" %F',
+                                )
+                        elif is_snap():
+                            snap_bin = None
+                            for cand in ("/snap/bin/video-cut", "/var/lib/snapd/snap/bin/video-cut"):
+                                if Path(cand).exists():
+                                    snap_bin = cand
+                                    break
+                            exec_bin = snap_bin if snap_bin else "video-cut"
+                            desktop_content = re.sub(
+                                r"^Exec=.*$",
+                                f'Exec={exec_bin} %F',
+                                desktop_content,
+                                flags=re.MULTILINE,
+                            )
+                            desktop_content = re.sub(
+                                r"^TryExec=.*$",
+                                f'TryExec={exec_bin}',
+                                desktop_content,
+                                flags=re.MULTILINE,
+                            )
+                            if "TryExec=" not in desktop_content:
+                                desktop_content = desktop_content.replace(
+                                    f'Exec={exec_bin} %F',
+                                    f'TryExec={exec_bin}\nExec={exec_bin} %F',
+                                )
+                        else:
+                            # Standard installation / source distribution
+                            desktop_content = re.sub(
+                                r"^Exec=.*$",
+                                "Exec=video-cut %F",
+                                desktop_content,
+                                flags=re.MULTILINE,
+                            )
+                            desktop_content = re.sub(
+                                r"^TryExec=.*$",
+                                "TryExec=video-cut",
+                                desktop_content,
+                                flags=re.MULTILINE,
+                            )
+                            if "TryExec=" not in desktop_content:
+                                desktop_content = desktop_content.replace(
+                                    "Exec=video-cut %F",
+                                    "TryExec=video-cut\nExec=video-cut %F",
+                                )
+                        target_desktop.write_text(desktop_content, encoding="utf-8")
 
-            if shutil.which("update-desktop-database"):
-                subprocess.run(
-                    ["update-desktop-database", str(user_apps_dir)],
-                    capture_output=True,
-                    timeout=5.0,
-                )
+                # 3. Install icons
+                with contextlib.suppress(Exception):
+                    icon_source = RESOURCES_DIR / "icon_512.png"
+                    if icon_source.exists():
+                        icon_target_dir = home_dir / ".local" / "share" / "icons" / "hicolor" / "512x512" / "apps"
+                        icon_target_dir.mkdir(parents=True, exist_ok=True)
+                        shutil.copy(icon_source, icon_target_dir / "io.github.thor27.video-cut.png")
+
+                    svg_source = RESOURCES_DIR / "io.github.thor27.video-cut.svg"
+                    if svg_source.exists():
+                        svg_target_dir = home_dir / ".local" / "share" / "icons" / "hicolor" / "scalable" / "apps"
+                        svg_target_dir.mkdir(parents=True, exist_ok=True)
+                        shutil.copy(svg_source, svg_target_dir / "io.github.thor27.video-cut.svg")
+
+                if shutil.which("update-desktop-database"):
+                    with contextlib.suppress(Exception):
+                        subprocess.run(
+                            ["update-desktop-database", str(user_apps_dir)],
+                            capture_output=True,
+                            timeout=5.0,
+                        )
+
+                if shutil.which("gtk-update-icon-cache"):
+                    with contextlib.suppress(Exception):
+                        subprocess.run(
+                            ["gtk-update-icon-cache", "-q", "-t", "-f", str(home_dir / ".local" / "share" / "icons" / "hicolor")],
+                            capture_output=True,
+                            timeout=5.0,
+                        )
 
             # 4. Associate MIME with desktop file
-            desktop_name = "io.github.thor27.video-cut.desktop"
+            desktop_names = ["io.github.thor27.video-cut.desktop"]
+            if is_snap() and Path("/var/lib/snapd/desktop/applications/video-cut_video-cut.desktop").exists():
+                desktop_names.insert(0, "video-cut_video-cut.desktop")
+
             if shutil.which("xdg-mime"):
-                subprocess.run(
-                    ["xdg-mime", "default", desktop_name, "application/x-video-cut"],
-                    capture_output=True,
-                    timeout=5.0,
-                )
+                for d_name in desktop_names:
+                    subprocess.run(
+                        ["xdg-mime", "default", d_name, "application/x-video-cut"],
+                        capture_output=True,
+                        timeout=5.0,
+                    )
 
             # 5. Also register via GioUnix/Gio DesktopAppInfo
+            target_desktop_primary = target_homes[0] / ".local" / "share" / "applications" / "io.github.thor27.video-cut.desktop"
             try:
                 from gi.repository import GioUnix
-                app_info = GioUnix.DesktopAppInfo.new_from_filename(str(target_desktop))
+                app_info = GioUnix.DesktopAppInfo.new_from_filename(str(target_desktop_primary))
                 if app_info:
                     app_info.set_as_default_for_type("application/x-video-cut")
             except Exception:
                 try:
                     from gi.repository import Gio
                     if hasattr(Gio, "DesktopAppInfo"):
-                        app_info = Gio.DesktopAppInfo.new_from_filename(str(target_desktop))
+                        app_info = Gio.DesktopAppInfo.new_from_filename(str(target_desktop_primary))
                         if app_info:
                             app_info.set_as_default_for_type("application/x-video-cut")
                 except Exception:
                     pass
+
+            # 6. Ensure user's mimeapps.list files have the association entry
+            for h in target_homes:
+                for mf in (h / ".config" / "mimeapps.list", h / ".local" / "share" / "applications" / "mimeapps.list"):
+                    try:
+                        mf.parent.mkdir(parents=True, exist_ok=True)
+                        lines = mf.read_text(encoding="utf-8").splitlines() if mf.exists() else []
+                        primary_desktop = desktop_names[0]
+                        entry = f"application/x-video-cut={primary_desktop};"
+                        added = False
+                        new_lines = []
+                        in_default = False
+                        for line_entry in lines:
+                            if line_entry.strip() == "[Default Applications]":
+                                in_default = True
+                                new_lines.append(line_entry)
+                                continue
+                            if in_default and line_entry.startswith("["):
+                                if not added:
+                                    new_lines.append(entry)
+                                    added = True
+                                in_default = False
+                            if in_default and line_entry.startswith("application/x-video-cut="):
+                                new_lines.append(entry)
+                                added = True
+                                continue
+                            new_lines.append(line_entry)
+                        if in_default and not added:
+                            new_lines.append(entry)
+                            added = True
+                        if not added:
+                            new_lines.extend(["", "[Default Applications]", entry])
+                        mf.write_text("\n".join(new_lines) + "\n", encoding="utf-8")
+                    except Exception:
+                        pass
 
             return (True, _("Successfully registered .vcut file association!"))
         except Exception as e:
             return (False, _("Failed to register file association: {error}").format(error=str(e)))
 
     @classmethod
-    def remove_file_association(cls) -> tuple[bool, str]:
-        """Remove .vcut file association and desktop file from user-space."""
-        try:
-            # 1. Remove user MIME package
-            user_mime_file = Path.home() / ".local" / "share" / "mime" / "packages" / "io.github.thor27.video-cut.xml"
-            if user_mime_file.exists():
-                user_mime_file.unlink()
-
-            user_mime_dir = Path.home() / ".local" / "share" / "mime"
-            if shutil.which("update-mime-database") and user_mime_dir.exists():
-                subprocess.run(
-                    ["update-mime-database", str(user_mime_dir)],
-                    capture_output=True,
-                    timeout=5.0,
-                )
-
-            # 2. Remove desktop entry
-            user_apps_dir = Path.home() / ".local" / "share" / "applications"
-            target_desktop = user_apps_dir / "io.github.thor27.video-cut.desktop"
-            if target_desktop.exists():
-                target_desktop.unlink()
-
-            if shutil.which("update-desktop-database") and user_apps_dir.exists():
-                subprocess.run(
-                    ["update-desktop-database", str(user_apps_dir)],
-                    capture_output=True,
-                    timeout=5.0,
-                )
-
-            # 3. Remove icon
-            target_icon = (
-                Path.home() / ".local" / "share" / "icons" / "hicolor" / "512x512" / "apps" / "io.github.thor27.video-cut.png"
-            )
-            if target_icon.exists():
-                target_icon.unlink()
-
-            # 4. Clean mimeapps.list files in user config and local share
-            mime_files = [
-                Path.home() / ".config" / "mimeapps.list",
-                Path.home() / ".local" / "share" / "applications" / "mimeapps.list",
-            ]
-            for mf in mime_files:
+    def is_file_association_installed(cls) -> bool:
+        """Return True if user-space .vcut association files exist on the host."""
+        if is_flatpak():
+            return False
+        homes = [Path.home()]
+        snap_rh = os.environ.get("SNAP_REAL_HOME")
+        if snap_rh and Path(snap_rh).is_dir():
+            rh = Path(snap_rh)
+            if rh not in homes:
+                homes.insert(0, rh)
+        for h in homes:
+            desktop = h / ".local" / "share" / "applications" / "io.github.thor27.video-cut.desktop"
+            mime_pkg = h / ".local" / "share" / "mime" / "packages" / "io.github.thor27.video-cut.xml"
+            if desktop.exists() or mime_pkg.exists():
+                return True
+            for mf in (h / ".config" / "mimeapps.list", h / ".local" / "share" / "applications" / "mimeapps.list"):
                 if mf.exists():
                     try:
-                        lines = mf.read_text(encoding="utf-8").splitlines()
-                        new_lines = [line for line in lines if "application/x-video-cut" not in line]
-                        mf.write_text("\n".join(new_lines) + "\n", encoding="utf-8")
+                        if "application/x-video-cut" in mf.read_text(encoding="utf-8"):
+                            return True
                     except Exception:
                         pass
+        return False
+
+    @classmethod
+    def can_remove_file_association(cls) -> bool:
+        """Return True if user-space association files can be removed by the user."""
+        if is_flatpak():
+            return False
+        return True
+
+    @classmethod
+    def remove_file_association(cls) -> tuple[bool, str]:
+        """Remove .vcut file association and desktop file from user-space."""
+        if is_flatpak():
+            return (False, _("Desktop integration is managed by Flatpak."))
+
+        try:
+            target_homes = [Path.home()]
+            snap_real_home = os.environ.get("SNAP_REAL_HOME")
+            if snap_real_home:
+                rh = Path(snap_real_home)
+                if rh.is_dir() and rh not in target_homes:
+                    target_homes.insert(0, rh)
+
+            for home_dir in target_homes:
+                # 1. Remove user MIME package
+                user_mime_file = home_dir / ".local" / "share" / "mime" / "packages" / "io.github.thor27.video-cut.xml"
+                if user_mime_file.exists():
+                    with contextlib.suppress(Exception):
+                        user_mime_file.unlink()
+
+                user_mime_dir = home_dir / ".local" / "share" / "mime"
+                if shutil.which("update-mime-database") and user_mime_dir.exists():
+                    with contextlib.suppress(Exception):
+                        subprocess.run(
+                            ["update-mime-database", str(user_mime_dir)],
+                            capture_output=True,
+                            timeout=5.0,
+                        )
+
+                # 2. Remove desktop entry
+                user_apps_dir = home_dir / ".local" / "share" / "applications"
+                target_desktop = user_apps_dir / "io.github.thor27.video-cut.desktop"
+                if target_desktop.exists():
+                    with contextlib.suppress(Exception):
+                        target_desktop.unlink()
+
+                if shutil.which("update-desktop-database") and user_apps_dir.exists():
+                    with contextlib.suppress(Exception):
+                        subprocess.run(
+                            ["update-desktop-database", str(user_apps_dir)],
+                            capture_output=True,
+                            timeout=5.0,
+                        )
+
+                # 3. Remove icon
+                for icon_path in (
+                    home_dir / ".local" / "share" / "icons" / "hicolor" / "512x512" / "apps" / "io.github.thor27.video-cut.png",
+                    home_dir / ".local" / "share" / "icons" / "hicolor" / "scalable" / "apps" / "io.github.thor27.video-cut.svg",
+                ):
+                    if icon_path.exists():
+                        with contextlib.suppress(Exception):
+                            icon_path.unlink()
+
+                if shutil.which("gtk-update-icon-cache"):
+                    with contextlib.suppress(Exception):
+                        subprocess.run(
+                            ["gtk-update-icon-cache", "-q", "-t", "-f", str(home_dir / ".local" / "share" / "icons" / "hicolor")],
+                            capture_output=True,
+                            timeout=5.0,
+                        )
+
+                # 4. Clean mimeapps.list files in user config and local share
+                mime_files = [
+                    home_dir / ".config" / "mimeapps.list",
+                    home_dir / ".local" / "share" / "applications" / "mimeapps.list",
+                ]
+                for mf in mime_files:
+                    if mf.exists():
+                        try:
+                            lines = mf.read_text(encoding="utf-8").splitlines()
+                            new_lines = [
+                                line for line in lines
+                                if not ("application/x-video-cut" in line and ("io.github.thor27.video-cut" in line or "video-cut" in line))
+                            ]
+                            mf.write_text("\n".join(new_lines) + "\n", encoding="utf-8")
+                        except Exception:
+                            pass
 
             return (True, _("Successfully removed .vcut file association."))
         except Exception as e:

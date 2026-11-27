@@ -100,6 +100,13 @@ def test_translations_pt_br():
     assert _("Auto (Recommended)") == "Automático (Recomendado)"
     assert _("Container (Bundled)") == "Contêiner (Integrado)"
     assert _("Manual (Custom Path)") == "Manual (Caminho Personalizado)"
+    assert _("Flatpak Runtime (Bundled)") == "Flatpak Runtime (Integrado)"
+    assert _("Sandboxed within Flatpak multimedia runtime") == "Isolado no runtime multimídia do Flatpak"
+    assert _("Snap Runtime (Bundled)") == "Snap Runtime (Integrado)"
+    assert _("Sandboxed within Snap multimedia runtime") == "Isolado no runtime multimídia do Snap"
+    assert _(".vcut projects are registered via Snap desktop integration.") == "Projetos .vcut estão registrados via integração de desktop do Snap."
+    assert _("Debian package") == "Pacote Debian"
+    assert _("Source distribution") == "Distribuição fonte"
 
 
 def test_translations_es():
@@ -146,6 +153,13 @@ def test_translations_es():
     assert _("Auto (Recommended)") == "Automático (Recomendado)"
     assert _("Container (Bundled)") == "Contenedor (Integrado)"
     assert _("Manual (Custom Path)") == "Manual (Ruta Personalizada)"
+    assert _("Flatpak Runtime (Bundled)") == "Flatpak Runtime (Integrado)"
+    assert _("Sandboxed within Flatpak multimedia runtime") == "Aislado en el entorno multimedia de Flatpak"
+    assert _("Snap Runtime (Bundled)") == "Snap Runtime (Integrado)"
+    assert _("Sandboxed within Snap multimedia runtime") == "Aislado en el entorno multimedia de Snap"
+    assert _(".vcut projects are registered via Snap desktop integration.") == "Los proyectos .vcut están registrados mediante la integración de escritorio de Snap."
+    assert _("Debian package") == "Paquete Debian"
+    assert _("Source distribution") == "Distribución de código fuente"
 
 
 def test_translations_fr():
@@ -193,6 +207,13 @@ def test_translations_fr():
     assert _("Auto (Recommended)") == "Automatique (Recommandé)"
     assert _("Container (Bundled)") == "Conteneur (Intégré)"
     assert _("Manual (Custom Path)") == "Manuel (Chemin Personnalisé)"
+    assert _("Flatpak Runtime (Bundled)") == "Flatpak Runtime (Intégré)"
+    assert _("Sandboxed within Flatpak multimedia runtime") == "Isolé dans l'environnement multimédia Flatpak"
+    assert _("Snap Runtime (Bundled)") == "Snap Runtime (Intégré)"
+    assert _("Sandboxed within Snap multimedia runtime") == "Isolé dans l'environnement multimédia Snap"
+    assert _(".vcut projects are registered via Snap desktop integration.") == "Les projets .vcut sont enregistrés via l'intégration au bureau de Snap."
+    assert _("Debian package") == "Paquet Debian"
+    assert _("Source distribution") == "Distribution source"
 
 
 def test_translations_en_us():
@@ -200,6 +221,11 @@ def test_translations_en_us():
     assert get_current_locale() == "en_US"
 
     assert _("Open...") == "Open..."
+    assert _("Flatpak Runtime (Bundled)") == "Flatpak Runtime (Bundled)"
+    assert _("Snap Runtime (Bundled)") == "Snap Runtime (Bundled)"
+    assert _("Sandboxed within Snap multimedia runtime") == "Sandboxed within Snap multimedia runtime"
+    assert _("Debian package") == "Debian package"
+    assert _("Source distribution") == "Source distribution"
     assert _("No Media Loaded") == "No Media Loaded"
     assert _("Split at Cursor") == "Split at Cursor"
     assert _("Aspect Ratio:") == "Aspect Ratio:"

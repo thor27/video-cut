@@ -353,28 +353,62 @@ def test_startup_health_alert_modal_review_and_fix():
 
 
 def test_health_dialog_ffmpeg_source_combo_selection():
-    """Test changing FFmpeg source combo updates preference and refreshes checks."""
+    """Test changing FFmpeg source combo in standard system/deb/source environment."""
     dialog = HealthCheckDialog()
     assert dialog.row_ffmpeg_source is not None
     assert dialog.row_ffmpeg_manual is not None
+    model = dialog.row_ffmpeg_source.get_model()
+    # No container present by default in dev environment
+    assert model.get_n_items() == 2
+    assert model.get_string(0) == _("System")
+    assert model.get_string(1) == _("Manual (Custom Path)")
 
     with patch("video_cut.services.health_service.HealthService.set_ffmpeg_source") as mock_set, \
          patch.object(dialog, "refresh_checks") as mock_refresh:
-        # Index 1 corresponds to "container"
+        # Index 1 corresponds to "manual"
         dialog.row_ffmpeg_source.set_selected(1)
-        mock_set.assert_called_with("container")
-        mock_refresh.assert_called_once()
-        assert not dialog.row_ffmpeg_manual.get_visible()
-
-    with patch("video_cut.services.health_service.HealthService.set_ffmpeg_source") as mock_set, \
-         patch.object(dialog, "refresh_checks") as mock_refresh:
-        # Index 3 corresponds to "manual"
-        dialog.row_ffmpeg_source.set_selected(3)
         mock_set.assert_called_with("manual")
         mock_refresh.assert_called_once()
         assert dialog.row_ffmpeg_manual.get_visible()
 
+    with patch("video_cut.services.health_service.HealthService.set_ffmpeg_source") as mock_set, \
+         patch.object(dialog, "refresh_checks") as mock_refresh:
+        # Index 0 corresponds to "system"
+        dialog.row_ffmpeg_source.set_selected(0)
+        mock_set.assert_called_with("system")
+        mock_refresh.assert_called_once()
+        assert not dialog.row_ffmpeg_manual.get_visible()
+
     dialog.destroy()
+
+
+def test_health_dialog_ffmpeg_source_bundled_container_selection():
+    """Test FFmpeg source combo in bundled AppImage/Snap container environment."""
+    with patch("video_cut.health_dialog.get_container_ffmpeg_path", return_value="/appdir/usr/bin/ffmpeg"):
+        dialog = HealthCheckDialog()
+        assert dialog.row_ffmpeg_source is not None
+        model = dialog.row_ffmpeg_source.get_model()
+        assert model.get_n_items() == 4
+        assert model.get_string(0) == _("Auto (Recommended)")
+        assert model.get_string(1) == _("Container (Bundled)")
+        assert model.get_string(2) == _("System")
+        assert model.get_string(3) == _("Manual (Custom Path)")
+
+        with patch("video_cut.services.health_service.HealthService.set_ffmpeg_source") as mock_set, \
+             patch.object(dialog, "refresh_checks") as mock_refresh:
+            dialog.row_ffmpeg_source.set_selected(1)
+            mock_set.assert_called_with("container")
+            mock_refresh.assert_called_once()
+            assert not dialog.row_ffmpeg_manual.get_visible()
+
+        with patch("video_cut.services.health_service.HealthService.set_ffmpeg_source") as mock_set, \
+             patch.object(dialog, "refresh_checks") as mock_refresh:
+            dialog.row_ffmpeg_source.set_selected(3)
+            mock_set.assert_called_with("manual")
+            mock_refresh.assert_called_once()
+            assert dialog.row_ffmpeg_manual.get_visible()
+
+        dialog.destroy()
 
 
 def test_health_dialog_ffmpeg_manual_entry():
@@ -390,6 +424,178 @@ def test_health_dialog_ffmpeg_manual_entry():
         mock_refresh.assert_called_once()
 
     dialog.destroy()
+
+
+def test_health_dialog_flatpak_source_options():
+    """Test HealthCheckDialog displays simplified runtime options inside Flatpak."""
+    with patch("video_cut.health_dialog.is_flatpak", return_value=True):
+        dialog = HealthCheckDialog()
+        assert dialog.row_ffmpeg_source is not None
+        model = dialog.row_ffmpeg_source.get_model()
+        assert model.get_n_items() == 2
+        assert model.get_string(0) == _("Flatpak Runtime (Bundled)")
+        assert model.get_string(1) == _("Manual (Custom Path)")
+
+        # Verify selection maps to container and manual
+        with patch("video_cut.services.health_service.HealthService.set_ffmpeg_source") as mock_set, \
+             patch.object(dialog, "refresh_checks"):
+            dialog.row_ffmpeg_source.set_selected(1)
+            mock_set.assert_called_with("manual")
+
+            dialog.row_ffmpeg_source.set_selected(0)
+            mock_set.assert_called_with("container")
+
+        dialog.destroy()
+
+
+def test_health_dialog_flatpak_no_remove_association_button():
+    """Test HealthCheckDialog does not show Remove Association button inside Flatpak."""
+    with patch("video_cut.health_dialog.is_flatpak", return_value=True):
+        dialog = HealthCheckDialog()
+        item = HealthCheckItem(
+            id="file_association",
+            title="Association",
+            status="ok",
+            summary="Registered via Flatpak",
+            details="Default",
+        )
+        dialog._apply_results([item])
+
+        child = dialog._suffix_association.get_first_child()
+        btn_remove = None
+        while child is not None:
+            if isinstance(child, Gtk.Button) and not isinstance(child, Gtk.MenuButton):
+                btn_remove = child
+                break
+            child = child.get_next_sibling()
+
+        assert btn_remove is None
+        dialog.destroy()
+
+
+def test_health_dialog_snap_source_options():
+    """Test HealthCheckDialog displays simplified runtime options inside Snap."""
+    from video_cut.i18n import set_language
+
+    set_language("en_US")
+    with patch("video_cut.health_dialog.is_flatpak", return_value=False), \
+         patch("video_cut.health_dialog.is_snap", return_value=True):
+        dialog = HealthCheckDialog()
+        assert dialog.row_ffmpeg_source is not None
+        model = dialog.row_ffmpeg_source.get_model()
+        assert model.get_n_items() == 2
+        assert model.get_string(0) == _("Snap Runtime (Bundled)")
+        assert model.get_string(1) == _("Manual (Custom Path)")
+
+        with patch("video_cut.services.health_service.HealthService.set_ffmpeg_source") as mock_set, \
+             patch.object(dialog, "refresh_checks"):
+            dialog.row_ffmpeg_source.set_selected(1)
+            mock_set.assert_called_with("manual")
+
+            dialog.row_ffmpeg_source.set_selected(0)
+            mock_set.assert_called_with("container")
+
+        dialog.destroy()
+
+
+def test_health_dialog_snap_allows_remove_and_register_association():
+    """Test HealthCheckDialog shows Register Association when warning and Remove Association when ok inside Snap."""
+    with patch("video_cut.health_dialog.is_flatpak", return_value=False), \
+         patch("video_cut.health_dialog.is_snap", return_value=True):
+        dialog = HealthCheckDialog()
+
+        # 1. When not associated (status == warning), show Register Association
+        item_warn = HealthCheckItem(
+            id="file_association",
+            title="Association",
+            status="warning",
+            summary="Not associated",
+            details="MIME unregistered",
+            can_fix=True,
+            fix_label="Register Association",
+        )
+        dialog._apply_results([item_warn])
+
+        child = dialog._suffix_association.get_first_child()
+        btn_action = None
+        while child is not None:
+            if isinstance(child, Gtk.Button) and not isinstance(child, Gtk.MenuButton):
+                btn_action = child
+                break
+            child = child.get_next_sibling()
+
+        assert btn_action is not None
+        assert btn_action.get_label() == "Register Association"
+
+        # 2. When associated (status == ok), show Remove Association
+        item_ok = HealthCheckItem(
+            id="file_association",
+            title="Association",
+            status="ok",
+            summary="Registered",
+            details="Default",
+        )
+        dialog._apply_results([item_ok])
+
+        child = dialog._suffix_association.get_first_child()
+        btn_remove = None
+        while child is not None:
+            if isinstance(child, Gtk.Button) and not isinstance(child, Gtk.MenuButton):
+                btn_remove = child
+                break
+            child = child.get_next_sibling()
+
+        assert btn_remove is not None
+        assert btn_remove.get_label() == _("Remove Association")
+        dialog.destroy()
+
+
+def test_health_dialog_appimage_outdated_path_shows_update_and_remove():
+    """Test HealthCheckDialog shows both Update Path and Remove Association when path is outdated in AppImage."""
+    from video_cut.services.health_service import HealthService
+
+    with patch("video_cut.health_dialog.is_flatpak", return_value=False), \
+         patch.object(HealthService, "is_file_association_installed", return_value=True):
+        dialog = HealthCheckDialog()
+
+        item_outdated = HealthCheckItem(
+            id="file_association",
+            title="Association",
+            status="warning",
+            summary="Outdated path",
+            details="Points to old location",
+            can_fix=True,
+            fix_label="Update Path",
+        )
+        dialog._apply_results([item_outdated])
+
+        child = dialog._suffix_association.get_first_child()
+        buttons = []
+        while child is not None:
+            if isinstance(child, Gtk.Button) and not isinstance(child, Gtk.MenuButton):
+                buttons.append(child.get_label())
+            child = child.get_next_sibling()
+
+        assert "Update Path" in buttons
+        assert _("Remove Association") in buttons
+        dialog.destroy()
+
+
+def test_about_dialog_packaging_display():
+    """Test MainWindow._show_about_dialog formats packaging type into version and debug_info."""
+    from video_cut import __version__
+    from video_cut.window import MainWindow
+
+    with patch("video_cut.window.Adw.AboutWindow") as mock_about_cls, \
+         patch("video_cut.window.get_packaging_type_display_name", return_value="Flatpak"):
+        mock_self = MagicMock()
+        MainWindow._show_about_dialog(mock_self)
+        mock_about_cls.assert_called_once()
+        kwargs = mock_about_cls.call_args[1]
+        assert kwargs["version"] == f"{__version__} (Flatpak)"
+        assert "Distribution: Flatpak" in kwargs["debug_info"]
+
+
 
 
 

@@ -2311,3 +2311,69 @@ msgstr ""
 
 #~ msgid "Alignment & Distribution"
 #~ msgstr "Alinhamento e distribuição"
+
+msgid "Flatpak Runtime (Bundled)"
+msgstr "Flatpak Runtime (Integrado)"
+
+msgid "Sandboxed within Flatpak multimedia runtime"
+msgstr "Isolado no runtime multimídia do Flatpak"
+
+msgid "Flatpak Runtime"
+msgstr "Flatpak Runtime"
+
+msgid ".vcut projects are registered via Flatpak desktop integration."
+msgstr "Projetos .vcut estão registrados via integração de desktop do Flatpak."
+
+msgid "File association is managed automatically by Flatpak."
+msgstr "A associação de arquivos é gerenciada automaticamente pelo Flatpak."
+
+msgid "Desktop integration is managed by Flatpak."
+msgstr "A integração com a área de trabalho é gerenciada pelo Flatpak."
+
+msgid "Flatpak"
+msgstr "Flatpak"
+
+msgid "Snap"
+msgstr "Snap"
+
+msgid "AppImage"
+msgstr "AppImage"
+
+msgid "Debian package"
+msgstr "Pacote Debian"
+
+msgid "Source distribution"
+msgstr "Distribuição fonte"
+
+msgid "Choose between system FFmpeg or a custom binary path"
+msgstr "Escolha entre o FFmpeg do sistema ou um caminho personalizado"
+
+msgid "Snap Runtime (Bundled)"
+msgstr "Snap Runtime (Integrado)"
+
+msgid "Sandboxed within Snap multimedia runtime"
+msgstr "Isolado no runtime multimídia do Snap"
+
+msgid "Snap Runtime"
+msgstr "Snap Runtime"
+
+msgid ".vcut projects are registered via Snap desktop integration."
+msgstr "Projetos .vcut estão registrados via integração de desktop do Snap."
+
+msgid "File association is managed automatically by Snap."
+msgstr "A associação de arquivos é gerenciada automaticamente pelo Snap."
+
+msgid "Desktop integration is managed by Snap."
+msgstr "A integração com a área de trabalho é gerenciada pelo Snap."
+
+msgid "Update Path"
+msgstr "Atualizar Caminho"
+
+msgid "Video Cut association points to an outdated AppImage path."
+msgstr "A associação do Video Cut aponta para um caminho desatualizado do AppImage."
+
+msgid "Current AppImage: {current}\nRegistered Executable: {registered}\n\nUpdate the association so that .vcut project files open with your current AppImage location."
+msgstr "AppImage atual: {current}\nExecutável registrado: {registered}\n\nAtualize a associação para que os arquivos de projeto .vcut abram com a localização atual do seu AppImage."
+
+msgid "executable 'video-cut' not found in PATH"
+msgstr "executável 'video-cut' não encontrado no PATH"
