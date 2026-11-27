@@ -1,7 +1,8 @@
 [Desktop Entry]
 Name=Video Cut
 Comment=Easy-to-use tool to cut and merge videos, add images, crop, and rotate
-Exec=video-cut %U
+Exec=video-cut %F
+TryExec=video-cut
 Icon=io.github.thor27.video-cut
 Terminal=false
 Type=Application

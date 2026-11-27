@@ -5,6 +5,7 @@ from __future__ import annotations
 import contextlib
 import json
 import os
+import re
 import shutil
 import subprocess
 from dataclasses import dataclass
@@ -30,6 +31,7 @@ from ..utils import (
     get_ffprobe_path,
     get_healthcheck_config_dir,
     invalidate_ffmpeg_cache,
+    is_appimage,
     is_flatpak,
     is_snap,
     parse_ffmpeg_version,
@@ -431,6 +433,10 @@ class HealthService:
 
         # 2. Check if an active, installed Video Cut handler is default
         handler_valid = False
+        registered_exec = ""
+        outdated_appimage = False
+        appimage_path = os.environ.get("APPIMAGE")
+
         try:
             app_info = Gio.AppInfo.get_default_for_type(mime_type, False)
             if app_info:
@@ -465,6 +471,44 @@ class HealthService:
             except Exception:
                 pass
 
+        # If running inside AppImage, verify the desktop entry points to the current AppImage location
+        if is_appimage() and appimage_path:
+            desktop_cand = Path.home() / ".local" / "share" / "applications" / "io.github.thor27.video-cut.desktop"
+            if desktop_cand.exists():
+                try:
+                    for line in desktop_cand.read_text(encoding="utf-8").splitlines():
+                        if line.startswith("Exec="):
+                            registered_exec = line[5:].strip()
+                            break
+                    if appimage_path not in registered_exec:
+                        handler_valid = False
+                        outdated_appimage = True
+                except Exception:
+                    pass
+            else:
+                handler_valid = False
+
+        if outdated_appimage:
+            return HealthCheckItem(
+                id="file_association",
+                title=_(".vcut Project Association"),
+                status="warning",
+                summary=_("Video Cut association points to an outdated AppImage path."),
+                details=_(
+                    "MIME Type: {mime_type}\n"
+                    "Current AppImage: {current}\n"
+                    "Registered Executable: {registered}\n\n"
+                    "Update the association so that .vcut project files open with your current AppImage location."
+                ).format(
+                    mime_type=mime_type,
+                    current=appimage_path,
+                    registered=registered_exec or _("None"),
+                ),
+                can_fix=True,
+                fix_type="automated",
+                fix_label=_("Update Path"),
+            )
+
         is_associated = mime_registered and handler_valid
 
         if is_associated:
@@ -485,7 +529,10 @@ class HealthService:
         if not mime_registered:
             summary_reasons.append(_("MIME type for .vcut is not registered"))
         if not handler_valid:
-            summary_reasons.append(_("Video Cut is not set as default handler"))
+            if not shutil.which("video-cut"):
+                summary_reasons.append(_("executable 'video-cut' not found in PATH"))
+            else:
+                summary_reasons.append(_("Video Cut is not set as default handler"))
 
         return HealthCheckItem(
             id="file_association",
@@ -514,8 +561,6 @@ class HealthService:
         """Automated repair of .vcut file association in user-space."""
         if is_flatpak():
             return (True, _("File association is managed automatically by Flatpak."))
-
-        import sys
 
         mime_xml_source = RESOURCES_DIR / "io.github.thor27.video-cut.xml"
         desktop_source = RESOURCES_DIR / "io.github.thor27.video-cut.desktop"
@@ -555,24 +600,68 @@ class HealthService:
                     if desktop_source.exists():
                         desktop_content = desktop_source.read_text(encoding="utf-8")
                         appimage_path = os.environ.get("APPIMAGE")
-                        if appimage_path and Path(appimage_path).exists():
-                            desktop_content = desktop_content.replace("Exec=video-cut %U", f"Exec={appimage_path} %U")
+                        if is_appimage() and appimage_path:
+                            escaped_appimage = str(appimage_path).replace('"', '\\"')
+                            desktop_content = re.sub(
+                                r"^Exec=.*$",
+                                f'Exec="{escaped_appimage}" %F',
+                                desktop_content,
+                                flags=re.MULTILINE,
+                            )
+                            desktop_content = re.sub(
+                                r"^TryExec=.*$",
+                                f'TryExec={escaped_appimage}',
+                                desktop_content,
+                                flags=re.MULTILINE,
+                            )
+                            if "TryExec=" not in desktop_content:
+                                desktop_content = desktop_content.replace(
+                                    f'Exec="{escaped_appimage}" %F',
+                                    f'TryExec={escaped_appimage}\nExec="{escaped_appimage}" %F',
+                                )
                         elif is_snap():
                             snap_bin = None
                             for cand in ("/snap/bin/video-cut", "/var/lib/snapd/snap/bin/video-cut"):
                                 if Path(cand).exists():
                                     snap_bin = cand
                                     break
-                            if snap_bin:
-                                desktop_content = desktop_content.replace("Exec=video-cut %U", f"Exec={snap_bin} %U")
-                            else:
-                                desktop_content = desktop_content.replace("Exec=video-cut %U", "Exec=video-cut %U")
-                        elif not shutil.which("video-cut"):
-                            venv_bin = Path(sys.executable).parent / "video-cut"
-                            if venv_bin.exists():
-                                desktop_content = desktop_content.replace("Exec=video-cut %U", f"Exec={venv_bin} %U")
-                            else:
-                                desktop_content = desktop_content.replace("Exec=video-cut %U", f"Exec={sys.executable} -m video_cut %U")
+                            exec_bin = snap_bin if snap_bin else "video-cut"
+                            desktop_content = re.sub(
+                                r"^Exec=.*$",
+                                f'Exec={exec_bin} %F',
+                                desktop_content,
+                                flags=re.MULTILINE,
+                            )
+                            desktop_content = re.sub(
+                                r"^TryExec=.*$",
+                                f'TryExec={exec_bin}',
+                                desktop_content,
+                                flags=re.MULTILINE,
+                            )
+                            if "TryExec=" not in desktop_content:
+                                desktop_content = desktop_content.replace(
+                                    f'Exec={exec_bin} %F',
+                                    f'TryExec={exec_bin}\nExec={exec_bin} %F',
+                                )
+                        else:
+                            # Standard installation / source distribution
+                            desktop_content = re.sub(
+                                r"^Exec=.*$",
+                                "Exec=video-cut %F",
+                                desktop_content,
+                                flags=re.MULTILINE,
+                            )
+                            desktop_content = re.sub(
+                                r"^TryExec=.*$",
+                                "TryExec=video-cut",
+                                desktop_content,
+                                flags=re.MULTILINE,
+                            )
+                            if "TryExec=" not in desktop_content:
+                                desktop_content = desktop_content.replace(
+                                    "Exec=video-cut %F",
+                                    "TryExec=video-cut\nExec=video-cut %F",
+                                )
                         target_desktop.write_text(desktop_content, encoding="utf-8")
 
                 # 3. Install icons
@@ -673,6 +762,31 @@ class HealthService:
             return (True, _("Successfully registered .vcut file association!"))
         except Exception as e:
             return (False, _("Failed to register file association: {error}").format(error=str(e)))
+
+    @classmethod
+    def is_file_association_installed(cls) -> bool:
+        """Return True if user-space .vcut association files exist on the host."""
+        if is_flatpak():
+            return False
+        homes = [Path.home()]
+        snap_rh = os.environ.get("SNAP_REAL_HOME")
+        if snap_rh and Path(snap_rh).is_dir():
+            rh = Path(snap_rh)
+            if rh not in homes:
+                homes.insert(0, rh)
+        for h in homes:
+            desktop = h / ".local" / "share" / "applications" / "io.github.thor27.video-cut.desktop"
+            mime_pkg = h / ".local" / "share" / "mime" / "packages" / "io.github.thor27.video-cut.xml"
+            if desktop.exists() or mime_pkg.exists():
+                return True
+            for mf in (h / ".config" / "mimeapps.list", h / ".local" / "share" / "applications" / "mimeapps.list"):
+                if mf.exists():
+                    try:
+                        if "application/x-video-cut" in mf.read_text(encoding="utf-8"):
+                            return True
+                    except Exception:
+                        pass
+        return False
 
     @classmethod
     def can_remove_file_association(cls) -> bool:

@@ -661,3 +661,19 @@ def clamp(val: float, min_val: float, max_val: float) -> float:
 def generate_id() -> str:
     """Generate a short unique identifier for segments."""
     return uuid.uuid4().hex[:8]
+
+
+def resolve_file_arg(val: str | Path) -> Path:
+    """Resolve an input argument into a local filesystem Path, decoding file:// URIs."""
+    if isinstance(val, Path):
+        s = str(val)
+    else:
+        s = str(val).strip()
+    if s.startswith("file://"):
+        try:
+            from urllib.parse import unquote, urlsplit
+            return Path(unquote(urlsplit(s).path))
+        except Exception:
+            pass
+    return Path(s)
+

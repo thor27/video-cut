@@ -11,6 +11,7 @@ from gi.repository import Adw, Gdk, Gio, GLib
 
 from .i18n import _
 from .paths import APP_ID, APP_NAME, load_application_css, register_resource_icons
+from .utils import resolve_file_arg
 from .window import MainWindow
 
 
@@ -33,9 +34,9 @@ class VideoCutApplication(Adw.Application):
 
         files: list[Path] = []
         if initial_files:
-            files.extend(Path(f) for f in initial_files)
+            files.extend(resolve_file_arg(f) for f in initial_files)
         elif initial_video:
-            files.append(Path(initial_video))
+            files.append(resolve_file_arg(initial_video))
 
         self.initial_files: list[Path] = files
         self.window: MainWindow | None = None
@@ -67,6 +68,10 @@ class VideoCutApplication(Adw.Application):
             for gfile in files:
                 p = gfile.get_path()
                 if p:
-                    paths.append(Path(p))
+                    paths.append(resolve_file_arg(p))
+                else:
+                    uri = gfile.get_uri()
+                    if uri:
+                        paths.append(resolve_file_arg(uri))
             if paths:
                 self.window.import_media_files(paths, replace=self.window.timeline.is_empty)

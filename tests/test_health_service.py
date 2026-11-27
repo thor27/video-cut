@@ -580,6 +580,108 @@ def test_get_git_commit_hash():
     assert all(c in "0123456789abcdefABCDEF" for c in commit)
 
 
+def test_resolve_file_arg():
+    """Test resolve_file_arg correctly parses filesystem paths and file:// URIs."""
+    from video_cut.utils import resolve_file_arg
+
+    assert resolve_file_arg("/home/user/test.vcut") == Path("/home/user/test.vcut")
+    assert resolve_file_arg(Path("/home/user/test.vcut")) == Path("/home/user/test.vcut")
+    assert resolve_file_arg("file:///home/user/test.vcut") == Path("/home/user/test.vcut")
+    assert resolve_file_arg("file:///home/user/My%20Folder/v%C3%ADdeo%201.vcut") == Path("/home/user/My Folder/vídeo 1.vcut")
+
+
+def test_appimage_file_association(tmp_path: Path):
+    """Test HealthService file association in AppImage: registration, path check, path update, and removal."""
+    from video_cut.i18n import set_language
+
+    set_language("en_US")
+    appimage_v1 = tmp_path / "Downloads" / "VideoCut-v1.AppImage"
+    appimage_v1.parent.mkdir(parents=True, exist_ok=True)
+    appimage_v1.write_text("binary1")
+
+    with patch("video_cut.services.health_service.is_flatpak", return_value=False), \
+         patch("video_cut.services.health_service.is_appimage", return_value=True), \
+         patch("pathlib.Path.home", return_value=tmp_path), \
+         patch.dict("os.environ", {"APPIMAGE": str(appimage_v1)}), \
+         patch.object(HealthService, "_is_vcut_mime_registered", return_value=False), \
+         patch("gi.repository.Gio.content_type_guess", return_value=("application/octet-stream", False)):
+
+        # 1. Initially unregistered -> warning, fix_label="Register Association"
+        assert HealthService.is_file_association_installed() is False
+        item = HealthService.check_file_association()
+        assert item.status == "warning"
+        assert item.can_fix is True
+        assert item.fix_label == "Register Association"
+
+        # 2. Fix creates desktop file with quoted AppImage path
+        ok_fix, fix_msg = HealthService.fix_file_association()
+        assert ok_fix is True
+        desktop_file = tmp_path / ".local" / "share" / "applications" / "io.github.thor27.video-cut.desktop"
+        assert desktop_file.exists()
+        content = desktop_file.read_text(encoding="utf-8")
+        assert f'Exec="{appimage_v1}" %F' in content
+        assert f"TryExec={appimage_v1}" in content
+        assert HealthService.is_file_association_installed() is True
+
+        # 3. When MIME is recognized and path matches -> status is ok
+        with patch.object(HealthService, "_is_vcut_mime_registered", return_value=True), \
+             patch("gi.repository.Gio.content_type_guess", return_value=("application/x-video-cut", False)), \
+             patch("gi.repository.Gio.AppInfo.get_default_for_type", return_value=MagicMock(
+                 get_id=lambda: "io.github.thor27.video-cut.desktop",
+                 get_executable=lambda: str(appimage_v1),
+                 get_filename=lambda: str(desktop_file),
+             )):
+            item_ok = HealthService.check_file_association()
+            assert item_ok.status == "ok"
+
+            # 4. If AppImage was moved / changed to v2 -> outdated path warning with "Update Path"
+            appimage_v2 = tmp_path / "Applications" / "VideoCut-v2.AppImage"
+            with patch.dict("os.environ", {"APPIMAGE": str(appimage_v2)}):
+                item_outdated = HealthService.check_file_association()
+                assert item_outdated.status == "warning"
+                assert item_outdated.fix_label == "Update Path"
+                assert "outdated AppImage path" in item_outdated.summary
+                assert HealthService.is_file_association_installed() is True
+
+                # Fix path updates the desktop file to v2
+                ok_update, _ = HealthService.fix_file_association()
+                assert ok_update is True
+                new_content = desktop_file.read_text(encoding="utf-8")
+                assert f'Exec="{appimage_v2}" %F' in new_content
+                assert f"TryExec={appimage_v2}" in new_content
+
+        # 5. Remove cleans up files even when path was changed
+        ok_rem, rem_msg = HealthService.remove_file_association()
+        assert ok_rem is True
+        assert not desktop_file.exists()
+        assert HealthService.is_file_association_installed() is False
+
+
+def test_source_file_association(tmp_path: Path):
+    """Test HealthService file association behaves standardly for source distributions."""
+    with patch("video_cut.services.health_service.is_flatpak", return_value=False), \
+         patch("video_cut.services.health_service.is_appimage", return_value=False), \
+         patch("video_cut.services.health_service.is_snap", return_value=False), \
+         patch("pathlib.Path.home", return_value=tmp_path):
+
+        # Fix creates standard Exec=video-cut %F and TryExec=video-cut
+        ok_fix, _ = HealthService.fix_file_association()
+        assert ok_fix is True
+        desktop_file = tmp_path / ".local" / "share" / "applications" / "io.github.thor27.video-cut.desktop"
+        assert desktop_file.exists()
+        content = desktop_file.read_text(encoding="utf-8")
+        assert "Exec=video-cut %F" in content
+        assert "TryExec=video-cut" in content
+        assert HealthService.is_file_association_installed() is True
+
+        # Clean removal
+        ok_rem, _ = HealthService.remove_file_association()
+        assert ok_rem is True
+        assert not desktop_file.exists()
+        assert HealthService.is_file_association_installed() is False
+
+
+
 
 
 

@@ -550,6 +550,37 @@ def test_health_dialog_snap_allows_remove_and_register_association():
         dialog.destroy()
 
 
+def test_health_dialog_appimage_outdated_path_shows_update_and_remove():
+    """Test HealthCheckDialog shows both Update Path and Remove Association when path is outdated in AppImage."""
+    from video_cut.services.health_service import HealthService
+
+    with patch("video_cut.health_dialog.is_flatpak", return_value=False), \
+         patch.object(HealthService, "is_file_association_installed", return_value=True):
+        dialog = HealthCheckDialog()
+
+        item_outdated = HealthCheckItem(
+            id="file_association",
+            title="Association",
+            status="warning",
+            summary="Outdated path",
+            details="Points to old location",
+            can_fix=True,
+            fix_label="Update Path",
+        )
+        dialog._apply_results([item_outdated])
+
+        child = dialog._suffix_association.get_first_child()
+        buttons = []
+        while child is not None:
+            if isinstance(child, Gtk.Button) and not isinstance(child, Gtk.MenuButton):
+                buttons.append(child.get_label())
+            child = child.get_next_sibling()
+
+        assert "Update Path" in buttons
+        assert _("Remove Association") in buttons
+        dialog.destroy()
+
+
 def test_about_dialog_packaging_display():
     """Test MainWindow._show_about_dialog formats packaging type into version and debug_info."""
     from video_cut import __version__

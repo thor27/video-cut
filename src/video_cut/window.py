@@ -35,7 +35,7 @@ from .services.probe_service import ProbeService, VideoMetadata
 from .services.project_service import ProjectService
 from .services.thumbnail_service import ThumbnailService
 from .timeline_widget import TimelineWidget
-from .utils import clamp, format_time, get_packaging_type_display_name
+from .utils import clamp, format_time, get_packaging_type_display_name, resolve_file_arg
 
 
 class MainWindow(Adw.ApplicationWindow):
@@ -1361,7 +1361,8 @@ class MainWindow(Adw.ApplicationWindow):
         if not paths:
             return
 
-        valid_paths = [p for p in paths if p.exists()]
+        resolved_paths = [resolve_file_arg(p) for p in paths]
+        valid_paths = [p for p in resolved_paths if p.exists()]
         if not valid_paths:
             self._show_toast(_("No valid media files found"))
             return

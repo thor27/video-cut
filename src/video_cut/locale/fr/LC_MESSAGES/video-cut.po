@@ -2376,4 +2376,14 @@ msgstr "L'association de fichiers est gérée automatiquement par Snap."
 msgid "Desktop integration is managed by Snap."
 msgstr "L'intégration au bureau est gérée par Snap."
 
+msgid "Update Path"
+msgstr "Mettre à jour le chemin"
 
+msgid "Video Cut association points to an outdated AppImage path."
+msgstr "L'association de Video Cut pointe vers un chemin obsolète d'AppImage."
+
+msgid "Current AppImage: {current}\nRegistered Executable: {registered}\n\nUpdate the association so that .vcut project files open with your current AppImage location."
+msgstr "AppImage actuelle : {current}\nExécutable enregistré : {registered}\n\nMettez à jour l'association pour que les fichiers de projet .vcut s'ouvrent avec l'emplacement actuel de votre AppImage."
+
+msgid "executable 'video-cut' not found in PATH"
+msgstr "exécutable 'video-cut' introuvable dans le PATH"
