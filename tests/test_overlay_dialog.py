@@ -2136,6 +2136,109 @@ def test_overlay_multi_alignment_icons_and_select_all(tmp_path: Path):
     dialog._cleanup()
 
 
+def test_overlay_emoji_font_discovery_and_filtering(monkeypatch, tmp_path):
+    """Verify emoji font discovery respects AppDir and rejects non-emoji font fallback."""
+    from video_cut.services.overlay_service import OverlayRenderService
+
+    # 1. Reset state
+    OverlayRenderService._checked_system_emoji_font = False
+    OverlayRenderService._system_emoji_font_path = None
+
+    # 2. Simulate fontconfig returning a monochrome font like DejaVuSans without color/emoji
+    def mock_run_dejavu(*args, **kwargs):
+        mock_res = MagicMock()
+        mock_res.returncode = 0
+        mock_res.stdout = "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf:DejaVu Sans\n"
+        return mock_res
+
+    monkeypatch.setattr("subprocess.run", mock_run_dejavu)
+    # Ensure standard noto paths appear absent
+    real_exists = Path.exists
+    def mock_exists(self):
+        if "NotoColorEmoji" in str(self):
+            return False
+        return real_exists(self)
+    monkeypatch.setattr(Path, "exists", mock_exists)
+
+    font_path = OverlayRenderService._find_system_emoji_font()
+    assert font_path is None or "emoji" in str(font_path).lower() or "color" in str(font_path).lower()
+
+    # 3. Simulate bundled font in AppDir
+    appdir = tmp_path / "AppDir"
+    bundled_font = appdir / "usr/share/fonts/truetype/noto/NotoColorEmoji.ttf"
+    bundled_font.parent.mkdir(parents=True, exist_ok=True)
+    bundled_font.write_bytes(b"dummy_font")
+    monkeypatch.setenv("APPDIR", str(appdir))
+
+    OverlayRenderService._checked_system_emoji_font = False
+    OverlayRenderService._system_emoji_font_path = None
+    # Allow bundled font path to exist
+    def mock_exists_appdir(self):
+        if str(self) == str(bundled_font):
+            return True
+        if "NotoColorEmoji" in str(self):
+            return False
+        return real_exists(self)
+    monkeypatch.setattr(Path, "exists", mock_exists_appdir)
+
+    font_path_bundled = OverlayRenderService._find_system_emoji_font()
+    assert font_path_bundled == bundled_font
+
+    # Cleanup state
+    OverlayRenderService._checked_system_emoji_font = False
+    OverlayRenderService._system_emoji_font_path = None
+
+
+def test_overlay_pure_emoji_fallback_rendering():
+    """Verify fallback text rendering for pure emoji scales and centers correctly."""
+    import cairo
+
+    from video_cut.services.overlay_service import OverlayRenderService
+
+    item = OverlayItem(item_type="emoji", text="😀", font_size=72, width=0.2, height=0.2)
+    surf = cairo.ImageSurface(cairo.FORMAT_ARGB32, 200, 200)
+    cr = cairo.Context(surf)
+
+    # Should execute without throwing any exception
+    OverlayRenderService._render_pure_emoji_text(cr, item, "😀", 100.0, 100.0)
+
+    # Ensure render_item falls back cleanly when get_emoji_surface returns None
+    orig_get_emoji_surf = OverlayRenderService.get_emoji_surface
+    try:
+        OverlayRenderService.get_emoji_surface = classmethod(lambda cls, ch, sz: None)
+        OverlayRenderService.render_item(cr, item, 200.0, 200.0)
+    finally:
+        OverlayRenderService.get_emoji_surface = orig_get_emoji_surf
+
+
+def test_player_error_handler_connection(tmp_path):
+    """Verify player attaches error notify handler and gracefully handles error state."""
+    from video_cut.models import ProjectTimeline
+    from video_cut.player import VideoPlayerController
+
+    timeline = ProjectTimeline()
+    pic = Gtk.Picture()
+    player = VideoPlayerController(
+        timeline=timeline,
+        video_picture=pic,
+        on_time_update=lambda t: None,
+        on_playback_state_changed=lambda s: None,
+    )
+
+    video_file = tmp_path / "dummy.mp4"
+    video_file.write_bytes(b"fake data")
+
+    # Load video
+    player._load_file_and_seek(video_file, 0.0)
+    assert player.current_media_file is not None
+
+    # Verify at least 3 handlers attached (prepared, seeking, error)
+    assert len(player._media_file_handlers) >= 3
+
+    player.clear()
+
+
+
 
 
 

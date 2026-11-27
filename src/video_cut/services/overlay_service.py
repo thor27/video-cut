@@ -4,11 +4,14 @@ from __future__ import annotations
 
 import io
 import math
+import os
 import re
 import subprocess
 import threading
 from pathlib import Path
 from typing import Any
+
+from ..paths import RESOURCES_DIR
 
 _measure_local = threading.local()
 
@@ -415,35 +418,60 @@ class OverlayRenderService:
             return cls._system_emoji_font_path
 
         cls._checked_system_emoji_font = True
-        # 1. Ask fontconfig for the active emoji font matching GTK / Pango
+
+        candidates: list[Path] = []
+
+        # 1. Bundled AppDir font
+        appdir = os.environ.get("APPDIR")
+        if appdir:
+            candidates.extend([
+                Path(appdir) / "usr/share/fonts/truetype/noto/NotoColorEmoji.ttf",
+                Path(appdir) / "usr/share/fonts/NotoColorEmoji.ttf",
+            ])
+
+        # 2. Application resources directory
+        candidates.append(RESOURCES_DIR / "NotoColorEmoji.ttf")
+
+        # 3. Common standard paths across Linux distros, Windows, and macOS
+        candidates.extend([
+            Path("/usr/share/fonts/truetype/noto/NotoColorEmoji.ttf"),
+            Path("/usr/share/fonts/google-noto-color-emoji-fonts/NotoColorEmoji.ttf"),
+            Path("/usr/share/fonts/noto-color-emoji/NotoColorEmoji.ttf"),
+            Path("/usr/share/fonts/truetype/ancient-scripts/Symbola.ttf"),
+            Path.home() / ".local/share/fonts/NotoColorEmoji.ttf",
+            Path.home() / ".fonts/NotoColorEmoji.ttf",
+            Path("C:/Windows/Fonts/seguiemj.ttf"),
+            Path("/System/Library/Fonts/Apple Color Emoji.ttc"),
+        ])
+
+        for p in candidates:
+            if p.exists() and p.is_file():
+                cls._system_emoji_font_path = p
+                return p
+
+        # 4. Ask fontconfig for the active emoji font matching GTK / Pango,
+        # but only accept it if the matched family/file is genuinely an emoji font
+        # (avoiding monochrome fallback fonts like DejaVuSans or LiberationSans).
         try:
             res = subprocess.run(
-                ["fc-match", "emoji", "-f", "%{file}"],
+                ["fc-match", "emoji", "-f", "%{file}:%{family}"],
                 capture_output=True,
                 text=True,
                 timeout=2.0,
             )
             if res.returncode == 0 and res.stdout.strip():
-                p = Path(res.stdout.strip())
-                if p.exists() and p.is_file():
-                    cls._system_emoji_font_path = p
-                    return p
+                parts = res.stdout.strip().split(":")
+                file_str = parts[0].strip()
+                family_str = parts[1].strip() if len(parts) > 1 else ""
+                font_name_lower = f"{file_str} {family_str}".lower()
+                if any(k in font_name_lower for k in ("emoji", "color", "symbola", "joypixels", "twemoji")):
+                    p = Path(file_str)
+                    if p.exists() and p.is_file():
+                        cls._system_emoji_font_path = p
+                        return p
         except Exception:
             pass
 
-        # 2. Common standard paths across Linux distros, Windows, and macOS
-        standard_paths = [
-            Path("/usr/share/fonts/truetype/noto/NotoColorEmoji.ttf"),
-            Path("/usr/share/fonts/google-noto-color-emoji-fonts/NotoColorEmoji.ttf"),
-            Path("/usr/share/fonts/noto-color-emoji/NotoColorEmoji.ttf"),
-            Path.home() / ".local/share/fonts/NotoColorEmoji.ttf",
-            Path("C:/Windows/Fonts/seguiemj.ttf"),
-            Path("/System/Library/Fonts/Apple Color Emoji.ttc"),
-        ]
-        for p in standard_paths:
-            if p.exists() and p.is_file():
-                cls._system_emoji_font_path = p
-                return p
         return None
 
     @classmethod
@@ -588,7 +616,7 @@ class OverlayRenderService:
                         cr.set_source_surface(emoji_surf, -ew / 2.0, -eh / 2.0)
                         cr.paint_with_alpha(item.opacity)
                     else:
-                        cls._render_text(cr, item, text_content, w, h, canvas_h, canvas_w)
+                        cls._render_pure_emoji_text(cr, item, text_content, w, h)
                 else:
                     cls._render_text(cr, item, text_content, w, h, canvas_h, canvas_w)
 
@@ -826,6 +854,51 @@ class OverlayRenderService:
                 pass
 
         cr.restore()
+        cr.new_path()
+
+    @classmethod
+    def _render_pure_emoji_text(
+        cls,
+        cr: cairo.Context,
+        item: OverlayItem,
+        text_content: str,
+        box_w: float,
+        box_h: float,
+    ) -> None:
+        """Render fallback emoji text when color emoji bitmap strike is unavailable, properly centered and scaled."""
+        if not text_content:
+            return
+
+        font_sz = max(12.0, min(box_w, box_h) * 0.72)
+        font_candidates = ("emoji", "Noto Color Emoji", "Apple Color Emoji", "Segoe UI Emoji", "Symbola", "Sans")
+
+        slant = cairo.FONT_SLANT_NORMAL
+        weight = cairo.FONT_WEIGHT_NORMAL
+        ext = None
+        for font_name in font_candidates:
+            try:
+                cr.select_font_face(font_name, slant, weight)
+                cr.set_font_size(font_sz)
+                e = cr.text_extents(text_content)
+                if e.width > 0:
+                    ext = e
+                    break
+            except Exception:
+                pass
+
+        if ext is None:
+            cr.select_font_face("Sans", slant, weight)
+            cr.set_font_size(font_sz)
+            ext = cr.text_extents(text_content)
+
+        txt_r, txt_g, txt_b, txt_a = parse_color(item.font_color or "#ffffff")
+        cr.set_source_rgba(txt_r, txt_g, txt_b, txt_a * item.opacity)
+
+        # Center inside (-box_w/2, -box_h/2, box_w, box_h)
+        x = -(ext.width / 2.0 + ext.x_bearing)
+        y = -(ext.height / 2.0 + ext.y_bearing)
+        cr.move_to(x, y)
+        cr.show_text(text_content)
         cr.new_path()
 
     @classmethod

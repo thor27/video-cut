@@ -3823,9 +3823,15 @@ class OverlayDialog(Adw.Window):
                         if self.is_playing and not mf.get_playing():
                             mf.play()
 
+                def on_error_notify(mf, _pspec):
+                    err = mf.get_error()
+                    if err:
+                        print(f"Overlay video preview error: {err.message}")
+
                 self._mf_handlers = [
                     self._media_file.connect("notify::prepared", on_prepared),
                     self._media_file.connect("notify::seeking", on_seeking_notify),
+                    self._media_file.connect("notify::error", on_error_notify),
                 ]
         except Exception as e:
             print(f"Warning: could not initialize MediaFile: {e}")
