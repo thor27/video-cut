@@ -164,7 +164,8 @@ mkdir -p "${APPDIR}/usr/lib"
 for lib_pattern in "libgtk-4.so*" "libadwaita-1.so*" "libgraphene-1.0.so*" \
                    "libgstreamer-1.0.so*" "libgstbase-1.0.so*" "libgstaudio-1.0.so*" \
                    "libgstvideo-1.0.so*" "libgstpbutils-1.0.so*" "libgstapp-1.0.so*" \
-                   "libgsttag-1.0.so*" "libgstallocators-1.0.so*" "libgstgl-1.0.so*"; do
+                   "libgsttag-1.0.so*" "libgstallocators-1.0.so*" "libgstgl-1.0.so*" \
+                   "libgstplay-1.0.so*"; do
     for lib_dir in /usr/lib/x86_64-linux-gnu /usr/lib64 /usr/lib; do
         if compgen -G "${lib_dir}/${lib_pattern}" > /dev/null 2>&1; then
             cp -a ${lib_dir}/${lib_pattern} "${APPDIR}/usr/lib/" 2>/dev/null || true
@@ -198,6 +199,15 @@ for gst_dir in /usr/lib/x86_64-linux-gnu/gstreamer-1.0 /usr/lib64/gstreamer-1.0 
             fi
         done
         break
+    fi
+done
+
+# Verify vital GStreamer plugins are bundled
+for req_plugin in libgstcoreelements.so libgstplayback.so libgstgtk4.so libgstapp.so libgsttypefindfunctions.so; do
+    if [ ! -f "${APPDIR}/usr/lib/gstreamer-1.0/${req_plugin}" ]; then
+        echo "Error: Vital GStreamer plugin ${req_plugin} is missing from AppDir!" >&2
+        echo "Please ensure gstreamer1.0-gtk4, gstreamer1.0-plugins-base, and gstreamer1.0-plugins-good are installed on the build system." >&2
+        exit 1
     fi
 done
 
@@ -269,6 +279,12 @@ fi
 for f in "${APPDIR}/usr/lib/"*.so*; do
     if [ -f "$f" ]; then
         ln -sf "../$(basename "$f")" "${APPDIR}/usr/lib/x86_64-linux-gnu/$(basename "$f")" 2>/dev/null || true
+    fi
+done
+mkdir -p "${APPDIR}/usr/lib/x86_64-linux-gnu/gstreamer-1.0"
+for f in "${APPDIR}/usr/lib/gstreamer-1.0/"*.so*; do
+    if [ -f "$f" ]; then
+        ln -sf "../../gstreamer-1.0/$(basename "$f")" "${APPDIR}/usr/lib/x86_64-linux-gnu/gstreamer-1.0/$(basename "$f")" 2>/dev/null || true
     fi
 done
 
