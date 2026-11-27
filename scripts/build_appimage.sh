@@ -202,6 +202,25 @@ for gst_dir in /usr/lib/x86_64-linux-gnu/gstreamer-1.0 /usr/lib64/gstreamer-1.0 
     fi
 done
 
+# If libgstgtk4.so is not available on host system (e.g. Ubuntu 24.04 LTS runner), bundle it from Ubuntu archive
+if [ ! -f "${APPDIR}/usr/lib/gstreamer-1.0/libgstgtk4.so" ]; then
+    echo "==> Fetching libgstgtk4.so (GTK4 paintable sink element) for AppDir..."
+    GST_GTK4_DEB_URL="http://archive.ubuntu.com/ubuntu/pool/main/r/rust-gst-plugin-gtk4/gstreamer1.0-gtk4_0.14.4-1ubuntu1_amd64.deb"
+    gst_tmp="$(mktemp -d)"
+    if curl -fsSL "$GST_GTK4_DEB_URL" -o "$gst_tmp/gstgtk4.deb" 2>/dev/null; then
+        if dpkg-deb -x "$gst_tmp/gstgtk4.deb" "$gst_tmp/extracted" 2>/dev/null; then
+            for f in "$gst_tmp"/extracted/usr/lib/*/gstreamer-1.0/libgstgtk4.so "$gst_tmp"/extracted/usr/lib/gstreamer-1.0/libgstgtk4.so; do
+                if [ -f "$f" ]; then
+                    cp -f "$f" "${APPDIR}/usr/lib/gstreamer-1.0/"
+                    echo "    Successfully bundled libgstgtk4.so"
+                    break
+                fi
+            done
+        fi
+    fi
+    rm -rf "$gst_tmp"
+fi
+
 # Verify vital GStreamer plugins are bundled
 for req_plugin in libgstcoreelements.so libgstplayback.so libgstgtk4.so libgstapp.so libgsttypefindfunctions.so; do
     if [ ! -f "${APPDIR}/usr/lib/gstreamer-1.0/${req_plugin}" ]; then
