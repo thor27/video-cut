@@ -813,7 +813,7 @@ class HealthCheckDialog(Adw.Window):
             btn_fix.add_css_class("suggested-action")
             btn_fix.connect("clicked", self._on_fix_association_clicked)
             suffix_box.append(btn_fix)
-        elif not is_flatpak() and not is_snap():
+        elif not is_flatpak() and HealthService.can_remove_file_association():
             btn_remove = Gtk.Button(label=_("Remove Association"))
             btn_remove.connect("clicked", self._on_remove_association_clicked)
             suffix_box.append(btn_remove)

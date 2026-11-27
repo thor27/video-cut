@@ -498,19 +498,44 @@ def test_health_dialog_snap_source_options():
         dialog.destroy()
 
 
-def test_health_dialog_snap_no_remove_association_button():
-    """Test HealthCheckDialog does not show Remove Association button inside Snap."""
+def test_health_dialog_snap_allows_remove_and_register_association():
+    """Test HealthCheckDialog shows Register Association when warning and Remove Association when ok inside Snap."""
     with patch("video_cut.health_dialog.is_flatpak", return_value=False), \
          patch("video_cut.health_dialog.is_snap", return_value=True):
         dialog = HealthCheckDialog()
-        item = HealthCheckItem(
+
+        # 1. When not associated (status == warning), show Register Association
+        item_warn = HealthCheckItem(
+            id="file_association",
+            title="Association",
+            status="warning",
+            summary="Not associated",
+            details="MIME unregistered",
+            can_fix=True,
+            fix_label="Register Association",
+        )
+        dialog._apply_results([item_warn])
+
+        child = dialog._suffix_association.get_first_child()
+        btn_action = None
+        while child is not None:
+            if isinstance(child, Gtk.Button) and not isinstance(child, Gtk.MenuButton):
+                btn_action = child
+                break
+            child = child.get_next_sibling()
+
+        assert btn_action is not None
+        assert btn_action.get_label() == "Register Association"
+
+        # 2. When associated (status == ok), show Remove Association
+        item_ok = HealthCheckItem(
             id="file_association",
             title="Association",
             status="ok",
-            summary="Registered via Snap",
+            summary="Registered",
             details="Default",
         )
-        dialog._apply_results([item])
+        dialog._apply_results([item_ok])
 
         child = dialog._suffix_association.get_first_child()
         btn_remove = None
@@ -520,7 +545,8 @@ def test_health_dialog_snap_no_remove_association_button():
                 break
             child = child.get_next_sibling()
 
-        assert btn_remove is None
+        assert btn_remove is not None
+        assert btn_remove.get_label() == _("Remove Association")
         dialog.destroy()
 
 

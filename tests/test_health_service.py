@@ -539,24 +539,35 @@ def test_snap_ffmpeg_isolation():
             assert "Snap runtime" in (note or "")
 
 
-def test_snap_file_association():
-    """Test HealthService file association behaves correctly under Snap."""
+def test_snap_file_association(tmp_path: Path):
+    """Test HealthService file association performs proper checks and allows fix/remove under Snap."""
     from video_cut.i18n import set_language
 
     set_language("en_US")
-    with patch("video_cut.services.health_service.is_snap", return_value=True):
+    # 1. Unregistered MIME under Snap warns and allows fix
+    with patch("video_cut.services.health_service.is_flatpak", return_value=False), \
+         patch("video_cut.services.health_service.is_snap", return_value=True), \
+         patch("pathlib.Path.home", return_value=tmp_path), \
+         patch.dict("os.environ", {"SNAP": "/snap/video-cut/current", "SNAP_REAL_HOME": str(tmp_path)}), \
+         patch.object(HealthService, "_is_vcut_mime_registered", return_value=False), \
+         patch("gi.repository.Gio.content_type_guess", return_value=("application/octet-stream", False)):
         item = HealthService.check_file_association()
-        assert item.status == "ok"
-        assert item.can_fix is False
-        assert "Snap desktop integration" in item.summary
+        assert item.status == "warning"
+        assert item.can_fix is True
+        assert item.fix_label is not None
 
+        # Fix creates files and returns success
         ok_fix, fix_msg = HealthService.fix_file_association()
         assert ok_fix is True
-        assert "Snap" in fix_msg
+        assert (tmp_path / ".local" / "share" / "mime" / "packages" / "io.github.thor27.video-cut.xml").exists()
+        assert (tmp_path / ".local" / "share" / "applications" / "io.github.thor27.video-cut.desktop").exists()
 
+        # Removal is allowed under Snap
+        assert HealthService.can_remove_file_association() is True
         ok_rem, rem_msg = HealthService.remove_file_association()
-        assert ok_rem is False
-        assert "Snap" in rem_msg
+        assert ok_rem is True
+        assert not (tmp_path / ".local" / "share" / "mime" / "packages" / "io.github.thor27.video-cut.xml").exists()
+        assert not (tmp_path / ".local" / "share" / "applications" / "io.github.thor27.video-cut.desktop").exists()
 
 
 def test_get_git_commit_hash():
