@@ -27,7 +27,7 @@ jobs:
             gir1.2-gtk-4.0 gir1.2-adw-1 gir1.2-gstreamer-1.0 \
             libgtk-4-1 libadwaita-1-0 libgraphene-1.0-0 \
             gstreamer1.0-plugins-base gstreamer1.0-plugins-good gstreamer1.0-libav \
-            ffmpeg desktop-file-utils appstream
+            ffmpeg desktop-file-utils appstream fonts-noto-color-emoji
 
       - name: Cache Flatpak Runtimes
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0

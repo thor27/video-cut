@@ -450,9 +450,17 @@ class VideoPlayerController:
                         _dbg("mf.play() [seek done]")
                         obj.play()
 
+        def on_error(obj, pspec):
+            err = obj.get_error()
+            if err:
+                _dbg(f"MediaFile error: {err.message} (domain={err.domain}, code={err.code})")
+                print(f"Video playback error: {err.message}", file=sys.stderr)
+                self.pause()
+
         h_prep = mf.connect("notify::prepared", on_prepared)
         h_seek = mf.connect("notify::seeking", on_seeking_changed)
-        self._media_file_handlers = [h_prep, h_seek]
+        h_err = mf.connect("notify::error", on_error)
+        self._media_file_handlers = [h_prep, h_seek, h_err]
 
         if _DEBUG:
             def on_any_notify(obj, pspec):

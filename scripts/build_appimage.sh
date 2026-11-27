@@ -207,8 +207,23 @@ for scanner in /usr/lib/x86_64-linux-gnu/gstreamer1.0/gstreamer-1.0/gst-plugin-s
                /usr/libexec/gstreamer-1.0/gst-plugin-scanner; do
     if [ -x "$scanner" ]; then
         mkdir -p "${APPDIR}/usr/libexec/gstreamer-1.0"
-        cp -L "$scanner" "${APPDIR}/usr/libexec/gstreamer-1.0/" 2>/dev/null || true
-        chmod +x "${APPDIR}/usr/libexec/gstreamer-1.0/gst-plugin-scanner" 2>/dev/null || true
+        cp -L "$scanner" "${APPDIR}/usr/libexec/gstreamer-1.0/gst-plugin-scanner.real" 2>/dev/null || true
+        chmod +x "${APPDIR}/usr/libexec/gstreamer-1.0/gst-plugin-scanner.real" 2>/dev/null || true
+        cat << 'EOF' > "${APPDIR}/usr/libexec/gstreamer-1.0/gst-plugin-scanner"
+#!/bin/sh
+APPDIR="$(dirname "$(dirname "$(dirname "$(readlink -f "$0")")")")"
+LIB_PATH="${APPDIR}/glibc:${APPDIR}/usr/lib:${APPDIR}/usr/lib/x86_64-linux-gnu:/usr/lib/x86_64-linux-gnu:/lib/x86_64-linux-gnu:/usr/lib64:/lib64"
+if [ -f "${APPDIR}/glibc/ld-linux-x86-64.so.2" ]; then
+    exec "${APPDIR}/glibc/ld-linux-x86-64.so.2" --library-path "$LIB_PATH" "${APPDIR}/usr/libexec/gstreamer-1.0/gst-plugin-scanner.real" "$@"
+else
+    exec "${APPDIR}/usr/libexec/gstreamer-1.0/gst-plugin-scanner.real" "$@"
+fi
+EOF
+        chmod 755 "${APPDIR}/usr/libexec/gstreamer-1.0/gst-plugin-scanner"
+        # Provide compatibility links in common GStreamer plugin directories
+        mkdir -p "${APPDIR}/usr/lib/gstreamer-1.0" "${APPDIR}/usr/lib/x86_64-linux-gnu/gstreamer1.0/gstreamer-1.0"
+        ln -sf "../../../libexec/gstreamer-1.0/gst-plugin-scanner" "${APPDIR}/usr/lib/x86_64-linux-gnu/gstreamer1.0/gstreamer-1.0/gst-plugin-scanner" 2>/dev/null || true
+        ln -sf "../../libexec/gstreamer-1.0/gst-plugin-scanner" "${APPDIR}/usr/lib/gstreamer-1.0/gst-plugin-scanner" 2>/dev/null || true
         break
     fi
 done
@@ -219,7 +234,7 @@ ORIG_LD_LIBRARY_PATH="${LD_LIBRARY_PATH:-}"
 export LD_LIBRARY_PATH="${APPDIR}/usr/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
 while true; do
     NEW_COPIED=0
-    find "${APPDIR}/usr/lib" "${APPDIR}/usr/bin" -maxdepth 5 -type f \( -name '*.so*' -o -name 'python3*' \) -print0 | xargs -0 -n1 ldd 2>/dev/null | awk '/=> \//{print $3}' | sort -u > "$DEPS_FILE"
+    find "${APPDIR}/usr/lib" "${APPDIR}/usr/bin" "${APPDIR}/usr/libexec" -maxdepth 5 -type f \( -name '*.so*' -o -name 'python3*' -o -name '*.real*' \) -print0 | xargs -0 -n1 ldd 2>/dev/null | awk '/=> \//{print $3}' | sort -u > "$DEPS_FILE"
     while read -r lib; do
         [ -z "$lib" ] && continue
         case "$lib" in "${APPDIR}"/*) continue ;; esac
@@ -250,6 +265,29 @@ for f in "${APPDIR}/usr/lib/"*.so*; do
         ln -sf "../$(basename "$f")" "${APPDIR}/usr/lib/x86_64-linux-gnu/$(basename "$f")" 2>/dev/null || true
     fi
 done
+
+# Bundle Noto Color Emoji font for self-contained emoji rendering on minimal distros
+echo "==> Bundling emoji fonts..."
+mkdir -p "${APPDIR}/usr/share/fonts/truetype/noto"
+for font_candidate in \
+    /usr/share/fonts/truetype/noto/NotoColorEmoji.ttf \
+    /usr/share/fonts/google-noto-color-emoji-fonts/NotoColorEmoji.ttf \
+    /usr/share/fonts/noto-color-emoji/NotoColorEmoji.ttf; do
+    if [ -f "$font_candidate" ]; then
+        cp -f "$font_candidate" "${APPDIR}/usr/share/fonts/truetype/noto/NotoColorEmoji.ttf"
+        chmod 644 "${APPDIR}/usr/share/fonts/truetype/noto/NotoColorEmoji.ttf"
+        echo "    Successfully bundled NotoColorEmoji.ttf (${font_candidate})"
+        break
+    fi
+done
+if [ ! -f "${APPDIR}/usr/share/fonts/truetype/noto/NotoColorEmoji.ttf" ]; then
+    echo "==> Downloading NotoColorEmoji.ttf for AppDir..."
+    if curl -fsSL --connect-timeout 15 --max-time 60 -o "${APPDIR}/usr/share/fonts/truetype/noto/NotoColorEmoji.ttf" \
+        "https://raw.githubusercontent.com/googlefonts/noto-emoji/main/fonts/NotoColorEmoji.ttf" 2>/dev/null; then
+        chmod 644 "${APPDIR}/usr/share/fonts/truetype/noto/NotoColorEmoji.ttf"
+        echo "    Successfully downloaded NotoColorEmoji.ttf"
+    fi
+fi
 
 # Bundle and compile GSettings schemas for GTK4 and Libadwaita
 echo "==> Bundling GSettings schemas..."

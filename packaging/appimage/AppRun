@@ -104,6 +104,10 @@ if [ -x "${APPDIR}/usr/libexec/gstreamer-1.0/gst-plugin-scanner" ]; then
     export GST_PLUGIN_SCANNER="${APPDIR}/usr/libexec/gstreamer-1.0/gst-plugin-scanner"
 fi
 
+# Isolate GStreamer registry cache in fallback mode to avoid conflicts with host registry
+mkdir -p "${XDG_CACHE_HOME:-$HOME/.cache}/video-cut" 2>/dev/null || true
+export GST_REGISTRY_1_0="${XDG_CACHE_HOME:-$HOME/.cache}/video-cut/gst-registry.x86_64.bin"
+
 # Ensure display server backend matches available socket
 if [ -n "$WAYLAND_DISPLAY" ]; then
     RUNTIME_DIR="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
