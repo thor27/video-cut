@@ -90,11 +90,14 @@ for dir in \
 done
 export GI_TYPELIB_PATH
 
-# GStreamer plugin search paths: bundled plugins first
+# GStreamer plugin search paths: bundled plugins first, then host system
 for dir in \
     "${APPDIR}/usr/lib/x86_64-linux-gnu/gstreamer-1.0" \
     "${APPDIR}/usr/lib/gstreamer-1.0" \
-    "${APPDIR}/usr/lib64/gstreamer-1.0"; do
+    "${APPDIR}/usr/lib64/gstreamer-1.0" \
+    /usr/lib/x86_64-linux-gnu/gstreamer-1.0 \
+    /usr/lib/gstreamer-1.0 \
+    /usr/lib64/gstreamer-1.0; do
     if [ -d "$dir" ]; then
         GST_PLUGIN_SYSTEM_PATH_1_0="${GST_PLUGIN_SYSTEM_PATH_1_0:+$GST_PLUGIN_SYSTEM_PATH_1_0:}$dir"
     fi
@@ -105,8 +108,12 @@ if [ -x "${APPDIR}/usr/libexec/gstreamer-1.0/gst-plugin-scanner" ]; then
 fi
 
 # Isolate GStreamer registry cache in fallback mode to avoid conflicts with host registry
-mkdir -p "${XDG_CACHE_HOME:-$HOME/.cache}/video-cut" 2>/dev/null || true
-export GST_REGISTRY_1_0="${XDG_CACHE_HOME:-$HOME/.cache}/video-cut/gst-registry.x86_64.bin"
+REGISTRY_FILE="${XDG_CACHE_HOME:-$HOME/.cache}/video-cut/gst-registry-v1.x86_64.bin"
+mkdir -p "$(dirname "$REGISTRY_FILE")" 2>/dev/null || true
+if [ -f "$REGISTRY_FILE" ] && [ "$(stat -c%s "$REGISTRY_FILE" 2>/dev/null || echo 0)" -lt 10240 ]; then
+    rm -f "$REGISTRY_FILE" 2>/dev/null || true
+fi
+export GST_REGISTRY_1_0="$REGISTRY_FILE"
 
 # Ensure display server backend matches available socket
 if [ -n "$WAYLAND_DISPLAY" ]; then

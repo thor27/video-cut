@@ -211,7 +211,10 @@ for scanner in /usr/lib/x86_64-linux-gnu/gstreamer1.0/gstreamer-1.0/gst-plugin-s
         chmod +x "${APPDIR}/usr/libexec/gstreamer-1.0/gst-plugin-scanner.real" 2>/dev/null || true
         cat << 'EOF' > "${APPDIR}/usr/libexec/gstreamer-1.0/gst-plugin-scanner"
 #!/bin/sh
-APPDIR="$(dirname "$(dirname "$(dirname "$(readlink -f "$0")")")")"
+if [ -z "$APPDIR" ] || [ ! -d "$APPDIR" ]; then
+    SCANNER_REAL="$(readlink -f "$0")"
+    APPDIR="$(dirname "$(dirname "$(dirname "$(dirname "$SCANNER_REAL")")")")"
+fi
 LIB_PATH="${APPDIR}/glibc:${APPDIR}/usr/lib:${APPDIR}/usr/lib/x86_64-linux-gnu:/usr/lib/x86_64-linux-gnu:/lib/x86_64-linux-gnu:/usr/lib64:/lib64"
 if [ -f "${APPDIR}/glibc/ld-linux-x86-64.so.2" ]; then
     exec "${APPDIR}/glibc/ld-linux-x86-64.so.2" --library-path "$LIB_PATH" "${APPDIR}/usr/libexec/gstreamer-1.0/gst-plugin-scanner.real" "$@"
@@ -220,10 +223,13 @@ else
 fi
 EOF
         chmod 755 "${APPDIR}/usr/libexec/gstreamer-1.0/gst-plugin-scanner"
-        # Provide compatibility links in common GStreamer plugin directories
-        mkdir -p "${APPDIR}/usr/lib/gstreamer-1.0" "${APPDIR}/usr/lib/x86_64-linux-gnu/gstreamer1.0/gstreamer-1.0"
-        ln -sf "../../../libexec/gstreamer-1.0/gst-plugin-scanner" "${APPDIR}/usr/lib/x86_64-linux-gnu/gstreamer1.0/gstreamer-1.0/gst-plugin-scanner" 2>/dev/null || true
-        ln -sf "../../libexec/gstreamer-1.0/gst-plugin-scanner" "${APPDIR}/usr/lib/gstreamer-1.0/gst-plugin-scanner" 2>/dev/null || true
+        # Provide compatibility copies in common GStreamer plugin directories
+        mkdir -p "${APPDIR}/usr/lib/gstreamer-1.0" \
+                 "${APPDIR}/usr/lib/x86_64-linux-gnu/gstreamer1.0/gstreamer-1.0" \
+                 "${APPDIR}/usr/lib/x86_64-linux-gnu/gstreamer-1.0"
+        cp -f "${APPDIR}/usr/libexec/gstreamer-1.0/gst-plugin-scanner" "${APPDIR}/usr/lib/gstreamer-1.0/gst-plugin-scanner"
+        cp -f "${APPDIR}/usr/libexec/gstreamer-1.0/gst-plugin-scanner" "${APPDIR}/usr/lib/x86_64-linux-gnu/gstreamer1.0/gstreamer-1.0/gst-plugin-scanner"
+        cp -f "${APPDIR}/usr/libexec/gstreamer-1.0/gst-plugin-scanner" "${APPDIR}/usr/lib/x86_64-linux-gnu/gstreamer-1.0/gst-plugin-scanner"
         break
     fi
 done
