@@ -24,7 +24,8 @@ jobs:
             python3-venv python3-gi python3-cairo python3-pil \
             gir1.2-gtk-4.0 gir1.2-adw-1 gir1.2-gstreamer-1.0 \
             libgtk-4-1 libadwaita-1-0 libgraphene-1.0-0 \
-            gstreamer1.0-plugins-base gstreamer1.0-plugins-good gstreamer1.0-libav \
+            gstreamer1.0-plugins-base gstreamer1.0-plugins-good \
+            gstreamer1.0-plugins-bad gstreamer1.0-libav gstreamer1.0-alsa gstreamer1.0-pipewire \
             ffmpeg xvfb appstream desktop-file-utils squashfs-tools fonts-noto-color-emoji
 
       - name: Install Package

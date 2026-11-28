@@ -164,7 +164,8 @@ mkdir -p "${APPDIR}/usr/lib"
 for lib_pattern in "libgtk-4.so*" "libadwaita-1.so*" "libgraphene-1.0.so*" \
                    "libgstreamer-1.0.so*" "libgstbase-1.0.so*" "libgstaudio-1.0.so*" \
                    "libgstvideo-1.0.so*" "libgstpbutils-1.0.so*" "libgstapp-1.0.so*" \
-                   "libgsttag-1.0.so*" "libgstallocators-1.0.so*" "libgstgl-1.0.so*"; do
+                   "libgsttag-1.0.so*" "libgstallocators-1.0.so*" "libgstgl-1.0.so*" \
+                   "libgstplay-1.0.so*"; do
     for lib_dir in /usr/lib/x86_64-linux-gnu /usr/lib64 /usr/lib; do
         if compgen -G "${lib_dir}/${lib_pattern}" > /dev/null 2>&1; then
             cp -a ${lib_dir}/${lib_pattern} "${APPDIR}/usr/lib/" 2>/dev/null || true
@@ -198,6 +199,34 @@ for gst_dir in /usr/lib/x86_64-linux-gnu/gstreamer-1.0 /usr/lib64/gstreamer-1.0 
             fi
         done
         break
+    fi
+done
+
+# If libgstgtk4.so is not available on host system (e.g. Ubuntu 24.04 LTS runner), bundle it from Ubuntu archive
+if [ ! -f "${APPDIR}/usr/lib/gstreamer-1.0/libgstgtk4.so" ]; then
+    echo "==> Fetching libgstgtk4.so (GTK4 paintable sink element) for AppDir..."
+    GST_GTK4_DEB_URL="http://archive.ubuntu.com/ubuntu/pool/main/r/rust-gst-plugin-gtk4/gstreamer1.0-gtk4_0.14.4-1ubuntu1_amd64.deb"
+    gst_tmp="$(mktemp -d)"
+    if curl -fsSL "$GST_GTK4_DEB_URL" -o "$gst_tmp/gstgtk4.deb" 2>/dev/null; then
+        if dpkg-deb -x "$gst_tmp/gstgtk4.deb" "$gst_tmp/extracted" 2>/dev/null; then
+            for f in "$gst_tmp"/extracted/usr/lib/*/gstreamer-1.0/libgstgtk4.so "$gst_tmp"/extracted/usr/lib/gstreamer-1.0/libgstgtk4.so; do
+                if [ -f "$f" ]; then
+                    cp -f "$f" "${APPDIR}/usr/lib/gstreamer-1.0/"
+                    echo "    Successfully bundled libgstgtk4.so"
+                    break
+                fi
+            done
+        fi
+    fi
+    rm -rf "$gst_tmp"
+fi
+
+# Verify vital GStreamer plugins are bundled
+for req_plugin in libgstcoreelements.so libgstplayback.so libgstgtk4.so libgstapp.so libgsttypefindfunctions.so; do
+    if [ ! -f "${APPDIR}/usr/lib/gstreamer-1.0/${req_plugin}" ]; then
+        echo "Error: Vital GStreamer plugin ${req_plugin} is missing from AppDir!" >&2
+        echo "Please ensure gstreamer1.0-gtk4, gstreamer1.0-plugins-base, and gstreamer1.0-plugins-good are installed on the build system." >&2
+        exit 1
     fi
 done
 
@@ -269,6 +298,12 @@ fi
 for f in "${APPDIR}/usr/lib/"*.so*; do
     if [ -f "$f" ]; then
         ln -sf "../$(basename "$f")" "${APPDIR}/usr/lib/x86_64-linux-gnu/$(basename "$f")" 2>/dev/null || true
+    fi
+done
+mkdir -p "${APPDIR}/usr/lib/x86_64-linux-gnu/gstreamer-1.0"
+for f in "${APPDIR}/usr/lib/gstreamer-1.0/"*.so*; do
+    if [ -f "$f" ]; then
+        ln -sf "../../gstreamer-1.0/$(basename "$f")" "${APPDIR}/usr/lib/x86_64-linux-gnu/gstreamer-1.0/$(basename "$f")" 2>/dev/null || true
     fi
 done
 
