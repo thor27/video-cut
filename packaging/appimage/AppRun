@@ -107,13 +107,12 @@ if [ -x "${APPDIR}/usr/libexec/gstreamer-1.0/gst-plugin-scanner" ]; then
     export GST_PLUGIN_SCANNER="${APPDIR}/usr/libexec/gstreamer-1.0/gst-plugin-scanner"
 fi
 
-# Isolate GStreamer registry cache in fallback mode to avoid conflicts with host registry
-REGISTRY_FILE="${XDG_CACHE_HOME:-$HOME/.cache}/video-cut/gst-registry-v1.x86_64.bin"
-mkdir -p "$(dirname "$REGISTRY_FILE")" 2>/dev/null || true
-if [ -f "$REGISTRY_FILE" ] && [ "$(stat -c%s "$REGISTRY_FILE" 2>/dev/null || echo 0)" -lt 10240 ]; then
-    rm -f "$REGISTRY_FILE" 2>/dev/null || true
-fi
-export GST_REGISTRY_1_0="$REGISTRY_FILE"
+# Clean up any stale registry cache from earlier runs
+rm -rf "${XDG_CACHE_HOME:-$HOME/.cache}/video-cut/gst-registry"* 2>/dev/null || true
+
+# Isolate GStreamer registry cache per unique AppDir mount to avoid stale temporary paths
+APPDIR_HASH="$(printf "%s" "$APPDIR" | md5sum | cut -d' ' -f1)"
+export GST_REGISTRY_1_0="/tmp/video-cut-gst-registry-${APPDIR_HASH}.bin"
 
 # Ensure display server backend matches available socket
 if [ -n "$WAYLAND_DISPLAY" ]; then
@@ -125,11 +124,14 @@ if [ -n "$WAYLAND_DISPLAY" ]; then
 fi
 if [ -z "$WAYLAND_DISPLAY" ] && [ -n "$DISPLAY" ]; then
     export GDK_BACKEND=x11
-fi
-
-# Prefer hardware-accelerated OpenGL renderer (gl) over CPU software (cairo) or incomplete Vulkan drivers
-if [ -z "$GSK_RENDERER" ]; then
-    export GSK_RENDERER=gl
+    # On VMs (VirtualBox, VMware) or X11 fallback without full EGL DRI2, prefer Cairo software renderer
+    if [ -z "$GSK_RENDERER" ]; then
+        export GSK_RENDERER=cairo
+    fi
+    # If Mesa DRI2 fails authentication on VMs, use software rasterization to prevent black screens
+    if [ -z "$LIBGL_ALWAYS_SOFTWARE" ]; then
+        export LIBGL_ALWAYS_SOFTWARE=1
+    fi
 fi
 
 # Set up Python for fallback mode: prefer bundled Python 3
