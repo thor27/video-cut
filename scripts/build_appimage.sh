@@ -202,23 +202,27 @@ for gst_dir in /usr/lib/x86_64-linux-gnu/gstreamer-1.0 /usr/lib64/gstreamer-1.0 
     fi
 done
 
-# If libgstgtk4.so is not available on host system (e.g. Ubuntu 24.04 LTS runner), bundle it from Ubuntu archive
-if [ ! -f "${APPDIR}/usr/lib/gstreamer-1.0/libgstgtk4.so" ]; then
-    echo "==> Fetching libgstgtk4.so (GTK4 paintable sink element) for AppDir..."
-    GST_GTK4_DEB_URL="http://archive.ubuntu.com/ubuntu/pool/main/r/rust-gst-plugin-gtk4/gstreamer1.0-gtk4_0.14.4-1ubuntu1_amd64.deb"
+# Bundle GTK 4.14-compatible libgstgtk4.so (GTK4 paintable sink element)
+bundle_gst_gtk4_deb() {
+    echo "==> Fetching GTK 4.14-compatible libgstgtk4.so for AppDir..."
+    GST_GTK4_DEB_URL="http://archive.ubuntu.com/ubuntu/pool/universe/r/rust-gst-plugin-gtk4/gstreamer1.0-gtk4_0.13.5-1_amd64.deb"
     gst_tmp="$(mktemp -d)"
     if curl -fsSL "$GST_GTK4_DEB_URL" -o "$gst_tmp/gstgtk4.deb" 2>/dev/null; then
         if dpkg-deb -x "$gst_tmp/gstgtk4.deb" "$gst_tmp/extracted" 2>/dev/null; then
             for f in "$gst_tmp"/extracted/usr/lib/*/gstreamer-1.0/libgstgtk4.so "$gst_tmp"/extracted/usr/lib/gstreamer-1.0/libgstgtk4.so; do
                 if [ -f "$f" ]; then
                     cp -f "$f" "${APPDIR}/usr/lib/gstreamer-1.0/"
-                    echo "    Successfully bundled libgstgtk4.so"
+                    echo "    Successfully bundled libgstgtk4.so (v0.13.5)"
                     break
                 fi
             done
         fi
     fi
     rm -rf "$gst_tmp"
+}
+
+if [ ! -f "${APPDIR}/usr/lib/gstreamer-1.0/libgstgtk4.so" ]; then
+    bundle_gst_gtk4_deb
 fi
 
 # Verify vital GStreamer plugins are bundled
@@ -306,6 +310,23 @@ for f in "${APPDIR}/usr/lib/gstreamer-1.0/"*.so*; do
         ln -sf "../../gstreamer-1.0/$(basename "$f")" "${APPDIR}/usr/lib/x86_64-linux-gnu/gstreamer-1.0/$(basename "$f")" 2>/dev/null || true
     fi
 done
+
+# Verify libgstgtk4.so has no unresolved symbols against bundled libraries; fallback to v0.13.5 if needed
+if [ -f "${APPDIR}/usr/lib/gstreamer-1.0/libgstgtk4.so" ]; then
+    UNRESOLVED="$(LD_LIBRARY_PATH="${APPDIR}/usr/lib:${APPDIR}/usr/lib/x86_64-linux-gnu" ldd -r "${APPDIR}/usr/lib/gstreamer-1.0/libgstgtk4.so" 2>&1 | grep "undefined symbol" || true)"
+    if [ -n "$UNRESOLVED" ]; then
+        echo "Warning: libgstgtk4.so has undefined symbols against bundled libraries:" >&2
+        echo "$UNRESOLVED" >&2
+        echo "==> Replacing with GTK 4.14-compatible libgstgtk4.so (v0.13.5)..."
+        bundle_gst_gtk4_deb
+        UNRESOLVED="$(LD_LIBRARY_PATH="${APPDIR}/usr/lib:${APPDIR}/usr/lib/x86_64-linux-gnu" ldd -r "${APPDIR}/usr/lib/gstreamer-1.0/libgstgtk4.so" 2>&1 | grep "undefined symbol" || true)"
+        if [ -n "$UNRESOLVED" ]; then
+            echo "Error: libgstgtk4.so still has undefined symbols:" >&2
+            echo "$UNRESOLVED" >&2
+            exit 1
+        fi
+    fi
+fi
 
 # Bundle Noto Color Emoji font for self-contained emoji rendering on minimal distros
 echo "==> Bundling emoji fonts..."
