@@ -79,6 +79,20 @@ if [ -d "${APPDIR}/usr/lib/gio/modules" ]; then
     export GIO_MODULE_DIR="${APPDIR}/usr/lib/gio/modules"
 fi
 
+# Point GTK to bundled modules (including media-gstreamer backend)
+GTK_PATH=""
+for dir in \
+    "${APPDIR}/usr/lib/x86_64-linux-gnu/gtk-4.0" \
+    "${APPDIR}/usr/lib/gtk-4.0" \
+    "${APPDIR}/usr/lib64/gtk-4.0"; do
+    if [ -d "$dir" ]; then
+        GTK_PATH="${GTK_PATH:+$GTK_PATH:}$dir"
+    fi
+done
+if [ -n "$GTK_PATH" ]; then
+    export GTK_PATH
+fi
+
 # GObject Introspection typelib search paths: bundled AppDir first
 for dir in \
     "${APPDIR}/usr/lib/x86_64-linux-gnu/girepository-1.0" \
@@ -90,19 +104,20 @@ for dir in \
 done
 export GI_TYPELIB_PATH
 
-# GStreamer plugin search paths: bundled plugins first, then host system
+# GStreamer plugin search paths: isolate to bundled plugins in fallback mode
+GST_PLUGINS=""
 for dir in \
     "${APPDIR}/usr/lib/x86_64-linux-gnu/gstreamer-1.0" \
     "${APPDIR}/usr/lib/gstreamer-1.0" \
-    "${APPDIR}/usr/lib64/gstreamer-1.0" \
-    /usr/lib/x86_64-linux-gnu/gstreamer-1.0 \
-    /usr/lib/gstreamer-1.0 \
-    /usr/lib64/gstreamer-1.0; do
+    "${APPDIR}/usr/lib64/gstreamer-1.0"; do
     if [ -d "$dir" ]; then
-        GST_PLUGIN_SYSTEM_PATH_1_0="${GST_PLUGIN_SYSTEM_PATH_1_0:+$GST_PLUGIN_SYSTEM_PATH_1_0:}$dir"
+        GST_PLUGINS="${GST_PLUGINS:+$GST_PLUGINS:}$dir"
     fi
 done
-export GST_PLUGIN_SYSTEM_PATH_1_0
+if [ -n "$GST_PLUGINS" ]; then
+    export GST_PLUGIN_PATH_1_0="$GST_PLUGINS"
+    export GST_PLUGIN_SYSTEM_PATH_1_0=""
+fi
 if [ -x "${APPDIR}/usr/libexec/gstreamer-1.0/gst-plugin-scanner" ]; then
     export GST_PLUGIN_SCANNER="${APPDIR}/usr/libexec/gstreamer-1.0/gst-plugin-scanner"
 fi
@@ -124,14 +139,11 @@ if [ -n "$WAYLAND_DISPLAY" ]; then
 fi
 if [ -z "$WAYLAND_DISPLAY" ] && [ -n "$DISPLAY" ]; then
     export GDK_BACKEND=x11
-    # On VMs (VirtualBox, VMware) or X11 fallback without full EGL DRI2, prefer Cairo software renderer
-    if [ -z "$GSK_RENDERER" ]; then
-        export GSK_RENDERER=cairo
-    fi
-    # If Mesa DRI2 fails authentication on VMs, use software rasterization to prevent black screens
-    if [ -z "$LIBGL_ALWAYS_SOFTWARE" ]; then
-        export LIBGL_ALWAYS_SOFTWARE=1
-    fi
+fi
+
+# Prefer hardware-accelerated OpenGL renderer (gl) over CPU software (cairo) or incomplete Vulkan drivers
+if [ -z "$GSK_RENDERER" ]; then
+    export GSK_RENDERER=gl
 fi
 
 # Set up Python for fallback mode: prefer bundled Python 3

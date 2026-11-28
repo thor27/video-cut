@@ -202,6 +202,44 @@ for gst_dir in /usr/lib/x86_64-linux-gnu/gstreamer-1.0 /usr/lib64/gstreamer-1.0 
     fi
 done
 
+# Bundle GTK 4 media backend (libmedia-gstreamer.so for GtkMediaFile video playback)
+echo "==> Bundling GTK 4 media backends..."
+mkdir -p "${APPDIR}/usr/lib/x86_64-linux-gnu/gtk-4.0" "${APPDIR}/usr/lib/gtk-4.0"
+for gtk_mod_dir in /usr/lib/x86_64-linux-gnu/gtk-4.0 /usr/lib64/gtk-4.0 /usr/lib/gtk-4.0; do
+    if [ -d "$gtk_mod_dir" ]; then
+        cp -rL "${gtk_mod_dir}"/* "${APPDIR}/usr/lib/x86_64-linux-gnu/gtk-4.0/" 2>/dev/null || true
+        cp -rL "${gtk_mod_dir}"/* "${APPDIR}/usr/lib/gtk-4.0/" 2>/dev/null || true
+        break
+    fi
+done
+
+bundle_gtk_media_deb() {
+    echo "==> Fetching libgtk-4-media-gstreamer for AppDir..."
+    GTK_MEDIA_DEB_URL="http://archive.ubuntu.com/ubuntu/pool/main/g/gtk4/libgtk-4-media-gstreamer_4.14.2+ds-1ubuntu1_amd64.deb"
+    media_tmp="$(mktemp -d)"
+    if curl -fsSL "$GTK_MEDIA_DEB_URL" -o "$media_tmp/gtkmedia.deb" 2>/dev/null; then
+        if dpkg-deb -x "$media_tmp/gtkmedia.deb" "$media_tmp/extracted" 2>/dev/null; then
+            for f in "$media_tmp"/extracted/usr/lib/*/gtk-4.0/*/media/libmedia-gstreamer.so "$media_tmp"/extracted/usr/lib/gtk-4.0/*/media/libmedia-gstreamer.so; do
+                if [ -f "$f" ]; then
+                    mkdir -p "${APPDIR}/usr/lib/x86_64-linux-gnu/gtk-4.0/4.0.0/media" "${APPDIR}/usr/lib/gtk-4.0/4.0.0/media"
+                    cp -f "$f" "${APPDIR}/usr/lib/x86_64-linux-gnu/gtk-4.0/4.0.0/media/"
+                    cp -f "$f" "${APPDIR}/usr/lib/gtk-4.0/4.0.0/media/"
+                    echo "    Successfully bundled libmedia-gstreamer.so"
+                    break
+                fi
+            done
+        fi
+    fi
+    rm -rf "$media_tmp"
+}
+
+if [ ! -f "${APPDIR}/usr/lib/x86_64-linux-gnu/gtk-4.0/4.0.0/media/libmedia-gstreamer.so" ] && \
+   [ ! -f "${APPDIR}/usr/lib/gtk-4.0/4.0.0/media/libmedia-gstreamer.so" ]; then
+    if ! strings "${APPDIR}/usr/lib/libgtk-4.so.1" 2>/dev/null | grep -q "GtkGstMediaFileBuiltin"; then
+        bundle_gtk_media_deb
+    fi
+fi
+
 # Bundle GTK 4.14-compatible libgstgtk4.so (GTK4 paintable sink element)
 bundle_gst_gtk4_deb() {
     echo "==> Fetching GTK 4.14-compatible libgstgtk4.so for AppDir..."
@@ -326,6 +364,28 @@ if [ -f "${APPDIR}/usr/lib/gstreamer-1.0/libgstgtk4.so" ]; then
             exit 1
         fi
     fi
+fi
+
+# Verify GTK 4 media backend is available and has no unresolved symbols
+for mlib in "${APPDIR}/usr/lib/x86_64-linux-gnu/gtk-4.0/4.0.0/media/libmedia-gstreamer.so" "${APPDIR}/usr/lib/gtk-4.0/4.0.0/media/libmedia-gstreamer.so"; do
+    if [ -f "$mlib" ]; then
+        UNRESOLVED="$(LD_LIBRARY_PATH="${APPDIR}/usr/lib:${APPDIR}/usr/lib/x86_64-linux-gnu" ldd -r "$mlib" 2>&1 | grep "undefined symbol" || true)"
+        if [ -n "$UNRESOLVED" ]; then
+            echo "Error: $mlib has undefined symbols:" >&2
+            echo "$UNRESOLVED" >&2
+            exit 1
+        fi
+        echo "    Verified $mlib dynamic symbols successfully."
+        break
+    fi
+done
+
+if [ ! -f "${APPDIR}/usr/lib/x86_64-linux-gnu/gtk-4.0/4.0.0/media/libmedia-gstreamer.so" ] && \
+   [ ! -f "${APPDIR}/usr/lib/gtk-4.0/4.0.0/media/libmedia-gstreamer.so" ] && \
+   ! strings "${APPDIR}/usr/lib/libgtk-4.so.1" 2>/dev/null | grep -q "GtkGstMediaFileBuiltin"; then
+    echo "Error: GTK 4 GStreamer media backend is missing from AppDir!" >&2
+    echo "Please ensure libgtk-4-media-gstreamer is installed on the build system." >&2
+    exit 1
 fi
 
 # Bundle Noto Color Emoji font for self-contained emoji rendering on minimal distros
