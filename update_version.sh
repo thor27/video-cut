@@ -8,7 +8,7 @@ echo "==> Looking up version from main branch..."
 
 # Try fetching latest origin/main if remote exists and is accessible
 if git remote get-url origin >/dev/null 2>&1; then
-    git fetch origin main --depth=1 2>/dev/null || true
+    git fetch origin main 2>/dev/null || true
 fi
 
 TARGET_VERSION=""
